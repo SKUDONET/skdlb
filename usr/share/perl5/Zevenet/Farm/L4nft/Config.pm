@@ -164,17 +164,17 @@ sub setL4FarmParam    # ($param, $value, $farm_name)
 	{
 		$srvparam = "protocol";
 
-		if ( $value =~ /ftp|irc|pptp/ )
+		if ( $value =~ /^ftp|irc|pptp|sane/ )
 		{
 			$addition = $addition . qq( , "helper" : "$value" );
 			$value    = "tcp";
 		}
-		elsif ( $value =~ /tftp/ )
+		elsif ( $value =~ /tftp|snmp|amanda|netbios-ns/ )
 		{
 			$addition = $addition . qq( , "helper" : "$value" );
 			$value    = "udp";
 		}
-		elsif ( $value =~ /sip|amanda|h323|netbios-ns|sane|snmp/ )
+		elsif ( $value =~ /sip|h323/ )
 		{
 			$addition = $addition . qq( , "helper" : "$value" );
 			$value    = "all";
