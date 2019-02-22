@@ -637,8 +637,11 @@ sub getFarmStruct
 	}
 	elsif ( $farmType =~ /gslb/ )
 	{
-		require Zevenet::Farm::GSLB::Config;
-		$farm = &getGSLBFarmStruct( $farmName );
+		$farm = &eload(
+						module => 'Zevenet::Farm::GSLB::Config',
+						func   => 'getGSLBFarmStruct',
+						args   => [$farmName],
+		);
 	}
 
 	# elsif ( $farmType =~ /datalink/ )

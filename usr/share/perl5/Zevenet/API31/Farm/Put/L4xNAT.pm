@@ -138,7 +138,13 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 
-		unless ( $json_obj->{ algorithm } =~ /^(leastconn|weight|prio)$/ )
+		if ( $json_obj->{ algorithm } =~ /^(prio)$/ )
+		{
+			my $msg = "Not supported anymore.";
+			&httpErrorResponse( code => 410, desc => $desc, msg => $msg );
+		}
+
+		unless ( $json_obj->{ algorithm } =~ /^(leastconn|weight)$/ )
 		{
 			my $msg = "Invalid algorithm.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );

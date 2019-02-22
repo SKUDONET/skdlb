@@ -36,7 +36,7 @@ backup_dir="${prefix}/${ss_dir}"
 config_paths=`perl -MZevenet::Config -e 'print getGlobalConfiguration("backupfor");'`;
 zbindir=`perl -MZevenet::Config -e 'print getGlobalConfiguration("zbindir");'`;
 
-monitoring_paths="${home_dir}/app/zenrrd/rrd ${home_dir}/logs /var/log/messages* /var/log/syslog* /var/log/cherokee* ${home_dir}/node_status";
+monitoring_paths="${home_dir}/app/zenrrd/rrd ${home_dir}/logs /var/log/messages* /var/log/syslog* /var/log/cherokee* ${home_dir}/node_status /var/log/apt";
 
 
 echo "Saving information for support in the path ${backup_dir}.tar.gz"
@@ -184,6 +184,12 @@ echo "Saving monitoring files"
 ##############################
 /bin/cp ${home_dir}/www/*.pem $backup_dir 2>/dev/null
 /bin/tar zcf $backup_dir/monitoring.tar.gz $monitoring_paths 2>/dev/null
+
+if [ -f /usr/local/zevenet/bin/enterprise.bin ]; then
+	echo "Saving monitoring files"
+	/usr/local/zevenet/bin/supportsave_ext $backup_dir
+	# copiar al dir
+fi
 
 
 echo "Packing supportsave"

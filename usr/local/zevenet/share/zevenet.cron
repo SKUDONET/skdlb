@@ -1,3 +1,4 @@
 */5  * * * *	root	/usr/local/zevenet/bin/zenrrd &>/dev/null
 */10 * * * *	root	/usr/local/zevenet/bin/zenntp &>/dev/null
 */30 * * * *    root    /usr/bin/find /tmp/ -name "cgisess_*" -mmin +60 -exec rm -f {} \;  &>/dev/null
+00 22 * * *	root	/usr/local/zevenet/bin/checkupgrades

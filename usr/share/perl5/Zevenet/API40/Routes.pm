@@ -381,12 +381,13 @@ if ( $q->path_info =~ qr{^/system/backup} )
 	  \&apply_backup;                                         #  POST  apply backups
 }
 
-if ( $q->path_info =~ qr{^/system/(?:version|license|supportsave)} )
+if ( $q->path_info =~ qr{^/system/(?:version|license|supportsave|factory)} )
 {
 	require Zevenet::API40::System::Info;
 
 	GET qr{^/system/version$}     => \&get_version;
 	GET qr{^/system/supportsave$} => \&get_supportsave;
+	POST qr{^/system/factory$}    => \&set_factory_reset;
 
 	my $license_re = &getValidFormat( 'license_format' );
 	GET qr{^/system/license/($license_re)$} => \&get_license;

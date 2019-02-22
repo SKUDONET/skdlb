@@ -367,14 +367,15 @@ sub httpResponse    # ( \%hash ) hash_keys->( $code, %headers, $body )
 	#~ &zenlog( "Response:$output<", "debug", $LOG_TAG ); # DEBUG
 	print $output;
 
-	if ( &debug )
+	#~ if ( &debug )
 	{
 		# log request if debug is enabled
 		my $req_msg =
 		  "STATUS: $self->{ code } REQUEST: $ENV{REQUEST_METHOD} $ENV{SCRIPT_URL}";
 
 		# include memory usage if debug is 2 or higher
-		$req_msg .= " " . &getMemoryUsage() if &debug() > 1;
+		#~ $req_msg .= " " . &getMemoryUsage() if &debug() > 1;
+		$req_msg .= " " . &getMemoryUsage();
 		&zenlog( $req_msg, "info", $LOG_TAG );
 
 		# log error message on error.

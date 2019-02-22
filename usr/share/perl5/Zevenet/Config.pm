@@ -89,7 +89,7 @@ sub parseGlobalConfiguration
 	while ( my $conf_line = <$global_conf_file> )
 	{
 		# extract variable name and value
-		if ( $conf_line =~ /^\s*\$(\w+)\s*=\s*(?:"(.*)"|\'(.*)\');\s*$/ )
+		if ( $conf_line =~ /^\s*\$(\w+)\s*=\s*(?:"(.*)"|\'(.*)\');(?:\s*#update)?\s*$/ )
 		{
 			$global_conf->{ $1 } = $2;
 		}

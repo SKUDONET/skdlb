@@ -103,6 +103,7 @@ my %format_re = (
 	'snmp_community' => qr{[\w]+},
 	'snmp_scope'     => qr{(?:\d{1,3}\.){3}\d{1,3}\/\d{1,2}},    # ip/mask
 	'ntp'            => qr{[\w\.\-]+},
+	'http_proxy' => qr{\S*},    # use any character except the spaces
 
 	# farms
 	'farm_name'             => qr/[a-zA-Z0-9\-]+/,
@@ -231,6 +232,7 @@ my %format_re = (
 	# certificates filenames
 	'certificate' => qr/\w[\w\.\(\)\@ \-]*\.(?:pem|csr)/,
 	'cert_pem'    => qr/\w[\w\.\(\)\@ \-]*\.pem/,
+	'cert_name'   => qr/[a-zA-Z0-9\-]+/,
 	'cert_csr'    => qr/\w[\w\.\-]*\.csr/,
 	'cert_dh2048' => qr/\w[\w\.\-]*_dh2048\.pem/,
 
@@ -587,20 +589,16 @@ sub checkZAPIParams
 	# check for each parameter
 	foreach my $param ( @rec_keys )
 	{
-		# if blank value is allowed
-		if ( $param_obj->{ $param }->{ 'non_blank' } eq 'true' )
+		if ( $json_obj->{ $param } eq '' )
 		{
-			return "The parameter $param can't be in blank."
-			  if ( $json_obj->{ $param } eq '' );
-		}
+			# if blank value is allowed
+			if ( $param_obj->{ $param }->{ 'non_blank' } eq 'true' )
+			{
+				return "The parameter $param can't be in blank.";
+			}
 
-		if ( exists $param_obj->{ $param }->{ 'values' } )
-		{
-			return "The parameter $param expects once of the following values: "
-			  . join ( ', ', @{ $param_obj->{ $param }->{ 'values' } } )
-			  if (
-				  !grep ( /^$json_obj->{ $param }$/, @{ $param_obj->{ $param }->{ 'values' } } )
-			  );
+			# parameter validated
+			next;
 		}
 
 		# getValidFormat funcion:
@@ -613,16 +611,24 @@ sub checkZAPIParams
 				 )
 			  )
 			{
-
 				if ( exists $param_obj->{ $param }->{ format_msg } )
 				{
 					return "$param $param_obj->{ $param }->{ format_msg }";
 				}
 				else
 				{
-					return "The parameter $param has not a valid value.";
+					return "The parameter '$param' has not a valid value.";
 				}
 			}
+		}
+
+		if ( exists $param_obj->{ $param }->{ 'values' } )
+		{
+			return "The parameter $param expects once of the following values: "
+			  . join ( ', ', @{ $param_obj->{ $param }->{ 'values' } } )
+			  if (
+				  !grep ( /^$json_obj->{ $param }$/, @{ $param_obj->{ $param }->{ 'values' } } )
+			  );
 		}
 
 		# intervals

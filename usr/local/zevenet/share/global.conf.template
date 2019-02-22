@@ -15,7 +15,7 @@ $http_proxy="";
 $https_proxy="";
 # connection logs for farms. If this parameter is "true" all traffic will be logged
 # else only the new connections will be logged
-$full_farm_logs = "false";
+$full_farm_logs="false";
 
 
 ## Zevenet Paths
@@ -24,7 +24,7 @@ $zdir="/usr/local/zevenet";#update
 #Zevenet lib directory
 $zlibdir="/usr/share/perl5/Zevenet";#update
 #Zevenet bin directory
-$zbindir = "$zdir/bin";#update
+$zbindir="$zdir/bin";#update
 #Document Root for Web Aplication directory
 $basedir="$zdir/www";#update
 #configuration directory.In this section all config files are saved.
@@ -32,18 +32,23 @@ $configdir="$zdir/config";#update
 #Directory where is check script. In this directory you can save your own check scripts.
 $libexec_dir="/usr/lib/nagios/plugins";
 #Zevenet bin directory
-$templatedir = "$zdir/share";#update
+$templatedir="$zdir/share";#update
 #Save backups on
 $backupdir="$zdir/backups";#update
 #Log directory
 $logdir="/var/log";#update
 #piddir
 $piddir="/var/run";
-
+#zevenet activation certificate path
+$zlbcertfile_path="/usr/local/zevenet/www/zlbcertfile.pem";
+#first boot flag
+$first_boot_flag="/etc/firstzlbboot";
+#zevenet service
+$zevenet_service="/etc/init.d/zevenet";
 
 # System files
 #rt tables file
-$rttables = "/etc/iproute2/rt_tables";
+$rttables="/etc/iproute2/rt_tables";
 #HTPASSWD file
 $htpass="/etc/passwd";#update
 #shadow file
@@ -51,24 +56,52 @@ $shadow_file="/etc/shadow";
 #dns file server?
 $filedns="/etc/resolv.conf";
 # apt sources configuration file
-$fileapt = "/etc/apt/sources.list";
-#SNMP Service
-$snmpdconfig_file="/etc/snmp/snmpd.conf";
+$fileapt="/etc/apt/sources.list";
+# apt Zevenet source
+$apt_source_zevenet="/etc/apt/sources.list.d/zevenet.list";
+# apt user conf
+$apt_conf_file="/etc/apt/apt.conf";
+# Zevenet URL repo
+$repo_url_zevenet="repo.zevenet.com";
+# Zevenet GPG key
+$gpg_key_zevenet="ee.zevenet.com.gpg.key";
 
+
+
+#SNMP Service
+$snmpdconfig_tpl="$templatedir/snmpd.conf.template";
+$snmpdconfig_file="/etc/snmp/snmpd.conf";
+$snmpd_service="/etc/init.d/snmpd";
+
+# start / stop scripts
+$zlb_start_script="$configdir/zlb-start";
+$zlb_stop_script="$configdir/zlb-stop";
+$zlb_start_tpl="$templatedir/zlb-start.template";
+$zlb_stop_tpl="$templatedir/zlb-stop.template";
 
 ## Zevenet Files
 #appliance version file
 $applianceVersionFile="/etc/zevenet_version";
 #this file
-$globalcfg = "$configdir/global.conf";#update
+$globalcfg="$configdir/global.conf";#update
+$globalcfg_tpl="$templatedir/global.conf.template";
 # Zen license
 $licenseFileTxt="$zdir/license.txt";#update
 # Zen license
 $licenseFileHtml="$zdir/license.html";#update
 #File configuration Zen Cluster
 $filecluster="$configdir/cluster.conf";#update
+
 #File configuration GUI
-$confhttp="$zdir/app/cherokee/etc/cherokee/cherokee.conf";#update
+$http_server_dir="$zdir/app/cherokee";
+$http_server_service="/etc/init.d/cherokee";
+$confhttp="$http_server_dir/etc/cherokee/cherokee.conf";#update
+$confhttp_tpl="$http_server_dir/etc/cherokee/cherokee.conf.template";#update
+$http_server_cert="$configdir/zencert.pem";
+$http_server_key="$configdir/zencert-c.key";
+$http_server_cert_tpl="$templatedir/zencert.pem";
+$http_server_key_tpl="$templatedir/zencert-c.key";
+
 #Where is temperature file?
 $temperatureFile="/proc/acpi/thermal_zone/THRM/temperature";
 # network files
@@ -85,13 +118,13 @@ $uname="/bin/uname";
 #Where is tar binary?
 $tar="/bin/tar";
 #where is ifconfig binary?
-$ifconfig_bin="/sbin/ifconfig";
+$ifconfig_bin="/usr/sbin/ifconfig";
 #Where is ip bynary?
-$ip_bin="/sbin/ip";
+$ip_bin="/usr/sbin/ip";
 #Where is wc binary?
 $wc_bin="/usr/bin/wc";
 #Where is fdisk binary?
-$fdisk_bin="/sbin/fdisk";
+$fdisk_bin="/usr/sbin/fdisk";
 #Where is df binary?
 $df_bin="/bin/df";
 #Where is ssh-keygen binary?
@@ -131,9 +164,9 @@ $logger="/usr/bin/logger";
 #Where is sec?
 $sec="/usr/bin/sec";
 #Where is ipset?
-$ipset = "/sbin/ipset";
+$ipset="/sbin/ipset";
 #Where is touch?
-$touch = "/usr/bin/touch";
+$touch="/usr/bin/touch";
 #Where is ls?
 $ls="/bin/ls";
 #Where is stat?
@@ -147,17 +180,21 @@ $iptables="/sbin/iptables";
 #Where is ip6tables?
 $ip6tables="/sbin/ip6tables";
 #Where is modprobe?
-$modprobe="/sbin/modprobe";
+$modprobe="/usr/sbin/modprobe";
 #Where is lsmod?
-$lsmod="/sbin/lsmod";
+$lsmod="/usr/sbin/lsmod";
 #Where is gdnsd?
-$gdnsd="$zdir/app/gdnsd/sbin/gdnsd";#update
+$gdnsd="/usr/sbin/gdnsd";#update
 #Where is l4sd?
 $l4sd="$zbindir/l4sd";#update
+#Where is factory_reset?
+$factory_reset_bin="$zbindir/factory_reset.sh";
 #Where is id binary?
 $bin_id="/usr/bin/id";
 #Where is wget binary?
 $wget="/usr/bin/wget";
+#Where is curl binary?
+$curl_bin="/usr/bin/curl";
 #Where is conntrack binary?
 $conntrack="/usr/sbin/conntrack";
 #systemctl
@@ -180,8 +217,18 @@ $groupdel_bin="/usr/sbin/groupdel";
 $groups_bin="/usr/bin/groups";
 #Where is echo?
 $echo_bin="/bin/echo";
+#Where is dpkg?
+$dpkg_bin="/usr/bin/dpkg";
+#Where is grep?
+$grep_bin="/bin/grep";
 #Where is nftlb?
-$nftlb_bin="/usr/local/sbin/nftlb";
+$nftlb_bin="/usr/local/zevenet/app/nftlb/sbin/nftlb";
+#Where is poweroff
+$poweroff_bin="/usr/sbin/poweroff";
+#Where is reboot
+$reboot_bin="/usr/sbin/reboot";
+#Where is arpsend
+$arpsend_bin="/usr/sbin/arpsend";
 
 
 # Pound
@@ -205,7 +252,7 @@ $ntp="pool.ntp.org";
 
 
 ## Network global configuration options ##
-$fwmarksconf = "$configdir/fwmarks.conf";
+$fwmarksconf="$configdir/fwmarks.conf";
 #System Default Gateway
 $defaultgw="";
 #Interface Default Gateway
@@ -226,7 +273,7 @@ $ipv6_enabled="false";
 # Maximum recent ip list
 # Recent ip hash
 # Iptables lock filename
-$iptlock = "/tmp/iptables.lock";
+$iptlock="/tmp/iptables.lock";
 
 
 #FarmGuardian binary, create advanced check for backend servers
@@ -253,8 +300,15 @@ $arptables="/sbin/arptables";
 $arp_unsolicited="";
 
 
-# cron service
-$cron_service = "/etc/init.d/cron";
+# Cron service
+$cron_service="/etc/init.d/cron";
+$cron_conf="/etc/cron.d/zevenet";
+$cron_tpl="/usr/local/zevenet/share/zevenet.cron";
+
+
+#syslog service
+$syslog_service="/etc/init.d/rsyslog";
+
 
 # keepalived configuration file
 $keepalived_conf="/etc/keepalived/keepalived.conf";
@@ -268,7 +322,7 @@ $znode_status_file="$zdir/node_status";#update
 # zcluster-manager command path
 # ssh-copy-id file path
 # primary-backup conntrackd script
-$primary_backup = "/usr/share/doc/conntrackd/examples/sync/primary-backup.sh";
+$primary_backup="/usr/share/doc/conntrackd/examples/sync/primary-backup.sh";
 
 # sshd file
 $sshConf="/etc/ssh/sshd_config";
@@ -292,6 +346,9 @@ $backupfor="$configdir $basedir/*.pem $confhttp $rttables $sshConf $snmpdconfig_
 #Notifications Module
 
 #IPDS Module
+
+# Rabc Module
+$rbacRolesTpl_dir="$templatedir/rbac_roles";
 
 #Ssyncd
 

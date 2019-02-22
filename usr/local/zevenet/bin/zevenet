@@ -24,6 +24,7 @@
 use strict;
 use warnings;
 
+use Zevenet::Log;
 use Zevenet::Farm::Core;
 use Zevenet::Farm::Base;
 use Zevenet::Farm::Action;
@@ -32,7 +33,8 @@ use Zevenet::Net::Core;
 use Zevenet::Net::Interface;
 use Zevenet::Net::Route;
 use Zevenet::Net::Util;
-use Zevenet::Log;
+
+$ENV{SCRIPT_NAME} = 'zevenet';
 
 my $eload;
 if ( eval { require Zevenet::ELoad; } ) { $eload = 1; }
@@ -45,6 +47,7 @@ my $defaultgwif  = &getGlobalConfiguration( 'defaultgwif' );
 my $defaultgw6   = &getGlobalConfiguration( 'defaultgw6' );
 my $defaultgwif6 = &getGlobalConfiguration( 'defaultgwif6' );
 my $action       = shift @ARGV // '';
+my $print_msg = "";
 
 if ( $action !~ /^(start|stop|restart)$/ )
 {
@@ -116,6 +119,7 @@ if ( $action eq "restart" )
 {
 	system ( '/etc/init.d/zevenet stop' );
 	system ( '/etc/init.d/zevenet start' );
+	&local_http_service('restart');	# force a cherokee restart
 }
 
 if ( $action eq "start" )
@@ -123,6 +127,15 @@ if ( $action eq "start" )
 	my $version = &getGlobalConfiguration('version');
 
 	&printAndLog( "Starting Zevenet Load Balancer v$version" );
+
+	if ($eload)
+	{
+		$print_msg = &eload(
+				module => $mod,
+				func   => 'service_cert_message',
+		);
+		print $print_msg . "\n";
+	}
 
 	# Load required modules
 	require Zevenet::Farm::L4xNAT::Service;
@@ -223,6 +236,14 @@ if ( $action eq "start" )
 		}
 	}
 
+	# enterprise hook
+	if ($eload)
+	{
+		$print_msg = &eload( module => $mod, func => 'start_service' );
+		print $print_msg . "\n";
+	}
+
+
 	print ( "* Starting Interfaces:\n" );
 
 	my $ip_bin     = &getGlobalConfiguration( 'ip_bin' );
@@ -284,9 +305,6 @@ if ( $action eq "start" )
 		}
 	}
 
-	# enterprise hook
-	&eload( module => $mod, func => 'start_service' ) if $eload;
-
 	&zenlog("zevenet: Setting up VLAN interfaces...");
 	@interfaces = @{ &getConfigInterfaceList() };
 
@@ -343,10 +361,12 @@ if ( $action eq "start" )
 	if ( $eload )
 	{
 		&zenlog("zevenet: Setting up Cluster...");
-		&eload( module => $mod, func => 'enable_cluster' );
+		$print_msg = &eload( module => $mod, func => 'enable_cluster' );
+		print $print_msg . "\n\n";
 
 		# enable modules
-		&eload( module => $mod, func => 'start_modules' );
+		$print_msg = &eload( module => $mod, func => 'start_modules' );
+		print $print_msg . "\n";
 	}
 
 	&zenlog("zevenet: Setting up virtual interfaces...");
@@ -391,40 +411,28 @@ if ( $action eq "start" )
 		}
 	}
 
-	print ( "* Starting Farms:\n" );
-
-	my @farmsf = &getFarmList();
-	my $enable_fg = 1;
-
-	$enable_fg = &eload( module => $mod, func => 'getEnableFarmGuardian' ) if $eload;
-
-	&zenlog("zevenet: Setting up farms...");
-
-	foreach my $ffile ( @farmsf )
+	if ( ! $eload or ! &eload( module => $mod, func => 'service_start_farms' ) )
 	{
-		my $farmname = &getFarmName( $ffile );
-		my $bstatus  = &getFarmBootStatus( $farmname );
+		print ( "* Starting Farms:\n" );
 
-		if ( $bstatus eq "up" )
+		my @farmsf = &getFarmList();
+		my $enable_fg = 1;
+
+		$enable_fg = &eload( module => $mod, func => 'getEnableFarmGuardian' ) if $eload;
+
+		&zenlog("zevenet: Setting up farms...");
+
+		foreach my $ffile ( @farmsf )
 		{
-			print ( "  * Starting Farm $farmname:" );
-			my $status = &runFarmStart( $farmname, "false" );
+			my $farmname = &getFarmName( $ffile );
+			my $bstatus  = &getFarmBootStatus( $farmname );
 
-			if ( $status == 0 )
+			if ( $bstatus eq "up" )
 			{
-				print ( " \033[1;32m OK \033[0m \n" );
-			}
-			else
-			{
-				print ( " \033[1;31m ERROR \033[0m \n" );
-			}
+				print ( "  * Starting Farm $farmname:" );
+				my $status = &runFarmStart( $farmname, "false" );
 
-			#farmguardian configured and up?
-			if ( $status == 0 )
-			{
-				my $stat = &runFGFarmStart( $farmname );
-
-				if ( $stat == 0 )
+				if ( $status == 0 )
 				{
 					print ( " \033[1;32m OK \033[0m \n" );
 				}
@@ -432,11 +440,26 @@ if ( $action eq "start" )
 				{
 					print ( " \033[1;31m ERROR \033[0m \n" );
 				}
+
+				#farmguardian configured and up?
+				if ( $status == 0 )
+				{
+					print ( "  * Starting FarmGuardian for $farmname:" );
+					my $stat = &runFGFarmStart( $farmname );
+					if ( $stat == 0 )
+					{
+						print ( " \033[1;32m OK \033[0m \n" );
+					}
+					else
+					{
+						print ( " \033[1;31m ERROR \033[0m \n" );
+					}
+				}
 			}
-		}
-		else
-		{
-			print ( "  Farm $farmname configured DOWN\n" );
+			else
+			{
+				print ( "  Farm $farmname configured DOWN\n" );
+			}
 		}
 	}
 
@@ -465,7 +488,17 @@ if ( $action eq "stop" )
 {
 	&printAndLog( "Stopping Zevenet Load Balancer...\n" );
 
-	&eload( module => $mod, func => 'stop_service' ) if $eload;
+	if ($eload)
+	{
+		$print_msg = &eload(
+				module => $mod,
+				func   => 'service_cert_message',
+		);
+		print $print_msg . "\n";
+
+		$print_msg = &eload( module => $mod, func => 'stop_service' );
+		print $print_msg . "\n";
+	}
 
 	print ( "* Stopping Farms:\n" );
 
@@ -512,7 +545,8 @@ if ( $action eq "stop" )
 
     my $stop_nftlb = `/usr/local/zevenet/bin/nftlbd stop`;
     my $status = `/usr/local/zevenet/bin/nftlbd status`;
-    my $rtn_code = 0 if ( grep /nftlb is not running/, $status );
+    my $rtn_code = 1;
+    $rtn_code = 0 if ( grep /nftlb is not running/, $status );
 
     if ( $rtn_code == 0 )
 	{

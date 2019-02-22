@@ -410,7 +410,6 @@ sub setL4FarmSessionType    # ($session,$farm_name)
 			my @args = split ( "\;", $line );
 			$line =
 			  "$args[0]\;$args[1]\;$args[2]\;$args[3]\;$args[4]\;$args[5]\;$session\;$args[7]\;$args[8];$args[9]";
-			splice @configfile, $i, $line;
 		}
 		$i++;
 	}
@@ -478,7 +477,6 @@ sub setL4FarmAlgorithm    # ($algorithm,$farm_name)
 			my @args = split ( "\;", $line );
 			$line =
 			  "$args[0]\;$args[1]\;$args[2]\;$args[3]\;$args[4]\;$algorithm\;$args[6]\;$args[7]\;$args[8];$args[9]";
-			splice @configfile, $i, $line;
 			$output = $?;
 		}
 		$i++;
@@ -558,7 +556,6 @@ sub setL4FarmBootStatus    #( value, farm_name )
 		my @args = split ( "\;", $line );
 		$line =
 		  "$args[0]\;$args[1]\;$args[2]\;$args[3]\;$args[4]\;$args[5]\;$args[6]\;$args[7]\;$value;$args[9]";
-		splice @configfile, 0, $line;
 		last;    # run only for the first line
 	}
 
@@ -624,7 +621,6 @@ sub setL4FarmProto    # ($proto,$farm_name)
 			}
 			$line =
 			  "$args[0]\;$proto\;$args[2]\;$args[3]\;$args[4]\;$args[5]\;$args[6]\;$args[7]\;$args[8];$args[9]";
-			splice @configfile, $i, $line;
 		}
 		$i++;
 	}
@@ -695,7 +691,6 @@ sub setFarmNatType    # ($nat,$farm_name)
 			my @args = split ( "\;", $line );
 			$line =
 			  "$args[0]\;$args[1]\;$args[2]\;$args[3]\;$nat\;$args[5]\;$args[6]\;$args[7]\;$args[8];$args[9]";
-			splice @configfile, $i, $line;
 		}
 		$i++;
 	}
@@ -760,13 +755,11 @@ sub setL4FarmMaxClientTime    # ($track,$farm_name)
 			my @args = split ( "\;", $line );
 			$line =
 			  "$args[0]\;$args[1]\;$args[2]\;$args[3]\;$args[4]\;$args[5]\;$args[6]\;$track\;$args[8];$args[9]";
-			splice @configfile, $i, $line;
-			$output = $?;
+			$output = 0;
 		}
 		$i++;
 	}
 	untie @configfile;
-	$output = $?;
 
 	$farm = &getL4FarmStruct( $farm_name );
 
@@ -829,7 +822,6 @@ sub setL4FarmVirtualConf    # ($vip,$vip_port,$farm_name)
 			$vip_port = $args[3] if ( !$vip_port );
 			$line =
 			  "$args[0]\;$args[1]\;$vip\;$vip_port\;$args[4]\;$args[5]\;$args[6]\;$args[7]\;$args[8];$args[9]";
-			splice @configfile, $i, $line;
 		}
 		$i++;
 	}

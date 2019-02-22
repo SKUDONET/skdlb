@@ -116,7 +116,8 @@ sub setZAPI    #($name,$value)
 	#Disable ZAPI
 	if ( $name eq "disable" )
 	{
-		my @run = `deluser zapi 1> /dev/null 2> /dev/null`;
+		my $deluser_bin = &getGlobalConfiguration( 'deluser_bin' );
+		my @run         = `$deluser_bin zapi 1> /dev/null 2> /dev/null`;
 		return $?;
 	}
 

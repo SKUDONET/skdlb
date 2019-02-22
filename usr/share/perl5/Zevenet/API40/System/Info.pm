@@ -23,14 +23,14 @@
 
 use strict;
 
+require Zevenet::System;
+
 # show license
 sub get_license
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $format = shift;
-
-	require Zevenet::System;
 
 	my $desc = "Get license";
 	my $licenseFile;
@@ -59,8 +59,6 @@ sub get_supportsave
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $desc = "Get supportsave file";
-
-	require Zevenet::System;
 
 	my $ss_filename = &getSupportSave();
 
@@ -92,6 +90,65 @@ sub get_version
 	};
 	my $body = { description => $desc, params => $params };
 
+	&httpResponse( { code => 200, body => $body } );
+}
+
+sub set_factory_reset
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+
+	my $json_obj = shift;
+	my $desc     = "Apply a factory reset";
+
+	my $params = {
+				   "action" => {
+								 'values'    => ["apply"],
+								 'non_blank' => 'true',
+								 'required'  => 'true',
+				   },
+				   "interface" => {
+									'non_blank' => 'true',
+									'required'  => 'true',
+				   },
+				   "remove_backups" => {
+										 'values'    => ["true", "false"],
+										 'non_blank' => 'true',
+				   },
+	};
+
+	require Zevenet::Net::Interface;
+
+	# Check allowed parameters
+	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
+	  if ( $error_msg );
+
+	## The interface must be of NIC type and it has to be configured
+	my $if_ref = &getInterfaceConfig( $json_obj->{ interface } );
+	if ( $if_ref->{ type } ne 'nic' )
+	{
+		my $msg = "The interface has to be of type NIC.";
+		return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+	elsif ( !$if_ref->{ addr } )
+	{
+		my $msg = "The interface has to be configured.";
+		return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+
+	my $remove_backups =
+	  ( $json_obj->{ remove_backups } eq 'true' ) ? 'remove-backups' : '';
+	if (
+		 &applyFactoryReset( $json_obj->{ interface }, $json_obj->{ remove_backups } ) )
+	{
+		my $msg = "Some error occurred applying the factory reset.";
+		return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+
+	my $msg =
+	  "The factroy reset was applied properly. The session will be lost. Please, try again in a while";
+	my $body = { description => $desc, message => $msg };
 	&httpResponse( { code => 200, body => $body } );
 }
 

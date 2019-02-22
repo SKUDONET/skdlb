@@ -1610,6 +1610,15 @@ sub getHTTPFarmStruct
 		  ( &getHTTPFarmDisableSSL( $farmname, "TLSv1_2" ) ) ? "true" : "false";
 	}
 
+	if ( $eload )
+	{
+		$farm = &eload(
+						module => 'Zevenet::Farm::HTTP::Ext',
+						func   => 'get_http_farm_ee_struct',
+						args   => [$farmname, $farm],
+		);
+	}
+
 	return $farm;
 }
 

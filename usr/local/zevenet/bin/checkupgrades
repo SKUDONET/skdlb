@@ -1,0 +1,43 @@
+#!/bin/bash
+
+apt-get update &>/dev/null
+if [ $? != 0 ]
+then
+	echo "Error connecting to Zevenet Update System, check connection to https://repo.zevenet.com"
+	exit 1
+fi
+
+if [ -z $1 ]
+then
+	packages=`apt list --upgradable 2>/dev/null | awk 'FNR > 1' | wc -l`
+	if [ $packages \> 0 ]
+	then
+		echo "$packages packages require upgrade"
+		echo "To upgrade, execute: apt-get upgrade"
+		echo "last check at `date` - $packages packages require upgrade, update this information with: checkupgrades" > /usr/local/zevenet/app/checkupgrades/share/message.txt
+		echo "To upgrade, execute: apt-get upgrade" >> /usr/local/zevenet/app/checkupgrades/share/message.txt
+		apt list --upgradable 2>/dev/null | cut -d"/" -f 1  | tr  '\n' ' ' > /usr/local/zevenet/app/checkupgrades/share/package_upgradables.txt
+	else
+		echo "Zevenet Packages are up-to-date."
+	fi
+else
+	package=$1
+
+	dpkg -l | grep $package > /dev/null
+	if [ $? = 0 ];
+	then
+		installed=`apt-cache policy $package | grep -i installed | cut -d ":" -f2 | sed 's/ //g'`
+		candidate=`apt-cache policy $package | grep -i candidate | cut -d ":" -f2 | sed 's/ //g'`
+		if [ "$installed" != "$candidate" ];
+		then
+			echo "There is a new version of $package"
+			echo "installed = $package $installed"
+			echo "candidate = $package $candidate"
+		else
+			echo "$package is already the newest version $installed"
+		fi
+	else
+		echo "$package it is not installed in the system"
+	fi
+fi
+

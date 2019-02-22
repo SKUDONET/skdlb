@@ -41,7 +41,7 @@ FIXME:
 
 =cut
 
-sub getL4BackendEstConns    # ($farm_name,$be_ip,$be_port,$netstat)
+sub getL4BackendEstConns
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
@@ -140,7 +140,7 @@ FIXME:
 
 =cut
 
-sub getL4FarmEstConns    # ($farm_name,$netstat)
+sub getL4FarmEstConns
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
@@ -247,7 +247,7 @@ FIXME:
 
 =cut
 
-sub getL4BackendSYNConns    # ($farm_name,$be_ip,$be_port,$netstat)
+sub getL4BackendSYNConns
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );

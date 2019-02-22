@@ -145,6 +145,8 @@ sub getNewMark    # ($farm_name)
 			 "debug", "PROFILING" );
 	my $farm_name = shift;
 
+	require Tie::File;
+
 	my $found;
 	my $marknum     = 0x200;
 	my $fwmarksconf = &getGlobalConfiguration( 'fwmarksconf' );
@@ -216,8 +218,6 @@ sub renameMarks    # ( $farm_name, $newfname )
 
 	my $farm_name = shift;
 	my $newfname  = shift;
-
-	require Tie::File;
 
 	require Tie::File;
 
@@ -325,6 +325,7 @@ sub genIptMark    # ( $farm_ref, $server_ref )
 		  . "--jump MARK --set-xmark $$server{ tag } ";
 
 		push ( @rules, $rule );
+		last if ( $$farm{ proto } eq "all" );
 	}
 
 	return \@rules;
@@ -416,6 +417,7 @@ sub genIptRedirect    # ( $farm_ref, $server_ref )
 		  . "--jump DNAT $layer --to-destination $$server{ rip } ";
 
 		push ( @rules, $rule );
+		last if ( $$farm{ proto } eq "all" );
 	}
 
 	return \@rules;
@@ -508,6 +510,7 @@ sub genIptMasquerade    # ( $farm_ref, $server_ref )
 		  . "$nat_params ";
 
 		push ( @rules, $rule );
+		last if ( $$farm{ proto } eq "all" );
 	}
 
 	return \@rules;
