@@ -45,6 +45,31 @@ sub new_vlan    # ( $json_obj )
 	my $nic_re      = &getValidFormat( 'nic_interface' );
 	my $vlan_tag_re = &getValidFormat( 'vlan_tag' );
 
+	my $params = {
+				   "name" => {
+							   'valid_format' => 'vlan_interface',
+							   'required'     => 'true',
+							   'non_blank'    => 'true',
+				   },
+				   "ip" => {
+							 'valid_format' => 'ip_addr',
+							 'required'     => 'true',
+				   },
+				   "netmask" => {
+								  'valid_format' => 'ip_mask',
+								  'required'     => 'true',
+				   },
+				   "gateway" => {
+								  'valid_format' => 'ip_addr',
+								  'required'     => 'true',
+				   },
+	};
+
+	# Check allowed parameters
+	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
+	  if ( $error_msg );
+
 	# vlan_name = pather_name + . + vlan_tag
 	# size < 16: size = pather_name.vlan_tag:virtual_name
 	if ( length $json_obj->{ name } > 13 )
@@ -96,14 +121,6 @@ sub new_vlan    # ( $json_obj )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	# validate IP
-	unless ( defined $json_obj->{ ip }
-			 && &getValidFormat( 'ip_addr', $json_obj->{ ip } ) )
-	{
-		my $msg = "Invalid IP address.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
-
 	$json_obj->{ ip_v } = ipversion( $json_obj->{ ip } );
 
 	# Check if interface already exists
@@ -115,14 +132,6 @@ sub new_vlan    # ( $json_obj )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	# Check netmask errors
-	unless ( defined $json_obj->{ netmask }
-			 && &getValidFormat( 'ip_mask', $json_obj->{ netmask } ) )
-	{
-		my $msg = "Invalid network mask.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
-
 	# check if network exists in other interface
 	if ( $json_obj->{ ip } or $json_obj->{ netmask } )
 	{
@@ -130,17 +139,6 @@ sub new_vlan    # ( $json_obj )
 		if ( $if_used )
 		{
 			my $msg = "The network already exists in the interface $if_used.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
-
-	# Check gateway errors
-	if ( exists $json_obj->{ gateway } )
-	{
-		unless ( defined ( $json_obj->{ gateway } )
-				 && &getValidFormat( 'ip_addr', $json_obj->{ gateway } ) )
-		{
-			my $msg = "Invalid gateway address.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 	}
@@ -351,18 +349,24 @@ sub actions_interface_vlan    # ( $json_obj, $vlan )
 	my $desc = "Action on vlan interface";
 	my $ip_v = 4;
 
+	my $params = {
+				   "action" => {
+								 'non_blank' => 'true',
+								 'required'  => 'true',
+								 'values'    => ['up', 'down'],
+				   },
+	};
+
+	# Check allowed parameters
+	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
+	  if ( $error_msg );
+
 	# validate VLAN
 	unless ( grep { $vlan eq $_->{ name } } &getInterfaceTypeList( 'vlan' ) )
 	{
 		my $msg = "VLAN interface not found";
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
-	}
-
-	# reject not accepted parameters
-	if ( grep { $_ ne 'action' } keys %$json_obj )
-	{
-		my $msg = "Only the parameter 'action' is accepted";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
 	# validate action parameter
@@ -433,11 +437,6 @@ sub actions_interface_vlan    # ( $json_obj, $vlan )
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 	}
-	else
-	{
-		my $msg = "Action accepted values are: up or down";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
 
 	my $body = {
 				 description => $desc,
@@ -470,24 +469,26 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
 	}
 
-	unless (    exists $json_obj->{ ip }
-			 || exists $json_obj->{ netmask }
-			 || exists $json_obj->{ gateway } )
-	{
-		my $msg = "No parameter received to be configured";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
+	my $params = {
+				   "ip" => {
+							 'valid_format' => 'ip_addr',
+				   },
+				   "netmask" => {
+								  'valid_format' => 'ip_mask',
+				   },
+				   "gateway" => {
+								  'valid_format' => 'ip_addr',
+				   },
+				   "force" => {
+								'non_blank' => 'true',
+								'values'    => ['true'],
+				   },
+	};
 
-	# Check address errors
-	if ( exists $json_obj->{ ip } )
-	{
-		unless ( defined ( $json_obj->{ ip } )
-				 && &getValidFormat( 'ip_addr', $json_obj->{ ip } ) )
-		{
-			my $msg = "Invalid IP address.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
+	# Check allowed parameters
+	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
+	  if ( $error_msg );
 
 	if ( $json_obj->{ ip } )
 	{
@@ -500,31 +501,6 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 			my $msg =
 			  "The IP is being used as farm vip in the farm(s): $str. If you are sure, repeat with parameter 'force'. All farms using this interface will be restarted.";
 			return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
-
-	# Check netmask errors
-	if ( exists $json_obj->{ netmask } )
-	{
-		unless (    $json_obj->{ netmask }
-				 && &getValidFormat( 'ip_mask', $json_obj->{ netmask } ) )
-		{
-			my $msg = "Invalid network mask.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
-
-	# Check gateway errors
-	if ( exists $json_obj->{ gateway } )
-	{
-		unless (
-				 defined ( $json_obj->{ gateway } )
-				 && (    $json_obj->{ gateway } eq ""
-					  || &getValidFormat( 'ip_addr', $json_obj->{ gateway } ) )
-		  )
-		{
-			my $msg = "Invalid gateway address.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 	}
 

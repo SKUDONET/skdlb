@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# netplug - policy agent for netplugd
+#
+# Copyright 2003 Key Research, Inc.
+# Copyright 2019 Zevenet
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License, version 2, as
+# published by the Free Software Foundation.  You are forbidden from
+# redistributing or modifying it under the terms of any other license,
+# including other versions of the GNU General Public License.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+
+PATH=/usr/bin:/bin:/usr/sbin:/sbin
+export PATH
+
+dev="$1"
+action="$2"
+
+case "$action" in
+in)
+    /usr/bin/logger "netplug UP event for dev $dev "
+    /usr/local/zevenet/bin/netplug $dev
+    ;;
+out)
+    /usr/bin/logger "netplug DOWN event for dev $dev "
+    ;;
+probe)
+    /usr/bin/logger "netplug PROBE event for dev $dev "
+    ;;
+*)
+    echo "I have been called with a funny action of '%s'!" 1>&2
+    exit 1
+    ;;
+esac

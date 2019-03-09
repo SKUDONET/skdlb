@@ -183,6 +183,8 @@ sub setL4FarmParam
 	{
 		$srvparam = "protocol";
 
+		&loadL4Modules( $value );
+
 		if ( $value =~ /^ftp|irc|pptp|sane/ )
 		{
 			$addition = $addition . qq( , "helper" : "$value" );
@@ -595,11 +597,7 @@ Parameters:
 	protocol - protocol module to load
 
 Returns:
-	Integer - Always return 0
-
-FIXME:
-	1. The maximum number of ports, when the module is loaded, is 8
-	2. Always return 0
+	Integer - 0 if success, otherwise error
 
 =cut
 
@@ -611,38 +609,43 @@ sub loadL4Modules
 
 	require Zevenet::Netfilter;
 
-	my $status    = 0;
-	my $port_list = &getL4FarmsPorts( $protocol );
+	my $status = 0;
 
-	if ( $protocol eq "sip" )
+	if ( $protocol =~ /sip|tftp|ftp|amanda|h323|irc|netbios-ns|pptp|sane|snmp/ )
 	{
-		&removeNfModule( "nf_nat_sip" );
-		&removeNfModule( "nf_conntrack_sip" );
-		if ( $port_list )
-		{
-			&loadNfModule( "nf_conntrack_sip", "ports=\"$port_list\"" );
-			&loadNfModule( "nf_nat_sip",       "" );
-		}
+		$status = &loadNfModule( "nf_conntrack_$protocol", "" );
+		$status = $status || &loadNfModule( "nf_nat_$protocol", "" );
 	}
-	elsif ( $protocol eq "ftp" )
+
+	return $status;
+}
+
+=begin nd
+Function: unloadL4Modules
+
+	Unload conntrack helpers modules for l4 farms
+
+Parameters:
+	protocol - protocol module to load
+
+Returns:
+	Integer - 0 if success, otherwise error
+
+=cut
+
+sub unloadL4Modules
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $protocol = shift;
+	my $status   = 0;
+
+	require Zevenet::Netfilter;
+
+	if ( $protocol =~ /sip|tftp|ftp|amanda|h323|irc|netbios-ns|pptp|sane|snmp/ )
 	{
-		&removeNfModule( "nf_nat_ftp" );
-		&removeNfModule( "nf_conntrack_ftp" );
-		if ( $port_list )
-		{
-			&loadNfModule( "nf_conntrack_ftp", "ports=\"$port_list\"" );
-			&loadNfModule( "nf_nat_ftp",       "" );
-		}
-	}
-	elsif ( $protocol eq "tftp" )
-	{
-		&removeNfModule( "nf_nat_tftp" );
-		&removeNfModule( "nf_conntrack_tftp" );
-		if ( $port_list )
-		{
-			&loadNfModule( "nf_conntrack_tftp", "ports=\"$port_list\"" );
-			&loadNfModule( "nf_nat_tftp",       "" );
-		}
+		$status = &removeNfModule( "nf_nat_$protocol" );
+		$status = $status || &removeNfModule( "nf_conntrack_$protocol", "" );
 	}
 
 	return $status;

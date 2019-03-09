@@ -69,15 +69,6 @@ sub setFarmHTTPNewService    # ($farm_name,$service)
 		return $output;
 	}
 
-	#check the correct string in the service
-	my $newservice = &checkFarmnameOK( $service );
-
-	if ( $newservice ne 0 )
-	{
-		$output = 3;
-		return $output;
-	}
-
 	if ( !fgrep { /^\s*Service "$service"/ } "$configdir/$farm_name\_pound.cfg" )
 	{
 		#create service

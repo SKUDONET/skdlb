@@ -840,9 +840,7 @@ sub setHTTPFarmBackendNoMaintenance    # ($farm_name,$backend,$service)
 		my $poundctl_command =
 		  "$poundctl -c /tmp/$farm_name\_pound.socket -B 0 $idsv $backend";
 
-		&zenlog( "running '$poundctl_command'", "info", "LSLB" );
-		my @run = `$poundctl_command`;
-		$output = $?;
+		$output = &logAndRun( $poundctl_command );
 	}
 
 	# save backend status in status file

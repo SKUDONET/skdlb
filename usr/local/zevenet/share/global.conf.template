@@ -149,6 +149,16 @@ $datentp="/usr/sbin/ntpdate";
 $arping_bin="/usr/bin/arping";
 #Where is ping?
 $ping_bin="/bin/ping";
+#Where is apt?
+$apt_bin="/usr/bin/apt";
+#Where is apt-get?
+$aptget_bin="/usr/bin/apt-get";
+#Where is apt-key?
+$aptkey_bin="/usr/bin/apt-key";
+#Where is apt-cache?
+$aptcache_bin="/usr/bin/apt-cache";
+#Where is checkupgrades?
+$checkupgrades_bin="/usr/sbin/checkupgrades";
 #Where is openssl?
 $openssl="/usr/bin/openssl";
 #Where is unzip?
@@ -193,8 +203,6 @@ $factory_reset_bin="$zbindir/factory_reset.sh";
 $bin_id="/usr/bin/id";
 #Where is wget binary?
 $wget="/usr/bin/wget";
-#Where is curl binary?
-$curl_bin="/usr/bin/curl";
 #Where is conntrack binary?
 $conntrack="/usr/sbin/conntrack";
 #systemctl
@@ -303,7 +311,13 @@ $arp_unsolicited="";
 # Cron service
 $cron_service="/etc/init.d/cron";
 $cron_conf="/etc/cron.d/zevenet";
-$cron_tpl="/usr/local/zevenet/share/zevenet.cron";
+$cron_tpl="$templatedir/zevenet.cron";
+
+# Netplug service
+$netplug_init_tpl="$templatedir/netplug.template";
+$netplugd_conf_tpl="$templatedir/netplugd.conf.template";
+$netplug_init="/etc/netplug/netplug";
+$netplugd_conf="/etc/netplug/netplugd.conf";
 
 
 #syslog service
@@ -314,6 +328,8 @@ $syslog_service="/etc/init.d/rsyslog";
 $keepalived_conf="/etc/keepalived/keepalived.conf";
 # conntrackd configuration file
 $conntrackd_conf="/etc/conntrackd/conntrackd.conf";
+#Where is curl binary?
+$curl_bin="/usr/bin/curl";
 # cluster floating interfaces configuration file path
 $floatfile="$configdir/float.conf";#update
 # node_status file path
@@ -346,6 +362,7 @@ $backupfor="$configdir $basedir/*.pem $confhttp $rttables $sshConf $snmpdconfig_
 #Notifications Module
 
 #IPDS Module
+$ipdsCronFile="/etc/cron.d/ipds";
 
 # Rabc Module
 $rbacRolesTpl_dir="$templatedir/rbac_roles";

@@ -284,7 +284,9 @@ sub httpResponse    # ( \%hash ) hash_keys->( $code, %headers, $body )
 
 	# Headers included in _ALL_ the responses, any method, any URI, sucess or error
 	my @headers = (
-					'Access-Control-Allow-Origin'      => "https://$ENV{ HTTP_HOST }/",
+					  'Access-Control-Allow-Origin' => ( exists $ENV{ HTTP_ZAPI_KEY } )
+					? '*'
+					: "https://$ENV{ HTTP_HOST }/",
 					'Access-Control-Allow-Credentials' => 'true',
 					'Cache-Control'                    => 'no-cache',
 					'Expires'                          => '-1',
@@ -524,10 +526,12 @@ sub httpDownloadResponse
 
 	# make headers
 	my $headers = {
-					-type                              => 'application/x-download',
-					-attachment                        => $args->{ file },
-					'Content-length'                   => -s $path,
-					'Access-Control-Allow-Origin'      => "https://$ENV{ HTTP_HOST }/",
+					-type                         => 'application/x-download',
+					-attachment                   => $args->{ file },
+					'Content-length'              => -s $path,
+					'Access-Control-Allow-Origin' => ( exists $ENV{ HTTP_ZAPI_KEY } )
+					? '*'
+					: "https://$ENV{ HTTP_HOST }/",
 					'Access-Control-Allow-Credentials' => 'true'
 	};
 

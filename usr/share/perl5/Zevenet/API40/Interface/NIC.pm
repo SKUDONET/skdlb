@@ -153,12 +153,18 @@ sub actions_interface_nic    # ( $json_obj, $nic )
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
 	}
 
-	# reject not accepted parameters
-	if ( grep { $_ ne 'action' } keys %$json_obj )
-	{
-		my $msg = "Only the parameter 'action' is accepted";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
+	my $params = {
+				   "action" => {
+								 'non_blank' => 'true',
+								 'required'  => 'true',
+								 'values'    => ['up', 'down'],
+				   },
+	};
+
+	# Check allowed parameters
+	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
+	  if ( $error_msg );
 
 	# validate action parameter
 	if ( $json_obj->{ action } eq "up" )
@@ -205,11 +211,6 @@ sub actions_interface_nic    # ( $json_obj, $nic )
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 	}
-	else
-	{
-		my $msg = "The accepted values for 'action' are: up or down";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
 
 	my $body = {
 				 description => $desc,
@@ -242,52 +243,26 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
 	}
 
-	unless (    exists $json_obj->{ ip }
-			 || exists $json_obj->{ netmask }
-			 || exists $json_obj->{ gateway } )
-	{
-		my $msg = "No parameter received to be configured";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
+	my $params = {
+				   "ip" => {
+							 'valid_format' => 'ip_addr',
+				   },
+				   "netmask" => {
+								  'valid_format' => 'ip_mask',
+				   },
+				   "gateway" => {
+								  'valid_format' => 'ip_addr',
+				   },
+				   "force" => {
+								'non_blank' => 'true',
+								'values'    => ['true'],
+				   },
+	};
 
-	# Check address errors
-	if ( exists $json_obj->{ ip } )
-	{
-		my $defined_ip = defined $json_obj->{ ip } && $json_obj->{ ip } ne '';
-		my $ip_ver = &ipversion( $json_obj->{ ip } );
-
-		unless ( !$defined_ip || $ip_ver )
-		{
-			my $msg = "Invalid IP address.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
-
-	# Check netmask errors
-	if ( exists $json_obj->{ netmask } )
-	{
-		my $defined_mask =
-		  defined $json_obj->{ netmask } && $json_obj->{ netmask } ne '';
-
-		unless (   !$defined_mask
-				 || &getValidFormat( 'ip_mask', $json_obj->{ netmask } ) )
-		{
-			my $msg = "Invalid network mask.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
-
-	# Check gateway errors
-	if ( exists $json_obj->{ gateway } )
-	{
-		my $defined_gw = defined $json_obj->{ gateway } && $json_obj->{ gateway } ne '';
-
-		unless ( !$defined_gw || &getValidFormat( 'ip_addr', $json_obj->{ gateway } ) )
-		{
-			my $msg = "Invalid gateway address.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
+	# Check allowed parameters
+	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
+	  if ( $error_msg );
 
 	# Delete old interface configuration
 	my $if_ref = &getInterfaceConfig( $nic );
@@ -297,7 +272,7 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 	if ( $if_ref )
 	{
 		$new_if = {
-					addr    => $json_obj->{ ip }      // $if_ref->{ addr },
+					addr    => $json_obj->{ ip } // $if_ref->{ addr },
 					mask    => $json_obj->{ netmask } // $if_ref->{ mask },
 					gateway => $json_obj->{ gateway } // $if_ref->{ gateway },
 		};
@@ -411,7 +386,7 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 	$if_ref->{ addr }    = $json_obj->{ ip }      if exists $json_obj->{ ip };
 	$if_ref->{ mask }    = $json_obj->{ netmask } if exists $json_obj->{ netmask };
 	$if_ref->{ gateway } = $json_obj->{ gateway } if exists $json_obj->{ gateway };
-	$if_ref->{ ip_v } = &ipversion( $if_ref->{ addr } );
+	$if_ref->{ ip_v }    = &ipversion( $if_ref->{ addr } );
 	$if_ref->{ net } =
 	  &getAddressNetwork( $if_ref->{ addr }, $if_ref->{ mask }, $if_ref->{ ip_v } );
 

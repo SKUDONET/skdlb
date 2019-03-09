@@ -1,0 +1,76 @@
+#!/usr/bin/perl
+
+if ( $ARGV[0] =~ /cl_maintenance/ ){
+	&zenlog("$ARGV[0] is not managed by netplug", "warning", "NETWORK");
+	exit;
+}
+
+use strict;
+use warnings;
+use Zevenet::Log('zenlog');
+
+my $iface=$ARGV[0];
+my $gateway;
+
+if ($iface =~ /^$/ )
+{
+	&zenlog("Network config called without interface arg", "error", "NETWORK");
+	exit 1;
+}
+
+use Zevenet::Config;
+use Zevenet::Net::Core;
+use Zevenet::Net::Interface;
+use Zevenet::Net::Route;
+
+my $eload;
+if ( eval { require Zevenet::ELoad; } ) { $eload = 1; }
+
+&zenlog("Call to Network configuration through netplugd for $iface", "info", "NETWORK");
+my $if_ref = &getInterfaceConfig($iface);
+
+#if interface is not configured in UP mode then exit. 
+if ($if_ref->{ status } ne 'up' ){
+	&zenlog("Interface $iface is not configured to be started", "warning", "NETWORK");
+	exit 1;
+	}
+
+&upIf($if_ref);
+&addIp($if_ref);
+#if nic is used for global gw the apply global routes
+if (&getGlobalConfiguration('defaultgwif') eq $if_ref->{ dev }){
+	&zenlog("Applying default GW for table main", "info", "NETWORK");
+	$gateway=&getGlobalConfiguration('defaultgw');
+	&applyRoutes('global',$if_ref,$gateway);
+	}
+
+#finally apply local routes
+&applyRoutes('local',$if_ref);
+
+#Check cluster
+#if dev interface is part of cluster, then get up the cl_maintenance
+if ( $eload )
+{
+	my $zcl_conf = &eload(
+                module => 'Zevenet::Cluster',
+                func   => 'getZClusterConfig',             
+                );
+
+	my $if_ref_cl = &getSystemInterface("cl_maintenance");
+	#if cl_maintenande is down then the start is needed. 
+	if ( exists $zcl_conf->{ _ }->{ interface } and $zcl_conf->{ _ }->{interface} eq $iface and $if_ref_cl->{status} eq "down" )
+        {
+		&zenlog( "Cluster interface recovered the link, enabling cl_maintenance", "info", "NETWORK" );
+		my $ip_bin = &getGlobalConfiguration( 'ip_bin' );
+		my $maint_if = 'cl_maintenance';
+		my $set_clstatus = &eload(
+			module	=> 'Zevenet::Cluster',
+			func	=> 'setZClusterNodeStatus',
+			args	=> ['backup'],
+		);
+		&logAndRun( "$ip_bin link set $maint_if up" );	
+
+        }
+}
+
+#TODO: Now apply static routes, they are saved in routing.conf

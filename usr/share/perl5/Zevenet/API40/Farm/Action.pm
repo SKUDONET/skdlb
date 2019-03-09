@@ -175,6 +175,26 @@ sub service_backend_maintenance # ( $json_obj, $farmname, $service, $backend_id 
 
 	my $desc = "Set service backend status";
 
+	my $params = {
+				   "action" => {
+								 'non_blank' => 'true',
+								 'values'    => ["up", "maintenance"],
+				   },
+	};
+
+	if ( $json_obj->{ action } eq 'maintenance' )
+	{
+		$params->{ "mode" } = {
+								'non_blank' => 'true',
+								'values'    => ["drain", "cut"],
+		};
+	}
+
+	# Check allowed parameters
+	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
+	  if ( $error_msg );
+
 	# validate FARM NAME
 	if ( !&getFarmExists( $farmname ) )
 	{
@@ -229,27 +249,11 @@ sub service_backend_maintenance # ( $json_obj, $farmname, $service, $backend_id 
 	# validate STATUS
 	if ( $json_obj->{ action } eq "maintenance" )
 	{
-		my $maintenance_mode = "drain";    # default
-
-		if ( defined $json_obj->{ mode } )
-		{
-			if ( !&getValidFormat( 'farm_maintenance_mode', $json_obj->{ mode } ) )
-			{
-				my $msg = "Error, the maintenance mode is not a valid value.";
-				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-
-			$maintenance_mode = $json_obj->{ mode };
-		}
+		my $maintenance_mode = $json_obj->{ mode } // "drain";    # default
 
 		my $status =
 		  &setHTTPFarmBackendMaintenance( $farmname, $backend_id, $maintenance_mode,
 										  $service );
-
-		&zenlog(
-			"Changing status to maintenance of backend $backend_id in service $service in farm $farmname",
-			"info", "FARMS"
-		);
 
 		if ( $status )
 		{
@@ -262,21 +266,11 @@ sub service_backend_maintenance # ( $json_obj, $farmname, $service, $backend_id 
 		my $status =
 		  &setHTTPFarmBackendNoMaintenance( $farmname, $backend_id, $service );
 
-		&zenlog(
-			"Changing status to up of backend $backend_id in service $service in farm $farmname",
-			"info", "FARMS"
-		);
-
-		if ( $? )
+		if ( $status )
 		{
 			my $msg = "Errors found trying to change status backend to up";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
-	}
-	else
-	{
-		my $msg = "Invalid action; the possible actions are up and maintenance";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
 	my $body = {
@@ -314,6 +308,26 @@ sub backend_maintenance    # ( $json_obj, $farmname, $backend_id )
 
 	my $desc = "Set backend status";
 
+	my $params = {
+				   "action" => {
+								 'non_blank' => 'true',
+								 'values'    => ["up", "maintenance"],
+				   },
+	};
+
+	if ( $json_obj->{ action } eq 'maintenance' )
+	{
+		$params->{ "mode" } = {
+								'non_blank' => 'true',
+								'values'    => ["drain", "cut"],
+		};
+	}
+
+	# Check allowed parameters
+	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
+	  if ( $error_msg );
+
 	# validate FARM NAME
 	if ( !&getFarmExists( $farmname ) )
 	{
@@ -340,34 +354,13 @@ sub backend_maintenance    # ( $json_obj, $farmname, $backend_id )
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
 	}
 
-	if ( not exists $json_obj->{ action } )
-	{
-		my $msg = "No maintenance action was requested.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
-
 	# validate STATUS
 	if ( $json_obj->{ action } eq "maintenance" )
 	{
-		my $maintenance_mode = "drain";    # default
-
-		if ( defined $json_obj->{ mode } )
-		{
-			if ( !&getValidFormat( 'farm_maintenance_mode', $json_obj->{ mode } ) )
-			{
-				my $msg = "Error, the maintenance mode is not a valid value.";
-				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-
-			$maintenance_mode = $json_obj->{ mode };
-		}
+		my $maintenance_mode = $json_obj->{ mode } // "drain";    # default
 
 		my $status =
 		  &setFarmBackendMaintenance( $farmname, $backend_id, $maintenance_mode );
-
-		&zenlog(
-				 "Changing status to maintenance of backend $backend_id in farm $farmname",
-				 "info", "FARMS" );
 
 		if ( $status != 0 )
 		{
@@ -379,19 +372,11 @@ sub backend_maintenance    # ( $json_obj, $farmname, $backend_id )
 	{
 		my $status = &setFarmBackendNoMaintenance( $farmname, $backend_id );
 
-		&zenlog( "Changing status to up of backend $backend_id in farm $farmname",
-				 "info", "FARMS" );
-
 		if ( $status )
 		{
 			my $msg = "Errors found trying to change status backend to up";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
-	}
-	else
-	{
-		my $msg = "Invalid action; the possible actions are up and maintenance";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
 	# no error found, send successful response
