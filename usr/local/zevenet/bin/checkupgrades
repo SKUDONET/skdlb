@@ -10,38 +10,60 @@ else
 	exit 1
 fi
 
-# test connection with zevenet update system
-$aptget_bin update &>/dev/null
-if [ $? != 0 ]
-then
-	echo "Error connecting to Zevenet Update System, check connection to https://repo.zevenet.com"
-	exit 1
-fi
 
-# check if there are upgradable packages
 case "$1" in
 '')
-        packages=`$apt_bin list --upgradable 2>/dev/null | awk 'FNR > 1' | wc -l`
-        if [ $packages \> 0 ]
-       	then
-               	echo "$packages packages require upgrade"
-                echo "To upgrade, execute: apt-get upgrade"
-       	        echo "last check at `date` - $packages packages require upgrade, update this information with: checkupgrades" > /usr/local/zevenet/app/checkupgrades/share/message.txt
-               	echo "To upgrade, execute: apt-get upgrade" >> /usr/local/zevenet/app/checkupgrades/share/message.txt
-                $apt_bin list --upgradable 2>/dev/null | cut -d"/" -f 1  | tr  '\n' ' ' > /usr/local/zevenet/app/checkupgrades/share/package_upgradables.txt
-       	else
-               	echo "Zevenet Packages are up-to-date."
-                echo "Zevenet Packages are up-to-date." > /usr/local/zevenet/app/checkupgrades/share/message.txt
-       	fi
+	# test connection with zevenet update system
+	$aptget_bin update &>/dev/null
+	if [ $? != 0 ]
+	then
+		echo "Error connecting to Zevenet Update System, check connection to https://repo.zevenet.com"
+		exit 1
+	fi
+
+	# check if there are upgradable packages
+	packages=`$apt_bin list --upgradable 2>/dev/null | awk 'FNR > 1' | wc -l`
+	if [ $packages \> 0 ]
+	then
+	echo "$packages packages require upgrade"
+	echo "To upgrade, execute: apt-get --with-new-pkgs upgrade"
+	echo "last check at `date` - $packages packages require upgrade, update this information with: checkupgrades" > /usr/local/zevenet/app/checkupgrades/share/message.txt
+	echo "To upgrade, execute: apt-get --with-new-pkgs upgrade" >> /usr/local/zevenet/app/checkupgrades/share/message.txt
+	$apt_bin list --upgradable 2>/dev/null | cut -d"/" -f 1  | tr  '\n' ' ' > /usr/local/zevenet/app/checkupgrades/share/package_upgradables.txt
+	else
+		echo "Zevenet Packages are up-to-date."
+		echo "Zevenet Packages are up-to-date." > /usr/local/zevenet/app/checkupgrades/share/message.txt
+    fi
 ;;
 
 '-n')
-	# Packages number not update
+	# Displays number non-updated packages
 	number=`$apt_bin list --upgradable 2>/dev/null | awk 'FNR > 1' | wc -l`
 	echo "$number"
 ;;
 
+'-l')
+	# Displays a list of non-updated packages
+	$apt_bin list --upgradable 2>/dev/null | awk 'FNR > 1'
+;;
+
+'-help')
+	echo "Usage:	checkupgrades"
+	echo "	checkupgrades name-pkg"
+	echo "	checkupgrades [options]"
+	echo ""
+	echo "checkupgrades provides informations about packages."
+	echo ""
+	echo "Options:"
+	echo ""
+	echo "  -n			displays number non-updated packages"
+	echo "  -l			displays a list of non-updated packages"
+	echo "  -help			display this help"
+	echo ""
+;;
+
 *)
+	#Check the status of a package
 	$dpkg_bin -l | grep $1 > /dev/null
 	if [ $? = 0 ];
 	then

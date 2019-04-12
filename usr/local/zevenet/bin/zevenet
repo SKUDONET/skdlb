@@ -109,8 +109,8 @@ sub local_http_service
 {
 	my ( $command ) = @_;
 
-	die "local_http_service command not recognized"
-		unless $command =~ /^(?:start|stop)$/;
+	die "local_http_service '$command' command not recognized"
+		unless $command =~ /^(?:start|stop|restart)$/;
 
 	system ( "/etc/init.d/cherokee $command >/dev/null &" );
 }
@@ -316,6 +316,11 @@ if ( $action eq "start" )
 			unless ( scalar grep { $$iface{ name } eq $_ } &getLinkNameList() )
 			{
 				&createIf( $iface );
+			}
+
+			if ( $eload )
+			{
+				eload ( module => 'Zevenet::Net::Mac', func => 'addMAC', args => ["$iface->{ name }","$iface->{ mac }"]  );
 			}
 
 			my $return_code = &addIp( $iface );

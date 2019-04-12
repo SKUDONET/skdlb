@@ -115,6 +115,10 @@ sub set_factory_reset
 										 'values'    => ["true", "false"],
 										 'non_blank' => 'true',
 				   },
+				   "force" => {
+								'values'    => ["true", "false"],
+								'non_blank' => 'true',
+				   },
 	};
 
 	require Zevenet::Net::Interface;
@@ -137,6 +141,15 @@ sub set_factory_reset
 		return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
+	unless ( exists $json_obj->{ force } and $json_obj->{ force } eq 'true' )
+	{
+		my $msg =
+		  "While the execution of the factory reset process, the system will be restarted. "
+		  . "When the process will finish, the load balancer will be accesible by the ip $if_ref->{addr}. "
+		  . "If you are agree, execute again sending the parameter 'force'";
+		return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+
 	my $remove_backups =
 	  ( $json_obj->{ remove_backups } eq 'true' ) ? 'remove-backups' : '';
 	if (
@@ -145,6 +158,8 @@ sub set_factory_reset
 		my $msg = "Some error occurred applying the factory reset.";
 		return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
+
+	# The process will die before than here
 
 	my $msg =
 	  "The factroy reset was applied properly. The session will be lost. Please, try again in a while";

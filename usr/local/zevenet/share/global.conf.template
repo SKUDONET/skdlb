@@ -67,6 +67,8 @@ $repo_url_zevenet="repo.zevenet.com";
 $gpg_key_zevenet="ee.zevenet.com.gpg.key";
 
 
+# networking service
+$networking_service="/etc/init.d/networking";
 
 #SNMP Service
 $snmpdconfig_tpl="$templatedir/snmpd.conf.template";

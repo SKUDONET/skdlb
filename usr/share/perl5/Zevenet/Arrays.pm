@@ -52,4 +52,23 @@ sub moveByIndex
 	splice ( @{ $list }, $dst_index, 0, $elem );
 }
 
+sub getARRIndex
+{
+	my ( $list, $item ) = @_;
+	my $ind;
+
+	my $id = 0;
+	foreach my $it ( @{ $list } )
+	{
+		if ( $it eq $item )
+		{
+			$ind = $id;
+			last;
+		}
+		$id++;
+	}
+
+	return $ind;
+}
+
 1;

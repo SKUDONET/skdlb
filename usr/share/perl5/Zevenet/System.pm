@@ -44,7 +44,7 @@ sub zsystem
 			 "debug", "PROFILING" );
 	my ( @exec ) = @_;
 
-	my $out   = `. /etc/profile && @exec`;
+	my $out   = `. /etc/profile 2>/dev/null && @exec 2>&1`;
 	my $error = $?;
 
 	if ( $error or &debug() )
@@ -234,7 +234,7 @@ sub applyFactoryReset
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 
-	my $if_name = shift;
+	my $if_name    = shift;
 	my $reset_type = shift // '';
 
 	if ( !$if_name )

@@ -29,11 +29,13 @@ use Regexp::IPv6 qw($IPv6_re);
 # \w matches the 63 characters [a-zA-Z0-9_] (most of the time)
 #
 
-my $UNSIGNED8BITS = qr/(?:25[0-5]|2[0-4]\d|[01]?\d\d?)/;           # (0-255)
-my $UNSIGNED7BITS = qr/(?:[0-9]{1,2}|10[0-9]|11[0-9]|12[0-8])/;    # (0-128)
-my $ipv6_word     = qr/(?:[A-Fa-f0-9]+){1,4}/;
+my $UNSIGNED8BITS = qr/(?:25[0-5]|2[0-4]\d|[01]?\d\d?)/;             # (0-255)
+my $UNSIGNED7BITS = qr/(?:[0-9]{1,2}|10[0-9]|11[0-9]|12[0-8])/;      # (0-128)
+my $HEXCHAR       = qr/(?:[A-Fa-f0-9])/;
+my $ipv6_word     = qr/(?:$HEXCHAR+){1,4}/;
 my $ipv4_addr     = qr/(?:$UNSIGNED8BITS\.){3}$UNSIGNED8BITS/;
 my $ipv6_addr     = $IPv6_re;
+my $mac_addr      = qr/(?:$HEXCHAR$HEXCHAR\:){5}$HEXCHAR$HEXCHAR/;
 my $ipv4v6        = qr/(?:$ipv4_addr|$ipv6_addr)/;
 my $boolean       = qr/(?:true|false)/;
 my $enable        = qr/(?:enable|disable)/;
@@ -152,6 +154,7 @@ my %format_re = (
 	'resource_data_NAPTR' => qr/.+/,              # all characters allow
 
 	# interfaces ( WARNING: length in characters < 16  )
+	'mac_addr'         => $mac_addr,
 	'nic_interface'    => $nic_if,
 	'bond_interface'   => $bond_if,
 	'vlan_interface'   => $vlan_if,
@@ -532,6 +535,7 @@ Parameters:
 			"exceptions"	: [ "zapi", "webgui", "root" ],	# The parameter can't have got any of the listed values
 			"values" : ["priority", "weight"],		# list of possible values for a parameter
 			"regex"	: "/\w+,\d+/",		# regex format
+			"ref"	: "array|hash",		# the expected input must be an array or hash ref
 			"valid_format"	: "farmname",		# regex stored in Validate.pm file, it checks with the function getValidFormat
 			"function" : \&func,		# function of validating, the input parameter is the value of the argument. The function has to return 0 or 'false' when a error exists
 			"format_msg"	: "must have letters and digits",	# used message when a value is not correct
@@ -604,6 +608,17 @@ sub checkZAPIParams
 			return
 			  "The parameter '$param' expects once of the following values: '"
 			  . join ( "', '", @{ $param_obj->{ $param }->{ 'values' } } ) . "'";
+		}
+
+		# the input has to be a ref
+		if ( exists $param_obj->{ $param }->{ 'ref' } )
+		{
+			my $r = ref $json_obj->{ $param } // '';
+			if ( $r !~ /^$param_obj->{ $param }->{ 'ref' }$/i )
+			{
+				return
+				  "The parameter '$param' expects a '$param_obj->{ $param }->{ref}' reference as input";
+			}
 		}
 
 		# getValidFormat funcion:
@@ -748,7 +763,7 @@ sub checkParamsInvalid
 
 	if ( @non_valid )
 	{
-		&putArrayAsText( \@non_valid,
+		$err_msg = &putArrayAsText( \@non_valid,
 			"The parameter<sp>s</sp> <pl> <bs>is<|>are</bp> not correct for this call. Please, try with: '"
 			  . join ( "', '", @{ $expect_params } )
 			  . "'" );

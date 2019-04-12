@@ -443,8 +443,8 @@ sub getFarmListByVip
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my $ip = shift;
-	my @out;
+	my $ip  = shift;
+	my @out = ();
 
 	foreach my $farm ( &getFarmNameList() )
 	{

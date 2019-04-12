@@ -42,18 +42,19 @@ sub farm_actions    # ( $json_obj, $farmname )
 
 	my $desc = "Farm actions";
 
+	my $params = {
+				   "action" => {
+								 'values'    => ['stop', 'start', 'restart'],
+								 'non_blank' => 'true',
+								 'required'  => 'true',
+				   },
+	};
+
 	# validate FARM NAME
 	if ( !&getFarmExists( $farmname ) )
 	{
 		my $msg = "The farmname $farmname does not exist.";
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
-	}
-
-	# Check action parameter
-	if ( not exists $json_obj->{ action } )
-	{
-		my $msg = "No action has been requested.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
 	if ( &getFarmType( $farmname ) =~ /http/ )
@@ -66,6 +67,11 @@ sub farm_actions    # ( $json_obj, $farmname )
 			&httpErrorResponse( code => 400, desc => $desc, msg => $err_msg );
 		}
 	}
+
+	# Check allowed parameters
+	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
+	  if ( $error_msg );
 
 	if ( $json_obj->{ action } eq "stop" )
 	{
@@ -128,11 +134,6 @@ sub farm_actions    # ( $json_obj, $farmname )
 			  "ZAPI error, trying to start the farm in the action restart in farm $farmname.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
-	}
-	else
-	{
-		my $msg = "Invalid action; the actions available are stop, start and restart";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
 	&zenlog(

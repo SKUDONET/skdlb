@@ -95,16 +95,6 @@ sub new_farm_backend    # ( $json_obj, $farmname )
 		};
 	}
 
-	# Disabled temporality
-	foreach my $pa ( 'port', 'max_conns' )
-	{
-		if ( exists $json_obj->{ $pa } )
-		{
-			my $msg = "$pa is not implemented yet.";
-			&httpErrorResponse( code => 406, desc => $desc, msg => $msg );
-		}
-	}
-
 	# Check allowed parameters
 	my $error_msg = &checkZAPIParams( $json_obj, $params );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
@@ -458,16 +448,6 @@ sub modify_backends    #( $json_obj, $farmname, $id_server )
 		$params->{ "interface" } = { 'non_black' => 'true', };
 	}
 
-	# Disabled temporality
-	foreach my $pa ( 'port', 'max_conns' )
-	{
-		if ( exists $json_obj->{ $pa } )
-		{
-			my $msg = "$pa is not implemented yet.";
-			&httpErrorResponse( code => 406, desc => $desc, msg => $msg );
-		}
-	}
-
 	# Check allowed parameters
 	my $error_msg = &checkZAPIParams( $json_obj, $params );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
@@ -615,9 +595,9 @@ sub modify_service_backends    #( $json_obj, $farmname, $service, $id_server )
 
 	# apply BACKEND change
 
-	$be->{ ip }      = $json_obj->{ ip } // $be->{ ip };
-	$be->{ port }    = $json_obj->{ port } // $be->{ port };
-	$be->{ weight }  = $json_obj->{ weight } // $be->{ weight };
+	$be->{ ip }      = $json_obj->{ ip }      // $be->{ ip };
+	$be->{ port }    = $json_obj->{ port }    // $be->{ port };
+	$be->{ weight }  = $json_obj->{ weight }  // $be->{ weight };
 	$be->{ timeout } = $json_obj->{ timeout } // $be->{ timeout };
 
 	my $status = &setHTTPFarmServer( $id_server,
@@ -841,8 +821,8 @@ sub validateDatalinkBackendIface
 		$msg = "It is not possible to configure vlan interface for datalink backends";
 	}
 	elsif (
-			!&getNetValidate( $iface_ref->{ addr }, $iface_ref->{ mask }, $backend->{ ip }
-			)
+		  !&getNetValidate( $iface_ref->{ addr }, $iface_ref->{ mask }, $backend->{ ip }
+		  )
 	  )
 	{
 		$msg =

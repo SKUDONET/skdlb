@@ -52,7 +52,7 @@ sub createIf    # ($if_ref)
 			 "debug", "PROFILING" );
 	my $if_ref = shift;
 
-	my $status = 0;
+	my $status = 1;
 
 	if ( defined $$if_ref{ vlan } && $$if_ref{ vlan } ne '' )
 	{
@@ -87,7 +87,8 @@ sub upIf    # ($if_ref, $writeconf)
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my ( $if_ref, $writeconf ) = @_;
+	my $if_ref    = shift;
+	my $writeconf = shift;
 
 	my $configdir = &getGlobalConfiguration( 'configdir' );
 	my $status    = 0;
@@ -130,31 +131,12 @@ sub upIf    # ($if_ref, $writeconf)
 	{
 		my $file = "$configdir/if_$$if_ref{name}_conf";
 
-		if ( -f $file )
-		{
-			require Tie::File;
+		require Config::Tiny;
+		my $fileHandler = Config::Tiny->new();
+		$fileHandler = Config::Tiny->read( $file ) if ( -f $file );
 
-			my $found = 0;
-			tie my @if_lines, 'Tie::File', "$file";
-			for my $line ( @if_lines )
-			{
-				if ( $line =~ /^status=/ )
-				{
-					$line  = "status=up";
-					$found = 1;
-					last;
-				}
-			}
-
-			unshift ( @if_lines, 'status=up' ) if !$found;
-			untie @if_lines;
-		}
-		else
-		{
-			open ( my $fh, '>', $file );
-			print { $fh } "status=up\n";
-			close $fh;
-		}
+		$fileHandler->{ $if_ref->{ name } }->{ status } = "up";
+		$fileHandler->write( $file );
 	}
 
 	return $status;
@@ -181,7 +163,8 @@ sub downIf    # ($if_ref, $writeconf)
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my ( $if_ref, $writeconf ) = @_;
+	my $if_ref    = shift;
+	my $writeconf = shift;
 
 	if ( ref $if_ref ne 'HASH' )
 	{
@@ -213,18 +196,12 @@ sub downIf    # ($if_ref, $writeconf)
 		my $configdir = &getGlobalConfiguration( 'configdir' );
 		my $file      = "$configdir/if_$$if_ref{name}_conf";
 
-		require Tie::File;
-		tie my @if_lines, 'Tie::File', "$file";
+		require Config::Tiny;
+		my $fileHandler = Config::Tiny->new();
+		$fileHandler = Config::Tiny->read( $file ) if ( -f $file );
 
-		for my $line ( @if_lines )
-		{
-			if ( $line =~ /^status=/ )
-			{
-				$line = "status=down";
-				last;
-			}
-		}
-		untie @if_lines;
+		$fileHandler->{ $if_ref->{ name } }->{ status } = "down";
+		$fileHandler->write( $file );
 	}
 
 	return $status;
@@ -344,38 +321,37 @@ sub delIf    # ($if_ref)
 	my ( $if_ref ) = @_;
 
 	my $status;
+	my $has_more_ips;
 	my $configdir = &getGlobalConfiguration( 'configdir' );
 	my $file      = "$configdir/if_$$if_ref{name}\_conf";
-	my $has_more_ips;
 
-	# remove stack line
-	open ( my $in_fh,  '<', "$file" );
-	open ( my $out_fh, '>', "$file.new" );
-
-	if ( $in_fh && $out_fh )
+	# remove dhcp configuration
+	if ( exists $if_ref->{ dhcp } and $if_ref->{ dhcp } eq 'true' )
 	{
-		while ( my $line = <$in_fh> )
+		&eload(
+				module => 'Zevenet::Net::DHCP',
+				func   => 'disableDHCP',
+				args   => [$if_ref],
+		);
+	}
+
+	require Config::Tiny;
+	my $fileHandler = Config::Tiny->new();
+	if ( -f $file )
+	{
+		$fileHandler = Config::Tiny->read( $file );
+		$fileHandler->{ $if_ref->{ name } } = {
+								  mask   => "",
+								  status => $fileHandler->{ $if_ref->{ name } }->{ status },
+								  addr   => "",
+								  mac    => $if_ref->{ mac },
+								  gateway => ""
+		};
+
+		$fileHandler->write( "$file" );
+		if ( $$if_ref{ name } ne $$if_ref{ dev } )
 		{
-			if ( $line !~ /$$if_ref{addr}/ )
-			{
-				print $out_fh $line;
-				$has_more_ips++ if $line =~ /;/;
-			}
-		}
-
-		close $in_fh;
-		close $out_fh;
-
-		rename "$file.new", "$file";
-
-		if ( !$has_more_ips )
-		{
-			# remove file only if not a nic interface
-			# nics need to store status even if not configured, for vlans
-			if ( $$if_ref{ name } ne $$if_ref{ dev } )
-			{
-				unlink ( $file ) or return 1;
-			}
+			unlink ( $file ) or return 1;
 		}
 	}
 	else
@@ -395,7 +371,9 @@ sub delIf    # ($if_ref)
 		# If $if is a Interface, delete that IP
 		my $ip_cmd =
 		  "$ip_bin addr del $$if_ref{addr}/$$if_ref{mask} dev $$if_ref{name}";
-		$status = &logAndRun( $ip_cmd );
+
+		$status = &logAndRun( $ip_cmd )
+		  if ( length $if_ref->{ addr } && length $if_ref->{ mask } );
 
 		# If $if is a Vlan, delete Vlan
 		if ( $$if_ref{ vlan } ne '' )

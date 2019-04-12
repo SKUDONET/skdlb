@@ -68,16 +68,6 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 		my $msg = "the 'leastconn' algorithm is not implemented yet.";
 		&httpErrorResponse( code => 406, desc => $desc, msg => $msg );
 	}
-	elsif ( $json_obj->{ persistence } =~ /^(?:ip)$/ )
-	{
-		my $msg = "The 'ip' persistence is not implemented yet.";
-		&httpErrorResponse( code => 406, desc => $desc, msg => $msg );
-	}
-	elsif ( exists $json_obj->{ ttl } )
-	{
-		my $msg = "The 'TTL' is not implemented yet.";
-		&httpErrorResponse( code => 406, desc => $desc, msg => $msg );
-	}
 
 	my $params = {
 		  "newfarmname" => {
@@ -98,7 +88,11 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 				  'non_blank' => 'true',
 		  },
 		  "persistence" => {
-							 'regex' => '',
+							 'values' => [
+										  'none', 'ip', 'srcip', 'srcport',
+										  'srcmac', 'srcip_srcport', 'srcip_dstport'
+							 ],
+							 'non_blank' => 'true',
 		  },
 		  "protocol" => {
 						  'values' => [
@@ -289,7 +283,7 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 	if ( exists ( $json_obj->{ vip } ) or exists ( $json_obj->{ vport } ) )
 	{
 		# Get current vip & vport
-		my $vip = $json_obj->{ vip } // &getFarmVip( "vip", $farmname );
+		my $vip   = $json_obj->{ vip }   // &getFarmVip( "vip",  $farmname );
 		my $vport = $json_obj->{ vport } // &getFarmVip( "vipp", $farmname );
 
 		if ( &setFarmVirtualConf( $vip, $vport, $farmname ) )

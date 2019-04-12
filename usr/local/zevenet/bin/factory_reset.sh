@@ -49,27 +49,6 @@ show_usage() {
   exit 1
 }
 
-# stop all interfaces except the management iface
-function stop_ifaces(){
-	BOND_FILE=$bonding_masters_filename
-
-	for iface in `ip l l | grep '^[0-9]' | cut -d':' -f2 | sed 's/ //;s/\@.*$//'`; do
-
-		if [[ "$iface" != "$if_mgmt" ]]; then
-			OUT=`grep -E "(^|\b)$iface($|\b)" $BOND_FILE`
-			if [[ ! -z $OUT ]]; then
-				echo "-$iface" >$BOND_FILE
-			else
-				# not to try to delete nic ifaces
-				if [[ "$iface" =~ "[:]" ]]; then
-					ip link del dev $iface
-				fi
-			fi
-		fi
-
-	done
-}
-
 # script
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -134,15 +113,10 @@ echo "Stopping cron process"
 $cron_service stop
 echo "Stopping zevenet process"
 $zevenet_service stop
-echo "Stopping interfaces"
-stop_ifaces
 
 if [ $HARD -eq 1 ]
 then
 	# WARNING: not to stop cherokee process from the API, that kills this script
-	echo "Stopping cherokee process"
-	$http_server_service stop
-
 	echo "Deleting Zevenet certificate"
 	rm -fr $zlbcertfile
 fi
@@ -205,10 +179,15 @@ fi
 # Set up the management iface
 if [ $HW -eq 1 ]; then
 	echo "Rewriting interface config file $IF_CONF"
-	echo "status=up" > $IF_CONF
-	echo "${if_mgmt};$IP_MANAGEMENT;$NETMASK_MANAGEMENT;$GW_MANAGEMENT" >> $IF_CONF
+	echo "[${if_mgmt}]" > $IF_CONF
+	echo "name=${if_mgmt}" >> $IF_CONF
+	echo "addr=$IP_MANAGEMENT" >> $IF_CONF
+	echo "mask=$NETMASK_MANAGEMENT" >> $IF_CONF
+	echo "gateway=$GW_MANAGEMENT" >> $IF_CONF
+	echo "status=up" >> $IF_CONF
+else
+	sed -i -E 's/status=.*$/status=up/' $IF_CONF
 fi
-sed -i -E 's/status=.*$/status=up/' $IF_CONF
 
 
 echo "Cleaning up directories"
@@ -219,12 +198,6 @@ rm -fr $rrdap_dir/$rrd_dir/*
 rm -rf /root/.bash_history
 rm -rf /root/* {.bashrc}
 
-# Do not run process in HW
-echo "Running syslog process"
-$syslog_service start
-echo "Running cron process"
-$cron_service start
-echo "Running zevenet process"
-$zevenet_service start
-echo "Running web server process"
-$http_server_service restart &
+# restarting the host
+echo "rebooting system"
+reboot

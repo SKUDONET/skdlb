@@ -279,4 +279,40 @@ sub getAPIFarmBackends
 	return &buildAPIParams( $out_b, \@api_keys, $translate );
 }
 
+# GET /farms/modules/summary
+sub farms_module_summary
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+
+	require Zevenet::Farm::Service;
+	my $out = { lslb => [], gslb => [], dslb => [], };
+
+	foreach my $farm_name ( &getFarmNameList() )
+	{
+		my $type = &getFarmType( $farm_name );
+		$type =~ s/https/http/;
+		my $it = {
+				   name    => $farm_name,
+				   profile => $type,
+		};
+
+		if ( $type eq 'gslb' or $type eq 'http' )
+		{
+			my @srv = &getFarmServices( $farm_name );
+			$it->{ services } = \@srv;
+		}
+
+		if    ( $type eq 'datalink' ) { push @{ $out->{ dslb } }, $it; }
+		elsif ( $type eq 'gslb' )     { push @{ $out->{ gslb } }, $it; }
+		else                          { push @{ $out->{ lslb } }, $it; }
+	}
+
+	my $body = {
+				 description => "Farm Modules summary",
+				 params      => $out,
+	};
+	return &httpResponse( { code => 200, body => $body } );
+}
+
 1;

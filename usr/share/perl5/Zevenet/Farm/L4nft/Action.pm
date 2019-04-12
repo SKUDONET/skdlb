@@ -48,7 +48,7 @@ sub startL4Farm    # ($farm_name)
 			 "debug", "PROFILING" );
 
 	my $farm_name = shift;
-	my $writeconf = shift;
+	my $writeconf = shift // 0;
 
 	require Zevenet::Farm::L4xNAT::Config;
 

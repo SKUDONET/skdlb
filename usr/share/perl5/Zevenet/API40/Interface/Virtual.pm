@@ -506,7 +506,6 @@ sub modify_interface_virtual    # ( $json_obj, $virtual )
 	}
 
 	require Zevenet::Net::Validate;
-
 	my $if_ref_parent = &getInterfaceConfig( $if_ref->{ parent } );
 
 	unless (
@@ -543,7 +542,6 @@ sub modify_interface_virtual    # ( $json_obj, $virtual )
 		if ( $state eq 'up' )
 		{
 			require Zevenet::Net::Route;
-
 			die if &addIp( $if_ref );
 			&upIf( $if_ref );
 			&applyRoutes( "local", $if_ref );

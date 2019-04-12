@@ -22,6 +22,7 @@
 ###############################################################################
 
 use strict;
+use warnings;
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
@@ -156,9 +157,9 @@ sub setL4FarmParam
 		$prev_config = &getFarmStruct( $farm_name );
 		$parameters  = qq(, "virtual-addr" : "$value" );
 	}
-	elsif ( $param eq "vipp" )
+	elsif ( $param eq "vipp" or $param eq "vport" )
 	{
-		$value =~ s/\:/\-/g, $value;
+		$value =~ s/\:/\-/g;
 		$parameters = qq(, "virtual-ports" : "$value" );
 	}
 	elsif ( $param eq "alg" )
@@ -205,16 +206,21 @@ sub setL4FarmParam
 			$addition = $addition . qq( , "helper" : "none" );
 		}
 
-		$addition = $addition . qq( , "vport" : "" ) if ( $value eq "all" );
+		$addition = $addition . qq( , "virtual-ports" : "" ) if ( $value eq "all" );
 		$parameters = qq(, "protocol" : "$value" ) . $addition;
 	}
 	elsif ( $param eq "status" || $param eq "bootstatus" )
 	{
 		$parameters = qq(, "state" : "$value" );
 	}
-	elsif ( $param =~ /persist/ )
+	elsif ( $param eq "persist" )
 	{
-		return 0;
+		$value = "srcip" if ( $value eq "ip" );
+		$parameters = qq(, "persistence" : "$value" );
+	}
+	elsif ( $param eq "persisttm" )
+	{
+		$parameters = qq(, "persist-ttl" : "$value" );
 	}
 	elsif ( $param eq "limitrst" )
 	{
@@ -296,12 +302,6 @@ sub _getL4ParseFarmConfig
 	my $output = -1;
 	my $exit   = 1;
 
-	if ( $param eq 'persist' || $param eq 'persisttm' )
-	{
-		$output = "none";
-		return $output;
-	}
-
 	foreach my $line ( @{ $config } )
 	{
 		if ( $line =~ /\"family\"/ && $param eq 'family' )
@@ -332,6 +332,21 @@ sub _getL4ParseFarmConfig
 		}
 
 		if ( $line =~ /\"protocol\"/ && $param eq 'proto' )
+		{
+			my @l = split /"/, $line;
+			$output = $l[3];
+			$exit   = 0;
+		}
+
+		if ( $line =~ /\"persistence\"/ && $param eq 'persist' )
+		{
+			my @l = split /"/, $line;
+			$output = $l[3];
+			$output = "ip" if ( $output eq "srcip " );
+			$exit   = 0;
+		}
+
+		if ( $line =~ /\"persist-ttl\"/ && $param eq 'persisttm' )
 		{
 			my @l = split /"/, $line;
 			$output = $l[3];
@@ -436,7 +451,7 @@ sub _getL4ParseFarmConfig
 
 		if ( $output ne "-1" )
 		{
-			$line =~ s/$output/$value/r if $value != undef;
+			$line =~ s/$output/$value/g if defined $value;
 			return $output if ( $exit );
 		}
 	}
@@ -515,8 +530,8 @@ sub getL4FarmStruct
 	$farm{ vport }   = &_getL4ParseFarmConfig( 'vipp', undef, $config );
 	$farm{ vproto }  = &_getL4ParseFarmConfig( 'proto', undef, $config );
 
-#	$farm{ persist }    = &_getL4ParseFarmConfig( 'persist', undef, $config ); #TODO: not yet supported
-#	$farm{ ttl }        = &_getL4ParseFarmConfig( 'persisttm', undef, $config );
+	$farm{ persist } = &_getL4ParseFarmConfig( 'persist',   undef, $config );
+	$farm{ ttl }     = &_getL4ParseFarmConfig( 'persisttm', undef, $config );
 	$farm{ proto }      = &getL4ProtocolTransportLayer( $farm{ vproto } );
 	$farm{ bootstatus } = &_getL4ParseFarmConfig( 'bootstatus', undef, $config );
 	$farm{ status }     = &getL4FarmStatus( $farm{ name } );

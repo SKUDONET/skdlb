@@ -259,6 +259,14 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 				   },
 	};
 
+	if ( $eload )
+	{
+		$params->{ "dhcp" } = {
+								'non_blank' => 'true',
+								'values'    => ['true', 'false'],
+		};
+	}
+
 	# Check allowed parameters
 	my $error_msg = &checkZAPIParams( $json_obj, $params );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
@@ -266,6 +274,61 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 
 	# Delete old interface configuration
 	my $if_ref = &getInterfaceConfig( $nic );
+
+	# check if some farm is using this ip
+	my @farms;
+	if ( exists $json_obj->{ ip }
+		 or ( exists $json_obj->{ dhcp } and $json_obj->{ dhcp } eq 'true' ) )
+	{
+		require Zevenet::Farm::Base;
+
+		@farms = &getFarmListByVip( $if_ref->{ addr } );
+		if ( @farms and $json_obj->{ force } ne 'true' )
+		{
+			my $str = join ( ', ', @farms );
+			my $msg =
+			  "The IP is being used as farm vip in the farm(s): $str. If you are sure, repeat with parameter 'force'. All farms using this interface will be restarted.";
+			return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
+	}
+
+	my $dhcp_status = $json_obj->{ dhcp } // $if_ref->{ dhcp };
+
+	# only allow dhcp when no other parameter was sent
+	if ( $dhcp_status eq 'true' or exists $json_obj->{ dhcp } )
+	{
+		if (    exists $json_obj->{ ip }
+			 or exists $json_obj->{ netmask }
+			 or exists $json_obj->{ gateway } )
+		{
+			my $msg =
+			  "It is not possible set 'ip', 'netmask' or 'gateway' while 'dhcp' is enabled.";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
+
+		if ( exists $json_obj->{ dhcp } )
+		{
+			my $func = ( $json_obj->{ dhcp } eq 'true' ) ? "enableDHCP" : "disableDHCP";
+			my $err = &eload(
+							  module => 'Zevenet::Net::DHCP',
+							  func   => $func,
+							  args   => [$if_ref],
+			);
+
+			if ( $err )
+			{
+				my $msg = "Errors found trying to enabling dhcp for the interface $nic";
+				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			}
+
+			my $body = {
+						 description => $desc,
+						 params      => $json_obj,
+			};
+
+			&httpResponse( { code => 200, body => $body } );
+		}
+	}
 
 	# check if network is correct
 	my $new_if;
@@ -349,24 +412,6 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 		{
 			my $msg = "The network already exists in the interface $if_used.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
-
-	# check if some farm is using this ip
-	my @farms;
-
-	if ( $json_obj->{ ip } )
-	{
-		require Zevenet::Farm::Base;
-
-		@farms = &getFarmListByVip( $if_ref->{ addr } );
-
-		if ( @farms and $json_obj->{ force } ne 'true' )
-		{
-			my $str = join ( ', ', @farms );
-			my $msg =
-			  "The IP is being used as farm vip in the farm(s): $str. If you are sure, repeat with parameter 'force'. All farms using this interface will be restarted.";
-			return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 	}
 

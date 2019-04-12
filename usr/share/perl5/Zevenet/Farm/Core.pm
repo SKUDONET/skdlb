@@ -250,7 +250,7 @@ sub getFarmNameList
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my @farm_names;    # output: returned list
+	my @farm_names = ();    # output: returned list
 
 	# take every farm filename
 	foreach my $farm_filename ( &getFarmList() )

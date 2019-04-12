@@ -108,7 +108,7 @@ sub download_backup
 #	PUT	/system/backup/BACKUP
 sub upload_backup
 {
-	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( )",
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $upload_filehandle = shift;
 	my $name              = shift;

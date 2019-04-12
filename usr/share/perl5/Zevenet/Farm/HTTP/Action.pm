@@ -60,7 +60,7 @@ sub _runHTTPFarmStart    # ($farm_name, $writeconf)
 
 	my $cmd =
 	  "$pound $args -f $configdir\/$farm_filename -p $piddir\/$farm_name\_pound.pid";
-	$status = &zsystem( "$cmd 2>/dev/null" );
+	$status = &zsystem( "$cmd" );
 
 	if ( $status == 0 )
 	{
@@ -161,13 +161,10 @@ sub setHTTPNewFarmName    # ($farm_name,$new_farm_name)
 
 	my $output = 0;
 	my @farm_configfiles = (
-							 "$configdir\/$farm_name\_status.cfg",
-							 "$configdir\/$farm_name\_pound.cfg",
-							 "$configdir\/$farm_name\_Err414.html",
-							 "$configdir\/$farm_name\_Err500.html",
-							 "$configdir\/$farm_name\_Err501.html",
-							 "$configdir\/$farm_name\_Err503.html",
-							 "$farm_name\_guardian.conf"
+		   "$configdir\/$farm_name\_status.cfg",  "$configdir\/$farm_name\_pound.cfg",
+		   "$configdir\/$farm_name\_Err414.html", "$configdir\/$farm_name\_Err500.html",
+		   "$configdir\/$farm_name\_Err501.html", "$configdir\/$farm_name\_Err503.html",
+		   "$farm_name\_guardian.conf"
 	);
 	my @new_farm_configfiles = (
 								 "$configdir\/$new_farm_name\_status.cfg",
