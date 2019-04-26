@@ -29,6 +29,8 @@ $zbindir="$zdir/bin";#update
 $basedir="$zdir/www";#update
 #configuration directory.In this section all config files are saved.
 $configdir="$zdir/config";#update
+# directory for local configurations, it is not sync by the cluster
+$localconfig="$configdir/local";#update
 #Directory where is check script. In this directory you can save your own check scripts.
 $libexec_dir="/usr/lib/nagios/plugins";
 #Zevenet bin directory
@@ -160,7 +162,7 @@ $aptkey_bin="/usr/bin/apt-key";
 #Where is apt-cache?
 $aptcache_bin="/usr/bin/apt-cache";
 #Where is checkupgrades?
-$checkupgrades_bin="/usr/sbin/checkupgrades";
+$checkupgrades_bin="/usr/local/zevenet/bin/checkupgrades";
 #Where is openssl?
 $openssl="/usr/bin/openssl";
 #Where is unzip?
@@ -175,8 +177,6 @@ $awk="/usr/bin/awk";
 $logger="/usr/bin/logger";
 #Where is sec?
 $sec="/usr/bin/sec";
-#Where is ipset?
-$ipset="/sbin/ipset";
 #Where is touch?
 $touch="/usr/bin/touch";
 #Where is ls?
@@ -187,16 +187,14 @@ $stat="/usr/bin/stat";
 $cp="/bin/cp";
 #Where is rm?
 $rm="/bin/rm";
-#Where is iptables?
-$iptables="/sbin/iptables";
-#Where is ip6tables?
-$ip6tables="/sbin/ip6tables";
 #Where is modprobe?
 $modprobe="/usr/sbin/modprobe";
 #Where is lsmod?
 $lsmod="/usr/sbin/lsmod";
 #Where is gdnsd?
 $gdnsd="/usr/sbin/gdnsd";#update
+#Where is gdnsd plugins?
+$gdnsd_plugin="/usr/lib/x86_64-linux-gnu/gdnsd/";
 #Where is l4sd?
 $l4sd="$zbindir/l4sd";#update
 #Where is factory_reset?
@@ -231,6 +229,8 @@ $echo_bin="/bin/echo";
 $dpkg_bin="/usr/bin/dpkg";
 #Where is grep?
 $grep_bin="/bin/grep";
+#Where is nft?
+$nft_bin="/usr/sbin/nft";
 #Where is nftlb?
 $nftlb_bin="/usr/local/zevenet/app/nftlb/sbin/nftlb";
 #Where is poweroff
@@ -239,6 +239,8 @@ $poweroff_bin="/usr/sbin/poweroff";
 $reboot_bin="/usr/sbin/reboot";
 #Where is arpsend
 $arpsend_bin="/usr/sbin/arpsend";
+#Where is dhclient
+$dhcp_bin="/usr/sbin/dhclient";
 
 
 # Pound
@@ -282,13 +284,14 @@ $ipv6_enabled="false";
 ## L4xNat - netfilter
 # Maximum recent ip list
 # Recent ip hash
-# Iptables lock filename
-$iptlock="/tmp/iptables.lock";
 
 
 #FarmGuardian binary, create advanced check for backend servers
 $farmguardian="$zbindir/farmguardian";#update
 
+# files to save the status of the system packages
+$apt_msg="$localconfig/apt_message.txt";
+$apt_outdated_list="$localconfig/apt_outdated_list.txt";
 
 #Where is ZenRRD Directory?. There is a perl script that create rrd database and images from Monitoring section
 $rrdap_dir="$zdir/app/zenrrd";#update
@@ -304,8 +307,6 @@ $zenino="$zbindir/enterprise.bin zeninotify";#update
 $zeninopid="/var/run/zeninotify.pid";
 #Rsync replication parameters
 $zenrsync="-azvr --delete";#update
-#Arptables
-$arptables="/sbin/arptables";
 #ARP unsolicited
 $arp_unsolicited="";
 
@@ -370,6 +371,10 @@ $ipdsCronFile="/etc/cron.d/ipds";
 $rbacRolesTpl_dir="$templatedir/rbac_roles";
 
 #Ssyncd
+
+#L4sd configuration
+$l4sdpid="/var/run/l4sd.pid";#update
+$l4sdcfg="$configdir/l4sd.cfg";#update
 
 # time period to get the interface throughput stats
 

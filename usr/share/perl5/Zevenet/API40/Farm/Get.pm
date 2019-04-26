@@ -247,6 +247,8 @@ sub farms_name    # ( $farmname )
 # function to standarizate the backend output
 sub getAPIFarmBackends
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $out_b        = shift;
 	my $type         = shift;
 	my $add_api_keys = shift // [];
@@ -261,22 +263,28 @@ sub getAPIFarmBackends
 	# filters:
 	if ( $type eq 'l4xnat' )
 	{
-		push @api_keys, qw(id weight ip priority status);
+		push @api_keys, qw(id weight ip priority status port);
 	}
 	elsif ( $type eq 'datalink' )
 	{
 		push @api_keys, qw(id weight ip priority status interface);
 	}
 
-	if ( $eload )
-	{
-		push @api_keys, "alias";
-	}
-
 	# add static translations
 	$translate->{ status } = { "opt" => "fgdown", "rep" => "down" };
 
-	return &buildAPIParams( $out_b, \@api_keys, $translate );
+	&buildAPIParams( $out_b, \@api_keys, $translate );
+
+	if ( $eload )
+	{
+		$out_b = &eload(
+						 module => 'Zevenet::Alias',
+						 func   => 'addAliasBackendsStruct',
+						 args   => [$out_b],
+		);
+	}
+
+	return undef;
 }
 
 # GET /farms/modules/summary

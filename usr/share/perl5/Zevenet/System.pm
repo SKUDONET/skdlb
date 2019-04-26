@@ -234,7 +234,7 @@ sub applyFactoryReset
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 
-	my $if_name    = shift;
+	my $if_name = shift;
 	my $reset_type = shift // '';
 
 	if ( !$if_name )

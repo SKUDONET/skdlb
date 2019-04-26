@@ -341,6 +341,8 @@ sub checkNetworkExists
 
 sub validBackendStack
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my ( $be_aref, $ip ) = @_;
 	my $ip_stack     = &ipversion( $ip );
 	my $ipv_mismatch = 0;

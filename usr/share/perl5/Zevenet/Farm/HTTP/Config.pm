@@ -1334,7 +1334,7 @@ sub setHTTPFarmVirtualConf    # ($vip,$vip_port,$farm_name)
 	my ( $vip, $vip_port, $farm_name ) = @_;
 
 	my $farm_filename = &getFarmFile( $farm_name );
-	my $stat          = 0;
+	my $stat          = 1;
 	my $enter         = 2;
 
 	my $lock_file = &getLockFile( $farm_name );
@@ -1348,14 +1348,18 @@ sub setHTTPFarmVirtualConf    # ($vip,$vip_port,$farm_name)
 	{
 		if ( $array[$i] =~ /Address/ )
 		{
-			$array[$i] =~ s/.*Address\ .*/\tAddress\ $vip/g;
-			$stat = $? || $stat;
+			if ( $array[$i] =~ s/.*Address\ .*/\tAddress\ $vip/g )
+			{
+				$stat = 0;
+			}
 			$enter--;
 		}
 		if ( $array[$i] =~ /Port/ and $vip_port )
 		{
-			$array[$i] =~ s/.*Port\ .*/\tPort\ $vip_port/g;
-			$stat = $? || $stat;
+			if ( $array[$i] =~ s/.*Port\ .*/\tPort\ $vip_port/g )
+			{
+				$stat = 0;
+			}
 			$enter--;
 		}
 	}

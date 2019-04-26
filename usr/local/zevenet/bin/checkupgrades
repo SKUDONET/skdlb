@@ -25,14 +25,15 @@ case "$1" in
 	packages=`$apt_bin list --upgradable 2>/dev/null | awk 'FNR > 1' | wc -l`
 	if [ $packages \> 0 ]
 	then
-	echo "$packages packages require upgrade"
-	echo "To upgrade, execute: apt-get --with-new-pkgs upgrade"
-	echo "last check at `date` - $packages packages require upgrade, update this information with: checkupgrades" > /usr/local/zevenet/app/checkupgrades/share/message.txt
-	echo "To upgrade, execute: apt-get --with-new-pkgs upgrade" >> /usr/local/zevenet/app/checkupgrades/share/message.txt
-	$apt_bin list --upgradable 2>/dev/null | cut -d"/" -f 1  | tr  '\n' ' ' > /usr/local/zevenet/app/checkupgrades/share/package_upgradables.txt
+		echo "$packages package(s) require upgrade"
+		echo "To upgrade, execute: apt-get --with-new-pkgs upgrade"
+		echo "last check at `date` - $packages package(s) require upgrade, update this information with: checkupgrades" > $apt_msg
+		echo "To upgrade, execute: apt-get --with-new-pkgs upgrade" >> $apt_msg
+		$apt_bin list --upgradable 2>/dev/null | cut -d"/" -f 1  | sed '1d' | tr  '\n' ' ' > $apt_outdated_list
 	else
 		echo "Zevenet Packages are up-to-date."
-		echo "Zevenet Packages are up-to-date." > /usr/local/zevenet/app/checkupgrades/share/message.txt
+		echo "Zevenet Packages are up-to-date." > $apt_msg
+		echo "" > $apt_outdated_list
     fi
 ;;
 
@@ -67,15 +68,15 @@ case "$1" in
 	$dpkg_bin -l | grep $1 > /dev/null
 	if [ $? = 0 ];
 	then
-		installed=`$aptcache_bin policy $1 | grep -i installed | cut -d ":" -f2 | sed 's/ //g'`
-		candidate=`$aptcache_bin policy $1 | grep -i candidate | cut -d ":" -f2 | sed 's/ //g'`
+		installed=`$aptcache_bin policy $1 | head -2 | tail -1 | cut -d ":" -f2 | sed 's/ //g'`
+		candidate=`$aptcache_bin policy $1 | head -3 | tail -1 | cut -d ":" -f2 | sed 's/ //g'`
 		if [ "$installed" != "$candidate" ];
 		then
 			echo "There is a new version of $1"
 			echo "installed = $1 $installed"
 			echo "candidate = $1 $candidate"
 		else
-			echo "$1 is already the newest version $installed"
+			echo "$1 is already in the newest version $installed"
 		fi
 	else
 		echo "$1 it is not installed in the system"

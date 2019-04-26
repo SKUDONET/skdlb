@@ -1461,7 +1461,7 @@ sub get_nic_list_struct
 
 		$if_conf->{ alias }    = $alias->{ $if_ref->{ name } } if $eload;
 		$if_conf->{ is_slave } = $if_ref->{ is_slave }         if $eload;
-		$if_conf->{ dhcp }     = $if_ref->{ dhcp } // 'false'  if $eload;
+		$if_conf->{ dhcp } = $if_ref->{ dhcp } // 'false' if $eload;
 		$if_conf->{ is_cluster } = 'true' if $cluster_if eq $if_ref->{ name };
 
 		# include 'has_vlan'
@@ -1525,7 +1525,7 @@ sub get_vlan_struct
 	};
 
 	$output->{ alias } = $alias->{ $interface->{ name } } if $eload;
-	$output->{ dhcp }  = $interface->{ dhcp } // 'false'  if $eload;
+	$output->{ dhcp } = $interface->{ dhcp } // 'false' if $eload;
 
 	return $output;
 }
@@ -1576,7 +1576,7 @@ sub get_vlan_list_struct
 		};
 
 		$if_conf->{ alias } = $alias->{ $if_ref->{ name } } if $eload;
-		$if_conf->{ dhcp }  = $if_ref->{ dhcp } // 'false'  if $eload;
+		$if_conf->{ dhcp } = $if_ref->{ dhcp } // 'false' if $eload;
 		$if_conf->{ is_cluster } = 'true'
 		  if $cluster_if && $cluster_if eq $if_ref->{ name };
 
@@ -1776,6 +1776,8 @@ sub setVlan    # if_ref
 
 sub createVlan
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $if_ref = shift;
 
 	require Zevenet::Net::Core;

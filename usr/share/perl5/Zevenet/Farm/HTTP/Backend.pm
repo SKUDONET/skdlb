@@ -357,24 +357,6 @@ sub getHTTPFarmBackends    # ($farm_name,$service)
 	my @be_status = @{ &getHTTPFarmBackendsStatus( $farmname, $service ) };
 	my @out_ba;
 
-	# alias
-	my $permission = 0;
-	my $alias;
-	if ( $eload )
-	{
-		$permission = &eload(
-							  module => 'Zevenet::RBAC::Core',
-							  func   => 'getRBACRolePermission',
-							  args   => ['alias', 'list'],
-		);
-
-		$alias = &eload(
-						 module => 'Zevenet::Alias',
-						 func   => 'getAlias',
-						 args   => ['backend']
-		) if $permission;
-	}
-
 	foreach my $subl ( @be )
 	{
 		my @subbe = split ( ' ', $subl );
@@ -400,7 +382,6 @@ sub getHTTPFarmBackends    # ($farm_name,$service)
 			timeout => $tout,
 			weight  => $prio
 		  };
-		$out_ba[-1]->{ alias } = $permission ? $alias->{ $ip } : undef if ( $eload );
 	}
 
 	return \@out_ba;

@@ -74,6 +74,12 @@ sub startL4Farm    # ($farm_name)
 	require Zevenet::Net::Util;
 	&setIpForward( 'true' );
 
+	if ( $farm->{ lbalg } eq 'leastconn' )
+	{
+		require Zevenet::Farm::L4xNAT::L4sd;
+		&sendL4sdSignal();
+	}
+
 	return $status;
 }
 
@@ -120,6 +126,12 @@ sub stopL4Farm    # ($farm_name)
 	unlink "$pidfile" if ( -e "$pidfile" );
 
 	&unloadL4Modules( $$farm{ vproto } );
+
+	if ( $farm->{ lbalg } eq 'leastconn' )
+	{
+		require Zevenet::Farm::L4xNAT::L4sd;
+		&sendL4sdSignal();
+	}
 
 	return $status;
 }

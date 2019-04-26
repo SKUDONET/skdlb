@@ -33,6 +33,8 @@ if ( eval { require Zevenet::ELoad; } )
 # PUT /farms/<farmname> Modify a l4xnat Farm
 sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $json_obj = shift;
 	my $farmname = shift;
 

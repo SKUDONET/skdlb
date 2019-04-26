@@ -1,0 +1,4 @@
+#!/bin/bash
+
+/usr/local/zevenet/bin/dhcp
+

@@ -383,7 +383,7 @@ sub httpResponse    # ( \%hash ) hash_keys->( $code, %headers, $body )
 		# log error message on error.
 		if ( ref $self->{ body } eq 'HASH' )
 		{
-			&zenlog( "$self->{ body }->{ message }", "error", $LOG_TAG )
+			&zenlog( "$self->{ body }->{ message }", "info", $LOG_TAG )
 			  if ( exists $self->{ body }->{ message } );
 		}
 	}
@@ -545,6 +545,8 @@ sub httpDownloadResponse
 
 sub buildAPIParams
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $out_b     = shift;
 	my $api_keys  = shift;
 	my $translate = shift;
@@ -567,6 +569,8 @@ sub buildAPIParams
 
 sub buildBackendAPIParams
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $out_b     = shift;
 	my $api_keys  = shift;
 	my $translate = shift;

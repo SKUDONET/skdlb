@@ -255,8 +255,8 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 						 'non_blank'    => 'true',
 		},
 		"persistence" => {
-			'values' => ["IP", "BASIC", "URL", "PARM", "COOKIE", "HEADER"],
-			'non_blank' => 'false',              # it is allowed ''
+				 'values'    => ["IP", "BASIC",          "URL", "PARM", "COOKIE", "HEADER"],
+				 'non_blank' => 'false', # it is allowed ''
 		},
 		"sessionid" => {},
 		"ttl"       => {

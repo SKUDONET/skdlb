@@ -23,7 +23,7 @@
 
 use strict;
 
-use Unix::Syslog qw(:macros :subs);  # Syslog macros
+use Unix::Syslog qw(:macros :subs);    # Syslog macros
 
 # Get the program name for zenlog
 my $TAG = "[Log.pm]";
@@ -49,6 +49,17 @@ Function: zenlog
 		&zenlog("Some errors happened.", "err", "FG");
 		&zenlog("testing debug mode", "debug", "SYSTEM");
 
+
+	The different debug levels are:
+	1 - Command executions.
+		API inputs.
+	2 - The command standart output, when there isn't any error.
+		API outputs.
+		Parameters modified in configuration files.
+	3 - (reserved)
+	4 - (reserved)
+	5 - Profiling.
+
 Parametes:
 	string - String to be written in log.
 	type   - Log level. info, error, debug, debug2, warn
@@ -64,10 +75,10 @@ sub zenlog    # ($string, $type)
 	my $type   = shift // 'info';    # type   = log level (Default: info))
 	my $tag    = shift // "";
 
-	require Zevenet::Debug;
-
 	if ( $type =~ /^(debug)(\d*)$/ )
 	{
+		require Zevenet::Debug;
+
 		# debug lvl
 		my $debug_lvl = $2;
 		$debug_lvl = 1 if not $debug_lvl;
@@ -110,6 +121,8 @@ Returns:
 
 sub zlog    # (@message)
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my @message = shift;
 
 	#my ($package,   # 0
@@ -152,6 +165,8 @@ See Also:
 
 sub logAndRun    # ($command)
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $command = shift;    # command string to log and run
 
 	my $program     = $basename;
@@ -187,16 +202,18 @@ Returns:
 
 sub logAndRunBG    # ($command)
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $command = shift;    # command string to log and run
 
 	my $program = $basename;
 
-	my $return_code = system("$command >/dev/null 2>&1 &");
+	my $return_code = system ( "$command >/dev/null 2>&1 &" );
 
 	if ( $return_code )
 	{
 		&zenlog( $program . " running: $command", "error", "SYSTEM" );
-		&zenlog( "last command failed!", "error", "SYSTEM" );
+		&zenlog( "last command failed!",          "error", "SYSTEM" );
 	}
 	else
 	{
@@ -205,12 +222,14 @@ sub logAndRunBG    # ($command)
 
 	# return_code is -1 on error.
 
-	# returns true on error launching the program, false on error launching the program
+ # returns true on error launching the program, false on error launching the program
 	return $return_code == -1;
 }
 
 sub zdie
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	require Carp;
 	Carp->import();
 

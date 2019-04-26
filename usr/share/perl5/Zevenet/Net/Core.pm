@@ -139,6 +139,15 @@ sub upIf    # ($if_ref, $writeconf)
 		$fileHandler->write( $file );
 	}
 
+	if ( !$status and $eload and $if_ref->{ dhcp } eq 'true' )
+	{
+		$status = &eload(
+						  'module' => 'Zevenet::Net::DHCP',
+						  'func'   => 'startDHCP',
+						  'args'   => [$if_ref->{ name }],
+		);
+	}
+
 	return $status;
 }
 
@@ -165,11 +174,20 @@ sub downIf    # ($if_ref, $writeconf)
 			 "debug", "PROFILING" );
 	my $if_ref    = shift;
 	my $writeconf = shift;
-
+	my $status;
 	if ( ref $if_ref ne 'HASH' )
 	{
 		&zenlog( "Wrong argument putting down the interface", "error", "NETWORK" );
 		return -1;
+	}
+
+	if ( $eload and $if_ref->{ dhcp } eq 'true' )
+	{
+		$status = &eload(
+						  'module' => 'Zevenet::Net::DHCP',
+						  'func'   => 'stopDHCP',
+						  'args'   => [$if_ref->{ name }],
+		);
 	}
 
 	my $ip_cmd;
@@ -188,7 +206,7 @@ sub downIf    # ($if_ref, $writeconf)
 		$ip_cmd = "$ip_bin addr del $$if_ref{addr}/$$if_ref{mask} dev $routed_iface";
 	}
 
-	my $status = &logAndRun( $ip_cmd );
+	$status = &logAndRun( $ip_cmd );
 
 	# Set down status in configuration file
 	if ( $writeconf )

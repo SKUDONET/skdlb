@@ -396,8 +396,7 @@ sub applyRoutes    # ($table,$if_ref,$gateway)
 				&zenlog(
 						 "Applying $table routes in stack IPv$$if_ref{ip_v} with gateway \""
 						   . &getGlobalConfiguration( 'defaultgw' ) . "\"",
-						 "info",
-						 "NETWORK"
+						 "info", "NETWORK"
 				);
 				my $ip_cmd =
 				  "$ip_bin -$$if_ref{ip_v} route $action default via $gateway dev $$if_ref{name} $routeparams";
@@ -426,7 +425,6 @@ sub applyRoutes    # ($table,$if_ref,$gateway)
 				untie @contents;
 
 				require Zevenet::Farm::L4xNAT::Config;
-				&reloadL4FarmsSNAT() if $status == 0;
 			}
 		}
 	}
@@ -511,7 +509,6 @@ sub delRoutes    # ($table,$if_ref)
 			untie @contents;
 
 			require Zevenet::Farm::L4xNAT::Config;
-			&reloadL4FarmsSNAT() if $status == 0;
 
 			return $status;
 		}

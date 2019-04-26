@@ -41,6 +41,8 @@ Returns:
 
 sub moveByIndex
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my ( $list, $ori_index, $dst_index ) = @_;
 
 	my $elem = $list->[$ori_index];
@@ -54,6 +56,8 @@ sub moveByIndex
 
 sub getARRIndex
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my ( $list, $item ) = @_;
 	my $ind;
 

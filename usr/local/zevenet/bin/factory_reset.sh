@@ -146,6 +146,9 @@ done
 rm -fr ${CONF_DIR}/*
 mv $TMP_CONF_DIR/* ${CONF_DIR}
 
+# create local conf dir
+mkdir "$localconfig"
+
 # set template
 cp $http_server_key_tpl $http_server_key
 cp $http_server_cert_tpl $http_server_cert

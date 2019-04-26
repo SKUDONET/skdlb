@@ -530,6 +530,8 @@ sub httpDownloadResponse
 
 sub buildAPIParams
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $out_b     = shift;
 	my $api_keys  = shift;
 	my $translate = shift;
@@ -552,6 +554,8 @@ sub buildAPIParams
 
 sub buildBackendAPIParams
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $out_b     = shift;
 	my $api_keys  = shift;
 	my $translate = shift;

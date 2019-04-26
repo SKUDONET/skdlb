@@ -78,6 +78,13 @@ sub getL4FarmParam
 		return &getL4FarmStatus( $farm_name );
 	}
 
+	if ( $param eq "alg" )
+	{
+		require Zevenet::Farm::L4xNAT::L4sd;
+		my $l4sched = &getL4sdType( $farm_name );
+		return $l4sched if ( $l4sched ne "" );
+	}
+
 	open my $fd, '<', "$configdir/$farm_filename";
 	chomp ( my @content = <$fd> );
 	close $fd;
@@ -151,6 +158,14 @@ sub setL4FarmParam
 		$value = "snat"     if ( $value eq "nat" );
 		$value = "stlsdnat" if ( $value eq "stateless_dnat" );
 		$parameters = qq(, "mode" : "$value" );
+
+		# deactivate leastconn and persistence for DSR #NOTYET
+		if ( $value eq "dsr" )
+		{
+			require Zevenet::Farm::L4xNAT::L4sd;
+			&setL4sdType( $farm_name, "none" );
+			&setL4FarmParam( 'persist', "none", $farm_name );
+		}
 	}
 	elsif ( $param eq "vip" )
 	{
@@ -176,6 +191,17 @@ sub setL4FarmParam
 		{
 			$value    = "hash";
 			$addition = $addition . qq( , "sched-param" : "srcip" );
+		}
+
+		require Zevenet::Farm::L4xNAT::L4sd;
+		if ( $value eq "leastconn" )
+		{
+			&setL4sdType( $farm_name, $value );
+			$value = "weight";
+		}
+		else
+		{
+			&setL4sdType( $farm_name, "none" );
 		}
 
 		$parameters = qq(, "scheduler" : "$value" ) . $addition;
@@ -206,7 +232,7 @@ sub setL4FarmParam
 			$addition = $addition . qq( , "helper" : "none" );
 		}
 
-		$addition = $addition . qq( , "virtual-ports" : "" ) if ( $value eq "all" );
+		$addition = $addition . qq( , "virtual-ports" : "*" ) if ( $value eq "all" );
 		$parameters = qq(, "protocol" : "$value" ) . $addition;
 	}
 	elsif ( $param eq "status" || $param eq "bootstatus" )
@@ -524,14 +550,28 @@ sub getL4FarmStruct
 	my $config = &getFarmPlainInfo( $farm{ name } );
 
 	$farm{ nattype } = &_getL4ParseFarmConfig( 'mode', undef, $config );
-	$farm{ mode }    = $farm{ nattype };
-	$farm{ lbalg }   = &_getL4ParseFarmConfig( 'alg', undef, $config );
-	$farm{ vip }     = &_getL4ParseFarmConfig( 'vip', undef, $config );
-	$farm{ vport }   = &_getL4ParseFarmConfig( 'vipp', undef, $config );
-	$farm{ vproto }  = &_getL4ParseFarmConfig( 'proto', undef, $config );
+	$farm{ mode } = $farm{ nattype };
 
-	$farm{ persist } = &_getL4ParseFarmConfig( 'persist',   undef, $config );
-	$farm{ ttl }     = &_getL4ParseFarmConfig( 'persisttm', undef, $config );
+	require Zevenet::Farm::L4xNAT::L4sd;
+	my $l4sched = &getL4sdType( $farm{ name } );
+	if ( $l4sched ne "" )
+	{
+		$farm{ lbalg } = $l4sched;
+	}
+	else
+	{
+		$farm{ lbalg } = &_getL4ParseFarmConfig( 'alg', undef, $config );
+	}
+
+	$farm{ vip }    = &_getL4ParseFarmConfig( 'vip',   undef, $config );
+	$farm{ vport }  = &_getL4ParseFarmConfig( 'vipp',  undef, $config );
+	$farm{ vproto } = &_getL4ParseFarmConfig( 'proto', undef, $config );
+
+	my $persist = &_getL4ParseFarmConfig( 'persist', undef, $config );
+	$farm{ persist } = ( $persist eq 'ip' ) ? 'ip' : '';
+	my $ttl = &_getL4ParseFarmConfig( 'persisttm', undef, $config );
+	$farm{ ttl } = ( $ttl == -1 ) ? 0 : $ttl;
+
 	$farm{ proto }      = &getL4ProtocolTransportLayer( $farm{ vproto } );
 	$farm{ bootstatus } = &_getL4ParseFarmConfig( 'bootstatus', undef, $config );
 	$farm{ status }     = &getL4FarmStatus( $farm{ name } );
@@ -821,6 +861,8 @@ Returns:
 
 sub doL4FarmRules
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $action        = shift;
 	my $farm_name     = shift;
 	my $prev_farm_ref = shift;
@@ -836,13 +878,6 @@ sub doL4FarmRules
 		&setL4BackendRule( "add", $farm_ref, $server->{ tag } )
 		  if ( $action eq "start" || $action eq "reload" );
 	}
-}
-
-# TODO: Obsolete. Eliminate callers.
-sub reloadL4FarmsSNAT
-{
-	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
-			 "debug", "PROFILING" );
 }
 
 1;

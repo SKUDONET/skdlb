@@ -1184,6 +1184,16 @@ sub get_http_all_services_struct
 		push @services_list, $service_ref;
 	}
 
+	if ( $eload )
+	{
+		my $out_b = &eload(
+							module => 'Zevenet::Alias',
+							func   => 'addAliasBackendsStruct',
+							args   => [\@services_list],
+		);
+		@services_list = @{ $out_b };
+	}
+
 	return \@services_list;
 }
 

@@ -337,6 +337,8 @@ Returns:
 
 sub setEnv
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	use Zevenet::Config;
 	$ENV{ http_proxy }  = &getGlobalConfiguration( 'http_proxy' )  // "";
 	$ENV{ https_proxy } = &getGlobalConfiguration( 'https_proxy' ) // "";

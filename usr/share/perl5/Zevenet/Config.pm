@@ -51,7 +51,26 @@ sub getGlobalConfiguration
 	state $global_conf = &parseGlobalConfiguration();
 	$global_conf = &parseGlobalConfiguration() if ( $force_reload );
 
-	return eval { $global_conf->{ $parameter } } if $parameter;
+	if ( $parameter )
+	{
+		if ( defined $global_conf->{ $parameter } )
+		{
+			return $global_conf->{ $parameter };
+		}
+
+# bugfix: it is not returned any message when the 'debug' parameter is not defined in global.conf.
+		elsif ( $parameter eq 'debug' )
+		{
+			return undef;
+		}
+		else
+		{
+			&zenlog( "The global configuration parameter '$parameter' has not been found",
+					 'warning', 'Configuration' );
+			return undef;
+		}
+	}
+
 	return $global_conf;
 }
 

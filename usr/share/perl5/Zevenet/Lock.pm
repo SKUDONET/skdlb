@@ -179,6 +179,8 @@ sub ztielock    # ($file_name)
 
 sub copyLock
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $ori = shift;
 	my $dst = shift;
 

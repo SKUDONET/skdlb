@@ -198,11 +198,11 @@ sub httpNlbRequest
 	  if ( defined $self->{ body } && $self->{ body } ne "" );
 
 	my $execmd =
-	  qq($curl_cmd -s -H "Key: HoLa" -H \"Expect:\" -X "$self->{ method }" $body http://127.0.0.1:27$self->{ uri });
+	  qq($curl_cmd --noproxy "*" -s -H "Key: HoLa" -H \"Expect:\" -X "$self->{ method }" $body http://127.0.0.1:27$self->{ uri });
 
 	if ( defined $self->{ file } && $self->{ file } ne "" )
 	{
-		$execmd = $execmd . " > " . $self->{ file };
+		$execmd = $execmd . " -f -o " . $self->{ file };
 	}
 
 	$output = &logAndRun( $execmd );
@@ -210,6 +210,88 @@ sub httpNlbRequest
 	return -1 if ( $output != 0 );
 
 	return 0;
+}
+
+=begin nd
+Function: execNft
+
+	Execute the nft command
+
+Parameters:
+	action		- "add", "delete", "check" or "flush"
+	table		- type and name of the table to be used (ej "netdev foo")
+	chain_def	- name and definition of the chain to be used
+	rule		- rule or pattern in case of deletion
+
+Returns:
+	Integer - 0 on success or != 0 on failure. In case of check action,
+
+=cut
+
+sub execNft
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $action    = shift;
+	my $table     = shift;
+	my $chain_def = shift;
+	my $rule      = shift;
+
+	my $nft       = &getGlobalConfiguration( 'nft_bin' );
+	my ( $chain ) = $chain_def =~ /^((\w-\.\d)+)\s+.*/;
+	my $output    = 0;
+
+	if ( $action eq "add" )
+	{
+		&logAndRun( "$nft add table $table" );
+		&logAndRun( "$nft add chain $table $chain_def" );
+		$output = &logAndRun( "$nft add rule $table $chain $rule" );
+	}
+	elsif ( $action eq "delete" )
+	{
+		if ( $chain eq "" )
+		{
+			$output = &logAndRun( "$nft delete table $table" );
+		}
+		elsif ( $rule eq "" )
+		{
+			$output = &logAndRun( "$nft delete chain $table $chain" );
+		}
+		else
+		{
+			my @rules  = `$nft list chain $table $chain`;
+			my $handle = "";
+			foreach my $r ( @rules )
+			{
+				my ( $handle ) = $r =~ / $rule \# handle (\d)$/;
+				if ( $handle ne "" )
+				{
+					$output = &logAndRun( "$nft delete rule $table $chain handle $handle" );
+					last;
+				}
+			}
+		}
+	}
+	elsif ( $action eq "check" )
+	{
+		my @rules = `$nft list chain $table $chain`;
+		foreach my $r ( @rules )
+		{
+			if ( $r =~ / $rule / )
+			{
+				$output = 1;
+				last;
+			}
+		}
+	}
+	elsif ( $action eq "flush" )
+	{
+		&logAndRun( "$nft add table $table" );
+		&logAndRun( "$nft add chain $table $chain_def" );
+		$output = &logAndRun( "$nft flush chain $table $chain" );
+	}
+
+	return $output;
 }
 
 1;

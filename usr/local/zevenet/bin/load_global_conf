@@ -9,6 +9,10 @@ load_global_conf() {
 	# remove spaces between variable and value in the assignments
 	sed 's/^\$//;s/\s*=\s*/=/' $GLOBALCONF > $TMP_CONF
 
-	source $TMP_CONF
+	if [ -n "$BASH_VARIABLE" ]; then
+		source $TMP_CONF
+	else
+		. $TMP_CONF
+	fi
 	rm $TMP_CONF
 }

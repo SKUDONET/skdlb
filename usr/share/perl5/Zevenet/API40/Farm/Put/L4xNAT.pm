@@ -62,55 +62,48 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 		&httpErrorResponse( code => 410, desc => $desc, msg => $msg );
 	}
 
-	# Disabled temporality
-	elsif ( $json_obj->{ algorithm } =~ /^leastconn$/ )
-	{
-		my $msg = "the 'leastconn' algorithm is not implemented yet.";
-		&httpErrorResponse( code => 406, desc => $desc, msg => $msg );
-	}
-
 	my $params = {
-		  "newfarmname" => {
-							 'valid_format' => 'farm_name',
-							 'non_blank'    => 'true',
-		  },
-		  "vport" => {
-					   'non_blank' => 'true',
-		  },
-		  "vip" => {
-					 'function'   => \&getIpAddressExists,
-					 'non_blank'  => 'true',
-					 'format_msg' => 'The vip IP must exist in some interface.'
-		  },
-		  "algorithm" => {
-				  'values' =>
-					['weight', 'roundrobin', 'hash_srcip_srcport', 'hash_srcip', 'symhash'],
-				  'non_blank' => 'true',
-		  },
-		  "persistence" => {
-							 'values' => [
-										  'none', 'ip', 'srcip', 'srcport',
-										  'srcmac', 'srcip_srcport', 'srcip_dstport'
-							 ],
-							 'non_blank' => 'true',
-		  },
-		  "protocol" => {
-						  'values' => [
-									   'all',  'tcp', 'udp',        'sctp',
-									   'sip',  'ftp', 'tftp',       'amanda',
-									   'h323', 'irc', 'netbios-ns', 'pptp',
-									   'sane', 'snmp'
-						  ],
+		   "newfarmname" => {
+							  'valid_format' => 'farm_name',
+							  'non_blank'    => 'true',
+		   },
+		   "vport" => {
+						'non_blank' => 'true',
+		   },
+		   "vip" => {
+					  'function'   => \&getIpAddressExists,
+					  'non_blank'  => 'true',
+					  'format_msg' => 'The vip IP must exist in some interface.'
+		   },
+		   "algorithm" => {
+							'values' => [
+										 'weight',             'roundrobin',
+										 'hash_srcip_srcport', 'hash_srcip',
+										 'symhash',            'leastconn'
+							],
+							'non_blank' => 'true',
+		   },
+		   "persistence" => {
+				   'values' =>
+					 ['ip', 'srcip', 'srcport', 'srcmac', 'srcip_srcport', 'srcip_dstport'],
+		   },
+		   "protocol" => {
+						   'values' => [
+										'all',  'tcp', 'udp',        'sctp',
+										'sip',  'ftp', 'tftp',       'amanda',
+										'h323', 'irc', 'netbios-ns', 'pptp',
+										'sane', 'snmp'
+						   ],
+						   'non_blank' => 'true',
+		   },
+		   "nattype" => {
+						  'values'    => ['nat', 'dnat', 'dsr', 'stateless_dnat'],
 						  'non_blank' => 'true',
-		  },
-		  "nattype" => {
-						 'values'    => ['nat', 'dnat', 'dsr', 'stateless_dnat'],
-						 'non_blank' => 'true',
-		  },
-		  "ttl" => {
-					 'valid_format' => 'natural_num',
-					 'non_blank'    => 'true',
-		  },
+		   },
+		   "ttl" => {
+					  'valid_format' => 'natural_num',
+					  'non_blank'    => 'true',
+		   },
 	};
 
 	if ( $eload )
@@ -283,8 +276,8 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 	if ( exists ( $json_obj->{ vip } ) or exists ( $json_obj->{ vport } ) )
 	{
 		# Get current vip & vport
-		my $vip   = $json_obj->{ vip }   // &getFarmVip( "vip",  $farmname );
-		my $vport = $json_obj->{ vport } // &getFarmVip( "vipp", $farmname );
+		my $vip   = $json_obj->{ vip }   // "";
+		my $vport = $json_obj->{ vport } // "";
 
 		if ( &setFarmVirtualConf( $vip, $vport, $farmname ) )
 		{

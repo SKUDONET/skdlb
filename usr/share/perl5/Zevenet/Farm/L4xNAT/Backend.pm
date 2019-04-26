@@ -68,28 +68,11 @@ sub setL4FarmServer
 	require Zevenet::Farm::Backend;
 	require Zevenet::Netfilter;
 
-	&zenlog(
-		"setL4FarmServer << farm_name:$farm_name ids:$ids rip:$rip port:$port weight:$weight priority:$priority max_conns:$max_conns"
-	) if &debug;
-
 	my $farm_filename = &getFarmFile( $farm_name );
 	my $mark          = &getNewMark( $farm_name );
 	my $output        = 0;
-
-	if ( $weight == 0 )
-	{
-		$weight = 1;
-	}
-
-	if ( $priority == 0 )
-	{
-		$priority = 1;
-	}
-
-	if ( $max_conns < 0 )
-	{
-		$max_conns = 0;
-	}
+	my $json          = qq();
+	my $msg           = "setL4FarmServer << farm_name:$farm_name ids:$ids ";
 
 	# load the configuration file first if the farm is down
 	my $f_ref = &getL4FarmStruct( $farm_name );
@@ -101,14 +84,56 @@ sub setL4FarmServer
 
 	my $exists = &getFarmServer( $f_ref->{ servers }, $ids );
 
-	# It's a backend modification
-	if ( $exists )
+	if ( defined $rip && $rip ne "" )
 	{
-		$mark = $exists->{ tag };
+		$exists = &getFarmServer( $f_ref->{ servers }, $rip, "rip" );
+		return -2 if ( $exists && ( $exists->{ id } ne $ids ) );
+		$json .= qq(, "ip-addr" : "$rip");
+		$msg  .= "rip:$rip ";
 	}
 
-	$exists = &getFarmServer( $f_ref->{ servers }, $rip, "rip" );
-	return -2 if ( $exists && ( $exists->{ id } ne $ids ) );
+	if ( defined $port )
+	{
+		$json .= qq(, "port" : "$port");
+		$msg  .= "port:$port ";
+	}
+
+	if ( defined $weight && $weight ne "" )
+	{
+		$weight = 1 if ( $weight == 0 );
+		$json .= qq(, "weight" : "$weight");
+		$msg  .= "weight:$weight ";
+	}
+
+	if ( defined $priority && $priority ne "" )
+	{
+		$priority = 1 if ( $priority == 0 );
+		$json .= qq(, "priority" : "$priority");
+		$msg  .= "priority:$priority ";
+	}
+
+	if ( defined $mark && $mark ne "" )
+	{
+		# It's a backend modification
+		$mark = $exists->{ tag } if ( $exists );
+		$json .= qq(, "mark" : "$mark");
+		$msg  .= "mark:$mark ";
+	}
+
+	if ( defined $max_conns && $max_conns ne "" )
+	{
+		$max_conns = 0 if ( $max_conns < 0 );
+		$json .= qq(, "est-connlimit" : "$max_conns");
+		$msg  .= "maxconns:$max_conns ";
+	}
+
+	if ( !$exists )
+	{
+		$json .= qq(, "state" : "up");
+		$msg  .= "state:up ";
+	}
+
+	&zenlog( "$msg" ) if &debug;
 
 	$output = &sendL4NlbCmd(
 		{
@@ -116,7 +141,7 @@ sub setL4FarmServer
 		   file   => "$configdir/$farm_filename",
 		   method => "PUT",
 		   body =>
-			 qq({"farms" : [ { "name" : "$farm_name", "backends" : [ { "name" : "bck$ids", "ip-addr" : "$rip", "port" : "$port", "weight" : "$weight", "priority" : "$priority", "mark" : "$mark", "est-connlimit" : "$max_conns", "state" : "up" } ] } ] })
+			 qq({"farms" : [ { "name" : "$farm_name", "backends" : [ { "name" : "bck$ids"$json } ] } ] })
 		}
 	);
 
@@ -209,7 +234,7 @@ sub setL4FarmBackendsSessionsRemove
 	return 0 if ( $farm->{ persist } eq "none" );
 
 	my $be = $farm->{ servers }[$backend];
-	my $tag =~ s/0x//g;
+	( my $tag = $be->{ tag } ) =~ s/0x//g;
 	my $map_name   = "persist-$farmname";
 	my @persistmap = `/usr/local/sbin/nft list map nftlb $map_name`;
 	my $data       = 0;
@@ -287,6 +312,7 @@ sub setL4FarmBackendStatus
 		&resetL4FarmBackendConntrackMark( $server );
 	}
 
+	#~ TODO
 	#~ my $stopping_fg = ( $caller =~ /runFarmGuardianStop/ );
 	#~ if ( $fg_enabled eq 'true' && !$stopping_fg )
 	#~ {
@@ -296,11 +322,11 @@ sub setL4FarmBackendStatus
 	#~ }
 	#~ }
 
-	#~ TODO
-	#~ if ( $farm->{ lbalg } eq 'leastconn' )
-	#~ {
-	#~ &sendL4ConfChange( $farm->{ name } );
-	#~ }
+	if ( $farm->{ lbalg } eq 'leastconn' )
+	{
+		require Zevenet::Farm::L4xNAT::L4sd;
+		&sendL4sdSignal();
+	}
 
 	return $output;
 }
@@ -359,22 +385,6 @@ sub _getL4FarmParseServers
 	require Zevenet::Farm::L4xNAT::Config;
 	my $fproto = &_getL4ParseFarmConfig( 'proto', undef, $config );
 
-	my $permission = 0;
-	my $alias;
-	if ( $eload )
-	{
-		$permission = &eload(
-							  module => 'Zevenet::RBAC::Core',
-							  func   => 'getRBACRolePermission',
-							  args   => ['alias', 'list'],
-		);
-		$alias = &eload(
-						 module => 'Zevenet::Alias',
-						 func   => 'getAlias',
-						 args   => ['backend']
-		) if $permission;
-	}
-
 	foreach my $line ( @{ $config } )
 	{
 		if ( $line =~ /\"farms\"/ )
@@ -414,14 +424,14 @@ sub _getL4FarmParseServers
 		if ( $stage == 3 && $line =~ /\"ip-addr\"/ )
 		{
 			my @l = split /"/, $line;
-			$server->{ ip }    = $l[3];
-			$server->{ rip }   = $l[3];
-			$server->{ alias } = $permission ? $alias->{ $l[3] } : undef if $eload;
+			$server->{ ip }  = $l[3];
+			$server->{ rip } = $l[3];
 		}
 
 		if ( $stage == 3 && $line =~ /\"port\"/ )
 		{
-			$server->{ port } = "";    # TODO Not supported yet
+			my @l = split /"/, $line;
+			$server->{ port } = $l[3];
 
 			require Zevenet::Net::Validate;
 			if ( $server->{ port } ne '' && $fproto ne 'all' )
@@ -572,11 +582,11 @@ sub resetL4FarmBackendConntrackMark
 	{
 		if ( $return_code )
 		{
-			&zenlog( "Connection tracking for $server->{ vip } not found." );
+			&zenlog( "Connection tracking for " . $server->{ ip } . " not found." );
 		}
 		else
 		{
-			&zenlog( "Connection tracking for $server->{ vip } removed." );
+			&zenlog( "Connection tracking for " . $server->{ ip } . " removed." );
 		}
 	}
 

@@ -82,10 +82,7 @@ sub new_farm_backend    # ( $json_obj, $farmname )
 								'valid_format' => 'port',
 								'format_msg'   => 'expects a port or port range'
 		};
-		$params->{ "max_conns" } = {
-									 'valid_format' => 'natural_num',
-									 'format_msg'   => 'expects a natural number'
-		};
+		$params->{ "max_conns" } = { 'interval' => '0,' };
 	}
 	else
 	{
@@ -438,10 +435,7 @@ sub modify_backends    #( $json_obj, $farmname, $id_server )
 								'function'   => \&isValidPortNumber,
 								'format_msg' => 'expects an port or port range'
 		};
-		$params->{ "max_conns" } = {
-									 'valid_format' => 'natural_num',
-									 'format_msg'   => 'expects a natural number'
-		};
+		$params->{ "max_conns" } = { 'interval' => '0,' };
 	}
 	else
 	{
@@ -454,7 +448,7 @@ sub modify_backends    #( $json_obj, $farmname, $id_server )
 	  if ( $error_msg );
 
 	$backend->{ ip } = $json_obj->{ ip } if exists $json_obj->{ ip };
-	$backend->{ vport } = $json_obj->{ port }
+	$backend->{ port } = $json_obj->{ port }
 	  if exists $json_obj->{ port };    # l4xnat
 	$backend->{ weight } = $json_obj->{ weight } if exists $json_obj->{ weight };
 	$backend->{ priority } = $json_obj->{ priority }
@@ -806,6 +800,8 @@ sub delete_service_backend    # ( $farmname, $service, $id_server )
 
 sub validateDatalinkBackendIface
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $backend = shift;
 	my $msg;
 

@@ -104,7 +104,7 @@ sub modify_gateway    # ( $json_obj )
 	}
 
 	my $interface = $json_obj->{ interface };
-	my $address   = $json_obj->{ address } // $default_gw;
+	my $address = $json_obj->{ address } // $default_gw;
 
 	unless ( $interface )
 	{

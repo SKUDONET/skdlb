@@ -532,6 +532,7 @@ Parameters:
 			"interval" 	: "1,65535",	# it is possible define strings matchs ( non implement). For example: "ports" = "1-65535", "log_level":"1-3", ...
 										# ",10" indicates that the value has to be less than 10 but without low limit
 										# "10," indicates that the value has to be more than 10 but without high limit
+										# The values of the interval has to be integer numbers
 			"exceptions"	: [ "zapi", "webgui", "root" ],	# The parameter can't have got any of the listed values
 			"values" : ["priority", "weight"],		# list of possible values for a parameter
 			"regex"	: "/\w+,\d+/",		# regex format
@@ -611,14 +612,18 @@ sub checkZAPIParams
 		}
 
 		# the input has to be a ref
+		my $r = ref $json_obj->{ $param } // '';
 		if ( exists $param_obj->{ $param }->{ 'ref' } )
 		{
-			my $r = ref $json_obj->{ $param } // '';
 			if ( $r !~ /^$param_obj->{ $param }->{ 'ref' }$/i )
 			{
 				return
 				  "The parameter '$param' expects a '$param_obj->{ $param }->{ref}' reference as input";
 			}
+		}
+		elsif ( $r eq 'ARRAY' or $r eq 'HASH' )
+		{
+			return "The parameter '$param' does not expect a $r as input";
 		}
 
 		# getValidFormat funcion:
@@ -688,7 +693,7 @@ sub checkZAPIParams
 =begin nd
 Function: checkParamsInterval
 
-	Check parameters when there are required params
+	Check parameters when there are required params. The value has to be a integer number
 
 Parameters:
 	Interval - String with the expected interval. The low and high limits must be splitted with a comma character ','
@@ -702,27 +707,32 @@ Returns:
 
 sub checkParamsInterval
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my ( $interval, $param, $value ) = @_;
 	my $err_msg;
 
 	if ( $interval =~ /,/ )
 	{
 		my ( $low_limit, $high_limit ) = split ( ',', $interval );
-		my $low_str =
-		  ( $low_limit )
-		  ? "'$param' has to be greater than or equal to '$low_limit'"
-		  : "";
-		my $high_str =
-		  ( $high_limit )
-		  ? "'$param' has to be lower than or equal to '$high_limit'"
-		  : "";
-		my $msg = $low_str if $low_str;
 
-		if ( $high_str )
+		my $msg = "";
+		if ( defined $low_limit and defined $high_limit )
 		{
-			$msg .= ". " if $msg;
-			$msg .= $high_str;
+			$msg =
+			  "'$param' has to be an integer number between '$low_limit' and '$high_limit'";
 		}
+		elsif ( defined $low_limit )
+		{
+			$msg =
+			  "'$param' has to be an integer number greater than or equal to '$low_limit'";
+		}
+		elsif ( defined $high_limit )
+		{
+			$msg =
+			  "'$param' has to be an integer number lower than or equal to '$high_limit'";
+		}
+
 		$err_msg = $msg
 		  if (    ( $value !~ /^\d*$/ )
 			   || ( $value > $high_limit )
@@ -752,6 +762,8 @@ Returns:
 
 sub checkParamsInvalid
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my ( $rec_keys, $expect_params ) = @_;
 	my $err_msg;
 	my @non_valid;
@@ -789,6 +801,8 @@ Returns:
 
 sub checkParamsRequired
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my ( $rec_keys, $expect_params, $param_obj ) = @_;
 	my @miss_params;
 	my $err_msg;
@@ -829,6 +843,8 @@ Returns:
 
 sub httpResponseHelp
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $param_obj  = shift;
 	my $resp_param = [];
 
