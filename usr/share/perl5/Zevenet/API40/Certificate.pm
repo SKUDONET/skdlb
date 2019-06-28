@@ -44,7 +44,9 @@ sub certificates    # ()
 
 	foreach my $cert ( @certificates )
 	{
-		push @out, &getCertInfo( "$configdir/$cert" );
+		my $cert = &getCertInfo( "$configdir/$cert" );
+		delete $cert->{ key };
+		push @out, $cert;
 	}
 
 	my $body = {
@@ -447,6 +449,13 @@ sub delete_farm_certificate    # ( $farmname, $certfilename )
 	if ( !$number )
 	{
 		my $msg = "Certificate is not used by the farm.";
+		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+
+	if ( @certSNI == 1 or ( $number == @certSNI ) )
+	{
+		my $msg =
+		  "The certificate '$certfilename' could not be deleted, the farm needs one certificate at least.";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 

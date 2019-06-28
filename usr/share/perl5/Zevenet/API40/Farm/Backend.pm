@@ -22,6 +22,8 @@
 ###############################################################################
 
 use strict;
+
+use Zevenet::API40::HTTP;
 use Zevenet::Farm::Core;
 use Zevenet::Farm::Base;
 use Zevenet::Net::Validate;
@@ -589,9 +591,9 @@ sub modify_service_backends    #( $json_obj, $farmname, $service, $id_server )
 
 	# apply BACKEND change
 
-	$be->{ ip }      = $json_obj->{ ip }      // $be->{ ip };
-	$be->{ port }    = $json_obj->{ port }    // $be->{ port };
-	$be->{ weight }  = $json_obj->{ weight }  // $be->{ weight };
+	$be->{ ip }      = $json_obj->{ ip } // $be->{ ip };
+	$be->{ port }    = $json_obj->{ port } // $be->{ port };
+	$be->{ weight }  = $json_obj->{ weight } // $be->{ weight };
 	$be->{ timeout } = $json_obj->{ timeout } // $be->{ timeout };
 
 	my $status = &setHTTPFarmServer( $id_server,
@@ -688,8 +690,14 @@ sub delete_backend    # ( $farmname, $id_server )
 	&eload(
 			module => 'Zevenet::Cluster',
 			func   => 'runZClusterRemoteManager',
+			args   => ['farm', 'delete', $farmname, 'backend', $id_server],
+	) if ( $eload && $type eq 'l4xnat' );
+
+	&eload(
+			module => 'Zevenet::Cluster',
+			func   => 'runZClusterRemoteManager',
 			args   => ['farm', 'restart', $farmname],
-	) if ( $eload );
+	) if ( $eload && $type eq 'datalink' );
 
 	my $message = "Backend removed";
 	my $body = {
@@ -817,8 +825,8 @@ sub validateDatalinkBackendIface
 		$msg = "It is not possible to configure vlan interface for datalink backends";
 	}
 	elsif (
-		  !&getNetValidate( $iface_ref->{ addr }, $iface_ref->{ mask }, $backend->{ ip }
-		  )
+			!&getNetValidate( $iface_ref->{ addr }, $iface_ref->{ mask }, $backend->{ ip }
+			)
 	  )
 	{
 		$msg =

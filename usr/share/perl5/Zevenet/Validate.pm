@@ -29,7 +29,7 @@ use Regexp::IPv6 qw($IPv6_re);
 # \w matches the 63 characters [a-zA-Z0-9_] (most of the time)
 #
 
-my $UNSIGNED8BITS = qr/(?:25[0-5]|2[0-4]\d|[01]?\d\d?)/;             # (0-255)
+my $UNSIGNED8BITS = qr/(?:25[0-5]|2[0-4]\d|(?!0)[1]?\d\d?|0)/;       # (0-255)
 my $UNSIGNED7BITS = qr/(?:[0-9]{1,2}|10[0-9]|11[0-9]|12[0-8])/;      # (0-128)
 my $HEXCHAR       = qr/(?:[A-Fa-f0-9])/;
 my $ipv6_word     = qr/(?:$HEXCHAR+){1,4}/;
@@ -101,8 +101,8 @@ my %format_re = (
 	'ssh_listen'     => qr/(?:$ipv4v6|\*)/,
 	'snmp_status'    => $boolean,
 	'snmp_ip'        => qr/(?:$ipv4v6|\*)/,
+	'snmp_community' => qr{.+},
 	'snmp_port'      => $port_range,
-	'snmp_community' => qr{[\w]+},
 	'snmp_scope'     => qr{(?:\d{1,3}\.){3}\d{1,3}\/\d{1,2}},    # ip/mask
 	'ntp'            => qr{[\w\.\-]+},
 	'http_proxy' => qr{\S*},    # use any character except the spaces
@@ -535,6 +535,7 @@ Parameters:
 										# The values of the interval has to be integer numbers
 			"exceptions"	: [ "zapi", "webgui", "root" ],	# The parameter can't have got any of the listed values
 			"values" : ["priority", "weight"],		# list of possible values for a parameter
+			"length" : 32,				# it is the maximum string size for the value
 			"regex"	: "/\w+,\d+/",		# regex format
 			"ref"	: "array|hash",		# the expected input must be an array or hash ref
 			"valid_format"	: "farmname",		# regex stored in Validate.pm file, it checks with the function getValidFormat
@@ -650,6 +651,17 @@ sub checkZAPIParams
 			  . join ( "', '", @{ $param_obj->{ $param }->{ 'values' } } );
 		}
 
+		# length
+		if ( exists $param_obj->{ $param }->{ 'length' } )
+		{
+			my $data_length = length ( $json_obj->{ $param } );
+			if ( $data_length > $param_obj->{ $param }->{ 'length' } )
+			{
+				return
+				  "The maximum length for '$param' is '$param_obj->{ $param }->{ 'length' }'";
+			}
+		}
+
 		# intervals
 		if ( exists $param_obj->{ $param }->{ 'interval' } )
 		{
@@ -717,7 +729,7 @@ sub checkParamsInterval
 		my ( $low_limit, $high_limit ) = split ( ',', $interval );
 
 		my $msg = "";
-		if ( defined $low_limit and defined $high_limit )
+		if ( defined $low_limit and defined $high_limit and length $high_limit )
 		{
 			$msg =
 			  "'$param' has to be an integer number between '$low_limit' and '$high_limit'";
@@ -735,8 +747,8 @@ sub checkParamsInterval
 
 		$err_msg = $msg
 		  if (    ( $value !~ /^\d*$/ )
-			   || ( $value > $high_limit )
-			   || ( $value < $low_limit ) );
+			   || ( $value > $high_limit and length $high_limit )
+			   || ( $value < $low_limit  and length $low_limit ) );
 	}
 	else
 	{
@@ -867,8 +879,8 @@ sub httpResponseHelp
 			$hl = '-' if ( !defined $hl );
 			$param->{ interval } = "Expects a value between '$ll' and '$hl'.";
 		}
-		unless ( exists $param_obj->{ $p }->{ non_blank }
-				 and $param_obj->{ $p }->{ non_blank } eq 'true' )
+		if ( exists $param_obj->{ $p }->{ non_blank }
+			 and $param_obj->{ $p }->{ non_blank } eq 'true' )
 		{
 			push @{ $param->{ options } }, "non_blank";
 		}

@@ -671,7 +671,7 @@ sub getFarmPlainInfo    # ($farm_name)
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $farm_name = shift;
-	my $file = shift // undef;
+	my $file      = shift // undef;
 	my @content;
 
 	my $configdir = &getGlobalConfiguration( 'configdir' );
@@ -692,6 +692,79 @@ sub getFarmPlainInfo    # ($farm_name)
 	}
 
 	return \@content;
+}
+
+=begin nd
+Function: reloadFarmsSourceAddress
+
+        Reload source address rules of farms (l4 in NAT mode and HTTP)
+
+Parameters:
+        none
+
+Returns:
+        none
+
+TODO:
+		HTTP farms not yet supported
+
+FIXME:
+		one source address per farm, not for backend
+=cut
+
+sub reloadFarmsSourceAddress
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+
+	require Zevenet::Farm::Core;
+
+	for my $farm_name ( &getFarmNameList() )
+	{
+		&reloadFarmsSourceAddressByFarm( $farm_name );
+	}
+}
+
+=begin nd
+Function: reloadFarmsSourceAddress
+
+        Reload source address rules of a certain farm (l4 in NAT mode and HTTP)
+
+Parameters:
+        farm_name - name of the farm to apply the source address
+
+Returns:
+        none
+
+TODO:
+		HTTP farms not yet supported
+
+FIXME:
+		one source address per farm, not for backend
+=cut
+
+sub reloadFarmsSourceAddressByFarm
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+
+	require Zevenet::Farm::Core;
+	require Zevenet::Farm::Base;
+
+	my $farm_name = shift;
+	my $farm_type = &getFarmType( $farm_name );
+
+	return if $farm_type ne 'l4xnat';
+	return if &getFarmStatus( $farm_name ) ne 'up';
+
+	my $farm_ref = &getL4FarmStruct( $farm_name );
+	return if $farm_ref->{ nattype } ne 'nat';
+
+	&eload(
+			module => 'Zevenet::Net::Floating',
+			func   => 'setFloatingSourceAddr',
+			args   => [$farm_ref, undef],
+	) if ( $eload );
 }
 
 1;

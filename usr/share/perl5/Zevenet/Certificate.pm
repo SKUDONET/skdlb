@@ -568,6 +568,7 @@ sub getCertInfo    # ($certfile)
 # Jessie:  Subject: C=SP, ST=SP, L=SP, O=Test, O=f9**3b, OU=al**X6, CN=zevenet-hostname/emailAddress=cr**@zevenet.com
 	my $cn;
 	my $key;
+	my $key2;
 	{
 		my ( $string ) = grep ( /\sSubject: /, @cert_data );
 		chomp $string;
@@ -577,23 +578,36 @@ sub getCertInfo    # ($certfile)
 
 		foreach my $param ( @data )
 		{
-			$cn = $1 if ( $param =~ /CN ?= ?(.+)/ );
-			( $cn ) = split ( /\/emailAddress=/, $cn );
-			$key = $1 if ( $param =~ /OU ?= ?(.+)/ );
-			if ( $key eq 'false' )
+			if ( $param =~ /CN ?= ?(.+)/ )
 			{
-				$key = $1 if ( $param =~ /1\.2\.3\.4\.5\.8 ?= ?(.+)/ );
+				$cn = $1;
+			}
+			elsif ( $param =~ /OU ?= ?(.+)/ )
+			{
+				$key = $1;
+			}
+			elsif ( $param =~ /1\.2\.3\.4\.5\.8 ?= ?(.+)/ )
+			{
+				$key2 = $1;
 			}
 		}
+		$key = $key2 if ( $key eq 'false' );
 	}
 
 	# Cert Issuer
 	my $issuer = "";
 	if ( $type eq "Certificate" )
 	{
-		my ( $line ) = grep /Issuer:/, @cert_data;
-		( undef, $line ) = split ( /CN ?=/, $line );
-		( $issuer ) = split ( /\/emailAddress ?=/, $line );
+		my ( $line ) = grep ( /Issuer:/, @cert_data );
+		my @data = split ( /,/, $line );
+
+		foreach my $param ( @data )
+		{
+			if ( $param =~ /CN ?= ?(.*)$/ )
+			{
+				$issuer = $1;
+			}
+		}
 	}
 	elsif ( $type eq "CSR" )
 	{

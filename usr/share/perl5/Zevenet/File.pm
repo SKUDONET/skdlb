@@ -157,4 +157,25 @@ sub saveFileHandler
 	}
 }
 
+sub createFile
+{
+	my $file = shift;
+	my $fh;
+
+	if ( -f $file )
+	{
+		&zenlog( "The file $file already exists", "error", "System" );
+		return 1;
+	}
+
+	if ( !open ( $fh, '>', $file ) )
+	{
+		&zenlog( "The file $file could not be created", "error", "System" );
+		return 2;
+	}
+	close $fh;
+
+	return 0;
+}
+
 1;

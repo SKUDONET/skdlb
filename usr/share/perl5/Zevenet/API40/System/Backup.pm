@@ -72,7 +72,7 @@ sub create_backup
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	my $msg = "Backup $json_obj->{ 'name' } was created successful.";
+	my $msg = "Backup $json_obj->{ 'name' } was created successfully.";
 	my $body = {
 				 description => $desc,
 				 params      => $json_obj->{ 'name' },
@@ -132,9 +132,14 @@ sub upload_backup
 	}
 
 	my $error = &uploadBackup( $name, $upload_filehandle );
-	if ( $error )
+	if ( $error == 1 )
 	{
 		my $msg = "Error creating backup.";
+		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+	elsif ( $error == 2 )
+	{
+		my $msg = "$name is not a valid backup.";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
@@ -167,7 +172,7 @@ sub del_backup
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	my $msg = "The list $backup has been deleted successful.";
+	my $msg = "The list $backup has been deleted successfully.";
 	my $body = {
 				 description => $desc,
 				 success     => "true",

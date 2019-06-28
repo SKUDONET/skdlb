@@ -78,7 +78,7 @@ sub getNewMark    # ($farm_name)
 
 	require Tie::File;
 
-	my $found       = 'false';
+	my $found       = 0;
 	my $marknum     = 0x200;
 	my $fwmarksconf = &getGlobalConfiguration( 'fwmarksconf' );
 
@@ -87,20 +87,19 @@ sub getNewMark    # ($farm_name)
 
 	for my $i ( 512 .. 1023 )
 	{
-		# end loop if found
-		last if defined $found;
+		last if $found;
 
 		my $num = sprintf ( "0x%x", $i );
 		if ( !grep { /^$num/x } @contents )
 		{
-			$found   = 'true';
+			$found   = 1;
 			$marknum = $num;
 		}
 	}
 
 	untie @contents;
 
-	if ( $found eq 'true' )
+	if ( $found )
 	{
 		open ( my $marksfile, '>>', "$fwmarksconf" );
 		print $marksfile "$marknum // FARM\_$farm_name\_\n";

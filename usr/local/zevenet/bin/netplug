@@ -29,13 +29,16 @@ if ( eval { require Zevenet::ELoad; } ) { $eload = 1; }
 &zenlog("Call to Network configuration through netplugd for $iface", "info", "NETWORK");
 my $if_ref = &getInterfaceConfig($iface);
 
-#if interface is not configured in UP mode then exit. 
+#if interface is not configured in UP mode then exit.
 if ($if_ref->{ status } ne 'up' ){
 	&zenlog("Interface $iface is not configured to be started", "warning", "NETWORK");
 	exit 1;
 	}
 
 &upIf($if_ref);
+
+exit 0 if ($if_ref->{dhcp} eq 'true');
+
 &addIp($if_ref);
 #if nic is used for global gw the apply global routes
 if (&getGlobalConfiguration('defaultgwif') eq $if_ref->{ dev }){
@@ -53,11 +56,11 @@ if ( $eload )
 {
 	my $zcl_conf = &eload(
                 module => 'Zevenet::Cluster',
-                func   => 'getZClusterConfig',             
+                func   => 'getZClusterConfig',
                 );
 
 	my $if_ref_cl = &getSystemInterface("cl_maintenance");
-	#if cl_maintenande is down then the start is needed. 
+	#if cl_maintenande is down then the start is needed.
 	if ( exists $zcl_conf->{ _ }->{ interface } and $zcl_conf->{ _ }->{interface} eq $iface and $if_ref_cl->{status} eq "down" )
         {
 		&zenlog( "Cluster interface recovered the link, enabling cl_maintenance", "info", "NETWORK" );
@@ -68,7 +71,7 @@ if ( $eload )
 			func	=> 'setZClusterNodeStatus',
 			args	=> ['backup'],
 		);
-		&logAndRun( "$ip_bin link set $maint_if up" );	
+		&logAndRun( "$ip_bin link set $maint_if up" );
 
         }
 }

@@ -28,6 +28,12 @@ use Zevenet::Farm::L4xNAT::Action;
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
+my $eload;
+if ( eval { require Zevenet::ELoad; } )
+{
+	$eload = 1;
+}
+
 =begin nd
 Function: runL4FarmCreate
 
@@ -56,13 +62,14 @@ sub runL4FarmCreate
 	require Zevenet::Farm::L4xNAT::Action;
 	require Zevenet::Farm::L4xNAT::Config;
 
-	$vip_port = 80 if not defined $vip_port;
+	$vip_port = "80" if not defined $vip_port;
+	$vip_port = ""   if ( $vip_port eq "*" );
 
 	$output = &sendL4NlbCmd(
 		{
 		   farm   => $farm_name,
 		   file   => "$farm_filename",
-		   method => "PUT",
+		   method => "POST",
 		   body =>
 			 qq({"farms" : [ { "name" : "$farm_name", "virtual-addr" : "$vip", "virtual-ports" : "$vip_port", "protocol" : "tcp", "mode" : "snat", "scheduler" : "weight", "state" : "up" } ] })
 		}

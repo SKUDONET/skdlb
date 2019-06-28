@@ -38,10 +38,18 @@ sub getHTTPOutService
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
+
 	require Zevenet::Farm::HTTP::Service;
-	my $farmname     = shift;
-	my $services_ref = &get_http_all_services_struct( $farmname );
-	return $services_ref;
+	my $farmname      = shift;
+	my @services_list = ();
+
+	foreach my $service ( &getHTTPFarmServices( $farmname ) )
+	{
+		my $service_ref = &getHTTPServiceStruct( $farmname, $service );
+		push @services_list, $service_ref;
+	}
+
+	return \@services_list;
 }
 
 sub getHTTPOutBackend

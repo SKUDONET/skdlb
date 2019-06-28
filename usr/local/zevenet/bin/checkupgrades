@@ -10,17 +10,25 @@ else
 	exit 1
 fi
 
+# check if the activation certificate file exists
+if [ ! -f /usr/local/zevenet/www/zlbcertfile.pem ]; then
+        echo "There isn't a valid activation certificate, once the activation certificate is applied execute checkupgrades" > $apt_msg
+	echo "There isn't a valid activation certificate, once the activation certificate is applied execute checkupgrades"
+        exit 1
+fi
 
 case "$1" in
 '')
 	# test connection with zevenet update system
-	$aptget_bin update &>/dev/null
+	$netcat_bin -z www.zevenet.com 443 2>/dev/null
 	if [ $? != 0 ]
 	then
 		echo "Error connecting to Zevenet Update System, check connection to https://repo.zevenet.com"
 		exit 1
 	fi
 
+	$aptget_bin update > /dev/null
+	
 	# check if there are upgradable packages
 	packages=`$apt_bin list --upgradable 2>/dev/null | awk 'FNR > 1' | wc -l`
 	if [ $packages \> 0 ]
@@ -65,7 +73,7 @@ case "$1" in
 
 *)
 	#Check the status of a package
-	$dpkg_bin -l | grep $1 > /dev/null
+	$dpkg_bin -l | grep $1 | awk {'print $2'} | grep $1$ > /dev/null
 	if [ $? = 0 ];
 	then
 		installed=`$aptcache_bin policy $1 | head -2 | tail -1 | cut -d ":" -f2 | sed 's/ //g'`

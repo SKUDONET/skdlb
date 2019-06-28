@@ -72,7 +72,7 @@ sub create_backup
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	my $msg = "Backup $json_obj->{ 'name' } was created successful.";
+	my $msg = "Backup $json_obj->{ 'name' } was created successfully.";
 	my $body = {
 				 description => $desc,
 				 params      => $json_obj->{ 'name' },
@@ -167,7 +167,7 @@ sub del_backup
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	my $msg = "The list $backup has been deleted successful.";
+	my $msg = "The list $backup has been deleted successfully.";
 	my $body = {
 				 description => $desc,
 				 success     => "true",

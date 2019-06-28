@@ -38,9 +38,10 @@ use Time::HiRes qw(ualarm usleep clock_gettime CLOCK_REALTIME);
 use Zevenet::Log;
 use Zevenet::Config;
 use Zevenet::Farm::Core;
-use Zevenet::Farm::Base;
 use Zevenet::Farm::Config;
+use Zevenet::Farm::Base;
 use Zevenet::Farm::Backend;
+require Zevenet::Nft;
 
 my $conntrack = &getGlobalConfiguration('conntrack');
 my $pidfile = &getGlobalConfiguration('l4sdpid');
@@ -328,7 +329,15 @@ while ()
 					{
 						my $newweight = int( ( 10 - ( $connsperfarm{ $fname }{ $bck } / $connsperfarm{ $fname }{ total } ) * 10 ) + 0.5 );
 						printf "Setting new weight: $fname - $bck - $newweight \n" if ( $debug );
-						&setL4FarmServer( $fname, $bck, undef, undef, $newweight, undef, undef, undef, undef );
+						#~ &setL4FarmServer( $fname, $bck, undef, undef, $newweight, undef, undef, undef, undef );
+
+						httpNlbRequest(
+							{
+							   method => "PUT",
+							   uri    => "/farms",
+							   body   => qq({"farms" : [ { "name" : "$fname", "backends" : [ { "name" : "bck$bck", "weight" : "$newweight" } ] } ] })
+							}
+						);
 					}
 				}
 			}

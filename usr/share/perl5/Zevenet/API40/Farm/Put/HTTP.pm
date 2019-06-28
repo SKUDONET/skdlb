@@ -556,7 +556,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 	#~ $json_obj->{ $key } = $farm_upd->{ $key };
 	#~ }
 
-	$json_obj = &getHTTPOutFarm( $farmname );
+	my $out_obj = &getHTTPOutFarm( $farmname );
 
 	if ( $reload_ipds and $eload )
 	{
@@ -575,8 +575,13 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 
 	my $body = {
 				 description => $desc,
-				 params      => $json_obj,
+				 params      => $out_obj,
 	};
+
+	if ( exists $json_obj->{ newfarmname } )
+	{
+		$body->{ params }->{ newfarmname } = $json_obj->{ newfarmname };
+	}
 
 	if ( $farm_st->{ status } ne 'down' )
 	{

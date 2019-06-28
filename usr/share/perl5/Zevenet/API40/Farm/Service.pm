@@ -178,7 +178,7 @@ sub farm_services
 	}
 
 	# no error found, return successful response
-	my $service = &get_http_service_struct( $farmname, $servicename );
+	my $service = &getHTTPServiceStruct( $farmname, $servicename );
 
 	my $body = {
 				 description => $desc,
@@ -244,8 +244,7 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 		"vhost"    => {},
 		"urlp"     => {},
 		"redirect" => {
-						'non_blank' => 'false',              # it is allowed the string ''
-						'regex'     => '/^https?\:\/\//i',
+						'non_blank' => 'false',    # it is allowed the string ''
 		},
 		"redirecttype" => {
 							'values' => ['default', 'append'],
@@ -271,13 +270,10 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 
 	if ( $eload )
 	{
-		$params->{ redirect_code } = {
-									   'valid_format' => 'boolean',
-									   'values'       => [301, 302, 307],
-		};
-		$params->{ sts_timeout }  = { 'valid_format' => 'http_sts_timeout', };
-		$params->{ sts_status }   = { 'valid_format' => 'http_sts_status', };
-		$params->{ cookieinsert } = { 'valid_format' => 'boolean', };
+		$params->{ redirect_code } = { 'values'       => [301, 302, 307], };
+		$params->{ sts_timeout }   = { 'valid_format' => 'http_sts_timeout', };
+		$params->{ sts_status }    = { 'valid_format' => 'http_sts_status', };
+		$params->{ cookieinsert }  = { 'valid_format' => 'boolean', };
 		$params->{ cookiettl } = {
 								   'valid_format' => 'integer',
 								   'non_blank'    => 'true',

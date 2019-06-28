@@ -539,6 +539,14 @@ sub getHTTPServiceStruct
 	{
 		$be->{ 'status' } = 'up' if $be->{ 'status' } eq 'undefined';
 	}
+	if ( $eload )
+	{
+		my $backends = &eload(
+							   module => 'Zevenet::Alias',
+							   func   => 'addAliasBackendsStruct',
+							   args   => [$backends],
+		);
+	}
 
 	$ttl       = 0 unless $ttl;
 	$fgttcheck = 0 unless $fgttcheck;
@@ -569,6 +577,19 @@ sub getHTTPServiceStruct
 											  module => 'Zevenet::Farm::HTTP::Service::Ext',
 											  func   => 'getHTTPServiceRedirectCode',
 											  args   => [$farmname, $service_name],
+		);
+		$service_ref->{ sts_status } = &eload(
+											  module => 'Zevenet::Farm::HTTP::Service::Ext',
+											  func   => 'getHTTPServiceSTSStatus',
+											  args   => [$farmname, $service_name],
+		);
+
+		$service_ref->{ sts_timeout } = int (
+										  &eload(
+												  module => 'Zevenet::Farm::HTTP::Service::Ext',
+												  func   => 'getHTTPServiceSTSTimeout',
+												  args   => [$farmname, $service_name],
+										  )
 		);
 	}
 
@@ -1123,7 +1144,7 @@ sub getFarmVSI    # ($farm_name,$service)
 	return $srv_position;
 }
 
-# Similar to getHTTPServiceStruct??
+# esta funcion es solo para API32. borrar y usar getHTTPServiceStruct
 sub get_http_service_struct
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
@@ -1168,6 +1189,7 @@ sub get_http_service_struct
 	return $service_ref;
 }
 
+# esta funcion es solo para API32.
 sub get_http_all_services_struct
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",

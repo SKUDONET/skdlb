@@ -42,18 +42,17 @@ sub farms_name_l4    # ( $farmname )
 	my $out_p;
 	my $out_b;
 
-	my $farm = &getL4FarmStruct( $farmname );
-
+	my $farm   = &getL4FarmStruct( $farmname );
 	my $status = &getFarmVipStatus( $farmname );
 
 	$out_p = {
 		status      => $status,
 		vip         => $farm->{ vip },
-		vport       => ( $farm->{ vport } eq '0:65535' ) ? '*' : $farm->{ vport },
+		vport       => $farm->{ vport },
 		algorithm   => $farm->{ lbalg },
 		nattype     => $farm->{ nattype },
 		persistence => $farm->{ persist },
-		ttl         => $farm->{ ttl },
+		ttl         => $farm->{ ttl } + 0,
 		protocol    => $farm->{ vproto },
 
 		farmguardian => &getFGFarm( $farmname ),

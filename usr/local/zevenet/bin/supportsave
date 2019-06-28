@@ -87,6 +87,12 @@ then
 	cp /etc/passwd                         $backup_dir/
 fi
 
+echo "- Subscription"
+cat /etc/apt/apt.conf			>> $backup_dir/apt.conf.txt
+cat /etc/apt/sources.list		>> $backup_dir/sources.list.txt
+for i in `ls /etc/apt/sources.list.d/`; do
+	cat /etc/apt/sources.list.d/$i 				>> $backup_dir/sources.list.d.$i.txt
+done
 
 echo "Saving network information:"
 ##################################
@@ -96,8 +102,15 @@ echo "- Interfaces"
 /sbin/ip link show                      >> $backup_dir/ip_link.txt
 /sbin/ip addr show                      >> $backup_dir/ip_addr.txt
 
+echo "- Bondings"
+for i in  `ls /proc/net/bonding/`
+do
+	echo ">>>>Interface $i"		>> $backup_dir/bonding_system.txt
+	cat /proc/net/bonding/$i	>> $backup_dir/bonding_system.txt
+done
+
 echo "- Routes"
-for i in `cat /etc/iproute2/rt_tables  | grep "table_" | awk {'print $2'}`
+for i in `cat /etc/iproute2/rt_tables  | grep "table_" | grep -v '^#' | awk {'print $2'}`
 do
     echo "ip route list table $i"       >> $backup_dir/route.txt
     /sbin/ip route list table $i        >> $backup_dir/route.txt
@@ -118,6 +131,12 @@ echo "- Netfilter"
 NFTBIN=`which nft`
 echo "List nftables ruleset "			>> $backup_dir/nftables.txt
 $NFTBIN list ruleset					>> $backup_dir/nftables.txt
+
+CURL=`which curl`
+echo "nftlb daemon farms data"			>> $backup_dir/nftlb.txt
+$CURL --noproxy "*" --connect-timeout 10 -s -H "Key: HoLa" http://127.0.0.1:27/farms >> $backup_dir/nftlb.txt
+echo "nftlb daemon policies data"		>> $backup_dir/nftlb.txt
+$CURL --noproxy "*" --connect-timeout 10 -s -H "Key: HoLa" http://127.0.0.1:27/policies >> $backup_dir/nftlb.txt
 
 echo "- ARP table"
 /usr/sbin/arp -n                        >> $backup_dir/arp_table.txt

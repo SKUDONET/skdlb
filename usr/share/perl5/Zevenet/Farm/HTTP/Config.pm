@@ -1348,7 +1348,7 @@ sub setHTTPFarmVirtualConf    # ($vip,$vip_port,$farm_name)
 	{
 		if ( $array[$i] =~ /Address/ )
 		{
-			if ( $array[$i] =~ s/.*Address\ .*/\tAddress\ $vip/g )
+			if ( $array[$i] =~ s/.*Address\ .*/\tAddress\ $vip/ )
 			{
 				$stat = 0;
 			}
@@ -1356,12 +1356,13 @@ sub setHTTPFarmVirtualConf    # ($vip,$vip_port,$farm_name)
 		}
 		if ( $array[$i] =~ /Port/ and $vip_port )
 		{
-			if ( $array[$i] =~ s/.*Port\ .*/\tPort\ $vip_port/g )
+			if ( $array[$i] =~ s/.*Port\ .*/\tPort\ $vip_port/ )
 			{
 				$stat = 0;
 			}
 			$enter--;
 		}
+		last if ( !$enter );
 	}
 
 	untie @array;
@@ -1431,12 +1432,19 @@ sub getHTTPFarmConfigErrorMessage    # ($farm_name)
 
 	my @run = `$pound_command 2>&1`;
 	my $rc  = $?;
-	my $msg;
 
 	return "" unless ( $rc );
 
-	$run[-1] =~ / line (\d+): /;
+	shift @run if ( $run[0] =~ /starting\.\.\./ );
+	chomp @run;
+	my $msg;
 
+	&zenlog( "Error checking $configdir\/$farm_filename." );
+	&zenlog( $run[0], "Error", "http" );
+
+	return "Error loading waf configuration" if ( $run[0] =~ /waf/i );
+
+	$run[0] =~ / line (\d+): /;
 	my $line_num = $1;
 
 	# get line
@@ -1465,6 +1473,7 @@ sub getHTTPFarmConfigErrorMessage    # ($farm_name)
 #	AAAhttps, /usr/local/zevenet/config/AAAhttps_pound.cfg line 40: SSL_CTX_use_PrivateKey_file failed - aborted
 	$file_line =~ /\s*([\w-]+)/;
 	my $param = $1;
+	$msg = "Error in the configuration file";
 
 	# parse line
 	if ( $param eq "Cert" )
@@ -1478,11 +1487,15 @@ sub getHTTPFarmConfigErrorMessage    # ($farm_name)
 		$srv = "in the service $srv" if ( $srv );
 		$msg = "Error in the parameter $param ${srv}";
 	}
-
-	if ( not $msg )
+	elsif ( $param )
 	{
-		if   ( &debug() ) { $msg = $run[-1]; }
-		else              { $msg = "Error in the configuration file"; }
+		$srv = "in the service $srv" if ( $srv );
+		$msg = "Error in the parameter $param ${srv}";
+	}
+
+	elsif ( &debug() )
+	{
+		$msg = $run[0];
 	}
 
 	&zenlog( "Error checking config file: $msg", 'debug' );

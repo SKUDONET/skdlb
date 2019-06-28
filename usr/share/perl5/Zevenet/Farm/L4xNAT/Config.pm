@@ -57,6 +57,7 @@ Parameters:
 		"limitconns": total connections limit per source IP
 		"bogustcpflags": check bogus TCP flags
 		"nfqueue": queue to verdict the packets
+		"sourceaddr": get the source address
 	farmname - Farm name
 
 Returns:
@@ -69,6 +70,8 @@ sub getL4FarmParam
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my ( $param, $farm_name ) = @_;
+
+	require Zevenet::Farm::Core;
 
 	my $farm_filename = &getFarmFile( $farm_name );
 	my $output        = -1;
@@ -119,6 +122,7 @@ Parameters:
 		"bogustcpflags": check bogus TCP flags
 		"nfqueue": queue to verdict the packets
 		"policy": policy list to be applied
+		"sourceaddr": set the source address
 	value - the new value of the given parameter of a certain farm
 	farmname - Farm name
 
@@ -159,12 +163,38 @@ sub setL4FarmParam
 		$value = "stlsdnat" if ( $value eq "stateless_dnat" );
 		$parameters = qq(, "mode" : "$value" );
 
-		# deactivate leastconn and persistence for DSR #NOTYET
-		if ( $value eq "dsr" )
+		# deactivate leastconn and persistence for ingress modes
+		if ( $value eq "dsr" || $value eq "stateless_dnat" )
 		{
 			require Zevenet::Farm::L4xNAT::L4sd;
 			&setL4sdType( $farm_name, "none" );
-			&setL4FarmParam( 'persist', "none", $farm_name );
+			&setL4FarmParam( 'persist', "", $farm_name );
+
+			if ( $eload )
+			{
+				# unassign DoS & RBL
+				&eload(
+						module => 'Zevenet::IPDS::Base',
+						func   => 'runIPDSStopByFarm',
+						args   => [$farm_name, "dos"],
+				);
+				&eload(
+						module => 'Zevenet::IPDS::Base',
+						func   => 'runIPDSStopByFarm',
+						args   => [$farm_name, "rbl"],
+				);
+			}
+		}
+
+		# take care of floating interfaces without masquerading
+		if ( $value eq "snat" && $eload )
+		{
+			my $farm_ref = &getL4FarmStruct( $farm_name );
+			&eload(
+					module => 'Zevenet::Net::Floating',
+					func   => 'setFloatingSourceAddr',
+					args   => [$farm_ref, undef],
+			);
 		}
 	}
 	elsif ( $param eq "vip" )
@@ -175,7 +205,14 @@ sub setL4FarmParam
 	elsif ( $param eq "vipp" or $param eq "vport" )
 	{
 		$value =~ s/\:/\-/g;
-		$parameters = qq(, "virtual-ports" : "$value" );
+		if ( $value eq "*" )
+		{
+			$parameters = qq(, "virtual-ports" : "" );
+		}
+		else
+		{
+			$parameters = qq(, "virtual-ports" : "$value" );
+		}
 	}
 	elsif ( $param eq "alg" )
 	{
@@ -232,7 +269,7 @@ sub setL4FarmParam
 			$addition = $addition . qq( , "helper" : "none" );
 		}
 
-		$addition = $addition . qq( , "virtual-ports" : "*" ) if ( $value eq "all" );
+		$addition = $addition . qq( , "virtual-ports" : "" ) if ( $value eq "all" );
 		$parameters = qq(, "protocol" : "$value" ) . $addition;
 	}
 	elsif ( $param eq "status" || $param eq "bootstatus" )
@@ -242,6 +279,7 @@ sub setL4FarmParam
 	elsif ( $param eq "persist" )
 	{
 		$value = "srcip" if ( $value eq "ip" );
+		$value = "none"  if ( $value eq "" );
 		$parameters = qq(, "persistence" : "$value" );
 	}
 	elsif ( $param eq "persisttm" )
@@ -256,6 +294,10 @@ sub setL4FarmParam
 	{
 		$parameters = qq(, "rst-rtlimit-burst" : "$value" );
 	}
+	elsif ( $param eq "limitrst-logprefix" )
+	{
+		$parameters = qq(, "rst-rtlimit-log-prefix" : "$value" );
+	}
 	elsif ( $param eq "limitsec" )
 	{
 		$parameters = qq(, "new-rtlimit" : "$value" );
@@ -264,17 +306,33 @@ sub setL4FarmParam
 	{
 		$parameters = qq(, "new-rtlimit-burst" : "$value" );
 	}
+	elsif ( $param eq "limitsec-logprefix" )
+	{
+		$parameters = qq(, "new-rtlimit-log-prefix" : "$value" );
+	}
 	elsif ( $param eq "limitconns" )
 	{
 		$parameters = qq(, "est-connlimit" : "$value" );
+	}
+	elsif ( $param eq "limitconns-logprefix" )
+	{
+		$parameters = qq(, "est-connlimit-log-prefix" : "$value" );
 	}
 	elsif ( $param eq "bogustcpflags" )
 	{
 		$parameters = qq(, "tcp-strict" : "$value" );
 	}
+	elsif ( $param eq "bogustcpflags-logprefix" )
+	{
+		$parameters = qq(, "tcp-strict-log-prefix" : "$value" );
+	}
 	elsif ( $param eq "nfqueue" )
 	{
 		$parameters = qq(, "queue" : "$value" );
+	}
+	elsif ( $param eq "sourceaddr" )
+	{
+		$parameters = qq(, "source-addr" : "$value" );
 	}
 	elsif ( $param eq 'policy' )
 	{
@@ -297,7 +355,7 @@ sub setL4FarmParam
 	);
 
 	# Finally, reload rules
-	if ( $param eq "vip" && $srvparam eq "virtual-addr" )
+	if ( $param eq "vip" )
 	{
 		&doL4FarmRules( "reload", $farm_name, $prev_config );
 	}
@@ -311,7 +369,7 @@ Function: _getL4ParseFarmConfig
 	Parse the farm file configuration and read/write a certain parameter
 
 Parameters:
-	param - requested parameter. The options are "family", "vip", "vipp", "status", "mode", "alg", "proto", "persist", "presisttm", "limitsec", "limitsecbrst", "limitconns", "limitrst", "limitrstbrst", "bogustcpflags", "nfqueue"
+	param - requested parameter. The options are "family", "vip", "vipp", "status", "mode", "alg", "proto", "persist", "presisttm", "limitsec", "limitsecbrst", "limitconns", "limitrst", "limitrstbrst", "bogustcpflags", "nfqueue", "sourceaddr"
 	value - value to be changed in case of write operation, undef for read only cases
 	config - reference of an array with the full configuration file
 
@@ -346,7 +404,14 @@ sub _getL4ParseFarmConfig
 		{
 			my @l = split /"/, $line;
 			$output = $l[3];
+			$output = "*" if ( $output eq '1-65535' || $output eq '' );
 			$output =~ s/-/:/g;
+		}
+
+		if ( $line =~ /\"source-addr\"/ && $param eq 'sourceaddr' )
+		{
+			my @l = split /"/, $line;
+			$output = $l[3];
 		}
 
 		if ( $line =~ /\"mode\"/ && $param eq 'mode' )
@@ -367,15 +432,32 @@ sub _getL4ParseFarmConfig
 		if ( $line =~ /\"persistence\"/ && $param eq 'persist' )
 		{
 			my @l = split /"/, $line;
-			$output = $l[3];
-			$output = "ip" if ( $output eq "srcip " );
-			$exit   = 0;
+			my $out = $l[3];
+			if ( $out =~ /none/ )
+			{
+				$output = "";
+			}
+			elsif ( $out =~ /srcip/ )
+			{
+				$output = "ip";
+				$output = "srcip_srcport" if ( $out =~ /srcport/ );
+				$output = "srcip_dstport" if ( $out =~ /dstport/ );
+			}
+			elsif ( $out =~ /srcport/ )
+			{
+				$output = "srcport";
+			}
+			elsif ( $out =~ /srcmac/ )
+			{
+				$output = "srcmac";
+			}
+			$exit = 0;
 		}
 
 		if ( $line =~ /\"persist-ttl\"/ && $param eq 'persisttm' )
 		{
 			my @l = split /"/, $line;
-			$output = $l[3];
+			$output = $l[3] + 0;
 			$exit   = 0;
 		}
 
@@ -568,7 +650,7 @@ sub getL4FarmStruct
 	$farm{ vproto } = &_getL4ParseFarmConfig( 'proto', undef, $config );
 
 	my $persist = &_getL4ParseFarmConfig( 'persist', undef, $config );
-	$farm{ persist } = ( $persist eq 'ip' ) ? 'ip' : '';
+	$farm{ persist } = ( $persist eq "-1" ) ? '' : $persist;
 	my $ttl = &_getL4ParseFarmConfig( 'persisttm', undef, $config );
 	$farm{ ttl } = ( $ttl == -1 ) ? 0 : $ttl;
 
@@ -577,12 +659,6 @@ sub getL4FarmStruct
 	$farm{ status }     = &getL4FarmStatus( $farm{ name } );
 	$farm{ logs } = &_getL4ParseFarmConfig( 'logs', undef, $config ) if ( $eload );
 	$farm{ servers } = &_getL4FarmParseServers( $config );
-
-	# replace port * for all the range
-	if ( $farm{ vport } eq '*' )
-	{
-		$farm{ vport } = '0:65535';
-	}
 
 	if ( $farm{ lbalg } eq 'weight' )
 	{
@@ -878,6 +954,61 @@ sub doL4FarmRules
 		&setL4BackendRule( "add", $farm_ref, $server->{ tag } )
 		  if ( $action eq "start" || $action eq "reload" );
 	}
+}
+
+=begin nd
+Function: writeL4NlbConfigFile
+
+	Write the L4 config file from a curl Nlb request, by filtering IPDS parameters.
+
+Parameters:
+	nftfile - temporary file captured from the nftlb farm configuration
+	cfgfile - definitive file where the definitive nftlb farm configuration will be stored
+
+Returns:
+	Integer - 0 if success, other if error.
+
+=cut
+
+sub writeL4NlbConfigFile
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+
+	my $nftfile = shift;
+	my $cfgfile = shift;
+
+	require Zevenet::Lock;
+
+	if ( !-e "$nftfile" )
+	{
+		return 1;
+	}
+
+	my $fo = &openlock( $cfgfile, 'w' );
+	open my $fi, '<', "$nftfile";
+	my $backends = 0;
+	my $policies = 0;
+	while ( my $line = <$fi> )
+	{
+		$backends = 1 if ( $line =~ /\"backends\"\:/ );
+		$policies = 1 if ( $line =~ /\"policies\"\:/ );
+		if ( $backends == 1 && $line =~ /\]/ )
+		{
+			$backends = 0;
+			$line =~ s/,$//g;
+		}
+		print $fo $line
+		  if (
+			   $line !~ /new-rtlimit|rst-rtlimit|tcp-strict|queue|^[\s]{24}.est-connlimit/
+			   && $policies == 0 );
+		$policies = 0 if ( $policies == 1 && $line =~ /\]/ );
+	}
+	close $fo;
+	close $fi;
+	unlink $nftfile;
+
+	return 0;
 }
 
 1;

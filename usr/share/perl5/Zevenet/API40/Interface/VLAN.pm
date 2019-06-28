@@ -61,9 +61,6 @@ sub new_vlan    # ( $json_obj )
 				   "gateway" => {
 								  'valid_format' => 'ip_addr',
 				   },
-				   "mac" => {
-							  'valid_format' => 'mac_addr',
-				   },
 	};
 
 	if ( $eload )
@@ -72,6 +69,9 @@ sub new_vlan    # ( $json_obj )
 								'non_blank' => 'true',
 								'values'    => ['true', 'false'],
 		};
+		$params->{ "mac" } = {
+								'valid_format' => 'mac_addr',
+		};
 	}
 
 	# Check allowed parameters
@@ -79,7 +79,8 @@ sub new_vlan    # ( $json_obj )
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
 	  if ( $error_msg );
 
-	my $dhcp_flag = ( exists $json_obj->{ dhcp } );
+	my $dhcp_flag =
+	  ( exists $json_obj->{ dhcp } and $json_obj->{ dhcp } ne "false" );
 	my $ip_mand = ( exists $json_obj->{ ip } and exists $json_obj->{ netmask } );
 	my $ip_opt = (
 				        exists $json_obj->{ ip }
@@ -89,7 +90,7 @@ sub new_vlan    # ( $json_obj )
 	unless ( ( $dhcp_flag and !$ip_opt ) or ( !$dhcp_flag and $ip_mand ) )
 	{
 		my $msg =
-		  "It is mandatory set an 'ip' and its 'netmask' or enabling the 'dhcp'. It is not allow to send 'ip', 'netmask' or 'gateway' with the 'dhcp' option.";
+		  "It is mandatory set an 'ip' and its 'netmask' or enabling the 'dhcp'. It is not allow to send 'ip', 'netmask' or 'gateway' when 'dhcp' is true.";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
@@ -280,6 +281,20 @@ sub delete_interface_vlan    # ( $vlan )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
+	if ( $eload )
+	{
+		my $msg = &eload(
+						  module => 'Zevenet::Net::Ext',
+						  func   => 'isManagementIP',
+						  args   => [$if_ref->{ addr }],
+		);
+		if ( $msg ne "" )
+		{
+			$msg = "The interface cannot be modified. $msg";
+			return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
+	}
+
 	# check if some farm is using this ip
 	require Zevenet::Farm::Base;
 	my @farms = &getFarmListByVip( $if_ref->{ addr } );
@@ -398,14 +413,14 @@ sub actions_interface_vlan    # ( $json_obj, $vlan )
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
 	}
 
+	my $if_ref = &getInterfaceConfig( $vlan, $ip_v );
+
 	# validate action parameter
 	if ( $json_obj->{ action } eq "up" )
 	{
 		require Zevenet::Net::Validate;
 		require Zevenet::Net::Route;
 		require Zevenet::Net::Core;
-
-		my $if_ref = &getInterfaceConfig( $vlan, $ip_v );
 
 		# Create vlan if required if it doesn't exist
 		my $exists = &ifexist( $if_ref->{ name } );
@@ -456,9 +471,22 @@ sub actions_interface_vlan    # ( $json_obj, $vlan )
 	}
 	elsif ( $json_obj->{ action } eq "down" )
 	{
-		require Zevenet::Net::Core;
+		if ( $eload )
+		{
+			my $msg = &eload(
+							  module => 'Zevenet::Net::Ext',
+							  func   => 'isManagementIP',
+							  args   => [$if_ref->{ addr }],
+			);
+			if ( $msg ne "" )
+			{
+				$msg = "The interface cannot be stopped. $msg";
+				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			}
+		}
 
-		my $state = &downIf( { name => $vlan }, 'writeconf' );
+		require Zevenet::Net::Core;
+		my $state = &downIf( $if_ref, 'writeconf' );
 
 		if ( $state )
 		{
@@ -512,9 +540,6 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 								'non_blank' => 'true',
 								'values'    => ['true'],
 				   },
-				   "mac" => {
-							  'valid_format' => 'mac_addr',
-				   },
 	};
 
 	if ( $eload )
@@ -523,6 +548,9 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 								'non_blank' => 'true',
 								'values'    => ['true', 'false'],
 		};
+		$params->{ "mac" } = {
+								'valid_format' => 'mac_addr',
+		};
 	}
 
 	# Check allowed parameters
@@ -530,18 +558,45 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
 	  if ( $error_msg );
 
-	if ( $json_obj->{ ip }
-		 or ( exists $json_obj->{ dhcp } and $json_obj->{ dhcp } eq 'true' ) )
+	my @child = &getInterfaceChild( $vlan );
+
+	if ( exists $json_obj->{ ip }
+		 or ( exists $json_obj->{ dhcp } ) )
 	{
+		if ( $eload )
+		{
+			my $msg = &eload(
+							  module => 'Zevenet::Net::Ext',
+							  func   => 'isManagementIP',
+							  args   => [$if_ref->{ addr }],
+			);
+			if ( $msg ne "" )
+			{
+				$msg = "The interface cannot be modified. $msg";
+				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			}
+		}
+
 		# check if some farm is using this ip
 		require Zevenet::Farm::Base;
 		@farms = &getFarmListByVip( $if_ref->{ addr } );
-		if ( @farms and $json_obj->{ force } ne 'true' )
+		if ( @farms )
 		{
-			my $str = join ( ', ', @farms );
-			my $msg =
-			  "The IP is being used as farm vip in the farm(s): $str. If you are sure, repeat with parameter 'force'. All farms using this interface will be restarted.";
-			return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			if (    !exists $json_obj->{ ip }
+				 and exists $json_obj->{ dhcp }
+				 and $json_obj->{ dhcp } eq 'false' )
+			{
+				my $msg =
+				  "This interface is been used by some farms, please, set up a new 'ip' in order to be used as farm vip.";
+				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			}
+			if ( $json_obj->{ force } ne 'true' )
+			{
+				my $str = join ( ', ', @farms );
+				my $msg =
+				  "The IP is being used as farm vip in the farm(s): $str. If you are sure, repeat with parameter 'force'. All farms using this interface will be restarted.";
+				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			}
 		}
 	}
 
@@ -558,6 +613,12 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 			  "It is not possible set 'ip', 'netmask' or 'gateway' while 'dhcp' is enabled.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
+	}
+	if ( !exists $json_obj->{ ip } and exists $json_obj->{ dhcp } and @child )
+	{
+		my $msg =
+		  "This interface has appending some virtual interfaces, please, set up a new 'ip' in the current networking range.";
+		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
 	if ( exists $json_obj->{ dhcp } )
@@ -605,7 +666,6 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
    # Do not modify gateway or netmask if exists a virtual interface using this interface
 		if ( exists $json_obj->{ ip } or exists $json_obj->{ netmask } )
 		{
-			my @child = &getInterfaceChild( $vlan );
 			my @wrong_conf;
 
 			foreach my $child_name ( @child )
@@ -664,7 +724,7 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 		&delRoutes( "local", $if_ref );
 	}
 
-	$if_ref->{ addr } = $json_obj->{ ip } if exists $json_obj->{ ip };
+	$if_ref->{ addr } = $json_obj->{ ip } if ( exists $json_obj->{ ip } );
 	$if_ref->{ mac } = lc $json_obj->{ mac }
 	  if ( $eload && exists $json_obj->{ mac } );
 	$if_ref->{ mask }    = $json_obj->{ netmask } if exists $json_obj->{ netmask };
@@ -673,22 +733,38 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 	$if_ref->{ net } =
 	  &getAddressNetwork( $if_ref->{ addr }, $if_ref->{ mask }, $if_ref->{ ip_v } );
 
-	unless ( $if_ref->{ addr } && $if_ref->{ mask } )
+	require Zevenet::Lock;
+	my $vlan_config_file =
+	  &getGlobalConfiguration( 'configdir' ) . "/if_$if_ref->{ name }_conf";
+	my $dhcp_flag = $json_obj->{ dhcp } // $if_ref->{ dhcp };
+
+	if ( ( $dhcp_flag ne 'true' ) and !( $if_ref->{ addr } && $if_ref->{ mask } ) )
 	{
 		my $msg = "Cannot configure the interface without address or without netmask.";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+	elsif ( $dhcp_flag eq "true" )
+	{
+		&lockResource( $vlan_config_file, "l" );
 	}
 
 	require Zevenet::Net::Interface;
 	if ( &setVlan( $if_ref, $json_obj ) )
 	{
+		#Release lock file
+		&lockResource( $vlan_config_file, "ud" ) if ( $dhcp_flag eq "true" );
+
 		my $msg = "Errors found trying to modify interface $vlan";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
+	#Release lock file
+	&lockResource( $vlan_config_file, "ud" ) if ( $dhcp_flag eq "true" );
+
+	my $if_out = &get_vlan_struct( $vlan );
 	my $body = {
 				 description => $desc,
-				 params      => $json_obj,
+				 params      => $if_out,
 	};
 
 	&httpResponse( { code => 200, body => $body } );

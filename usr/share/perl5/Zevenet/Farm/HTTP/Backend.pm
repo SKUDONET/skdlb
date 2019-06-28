@@ -178,7 +178,7 @@ sub setHTTPFarmServer   # ($ids,$rip,$port,$weight,$timeout,$farm_name,$service)
 			{
 				$backend++;
 			}
-			if ( $line =~ /Service \"$service\"/ )
+			if ( $line =~ /Service \"$service\"/ && $be_section == -1 )
 			{
 				$be_section++;
 			}
@@ -217,7 +217,7 @@ sub setHTTPFarmServer   # ($ids,$rip,$port,$weight,$timeout,$farm_name,$service)
 					$index++;
 				}
 				splice @contents, $index, 0, "\t\tEnd";
-				$be_section = -1;
+				$be_section++;    # Backend Added
 			}
 
 			# if backend added then go out of form

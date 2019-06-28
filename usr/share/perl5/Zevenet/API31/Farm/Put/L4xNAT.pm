@@ -174,7 +174,6 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 		}
 
 		my $persistence = $json_obj->{ persistence };
-		$persistence = 'none' if $persistence eq '';
 
 		if ( &getL4FarmParam( 'persist', $farmname ) ne $persistence )
 		{

@@ -64,6 +64,7 @@ sub getBackup
 
 		my $datetime_string = ctime( stat ( $filepath )->mtime );
 		$datetime_string = `date -d "${datetime_string}" +%F"  "%T" "%Z -u`;
+		chomp ( $datetime_string );
 		push @backups, { 'name' => $line, 'date' => $datetime_string };
 
 	}
@@ -197,8 +198,9 @@ Parameters:
 	upload_filehandle - File handle or file content.
 
 Returns:
+	2     - The file is not a .tar.gz
 	1     - on failure.
-	undef - on success.
+	0 - on success.
 
 See Also:
 	zapi/v3/system.cgi
@@ -214,11 +216,14 @@ sub uploadBackup
 
 	my $error;
 	my $backupdir = &getGlobalConfiguration( 'backupdir' );
-	$filename = "backup-$filename.tar.gz";
+	my $tar       = &getGlobalConfiguration( 'tar' );
 
-	if ( !-f "$backupdir/$filename" )
+	$filename = "backup-$filename.tar.gz";
+	my $filepath = "$backupdir/$filename";
+
+	if ( !-f $filepath )
 	{
-		open ( my $disk_fh, '>', "$backupdir/$filename" ) or die "$!";
+		open ( my $disk_fh, '>', $filepath ) or die "$!";
 
 		binmode $disk_fh;
 
@@ -229,7 +234,22 @@ sub uploadBackup
 	}
 	else
 	{
-		$error = 1;
+		return 1;
+	}
+
+	# check the file, looking for the global.conf config file
+	my $config_path = &getGlobalConfiguration( 'globalcfg' );
+
+	# remove the first slash
+	$config_path =~ s/^\///;
+
+	$error = &logAndRun( "$tar -tf $filepath $config_path" );
+
+	if ( $error )
+	{
+		&zenlog( "$filename looks being a not valid backup", 'error', 'backup' );
+		unlink $filepath;
+		return 2;
 	}
 
 	return $error;
@@ -284,7 +304,7 @@ Parameters:
 	backup - Backup name.
 
 Returns:
-	integer - ERRNO or return code of restarting load balancing service.
+	integer - 0 on success or another value on failure.
 
 See Also:
 	zapi/v3/system.cgi
@@ -299,12 +319,20 @@ sub applyBackup
 	my $tar  = &getGlobalConfiguration( 'tar' );
 	my $file = &getGlobalConfiguration( 'backupdir' ) . "/backup-$backup.tar.gz";
 
+	&zenlog( "Restoring backup $file", "info", "SYSTEM" );
 	my @eject = `$tar -xvzf $file -C /`;
+	my $error = $?;
+
+	if ( $error )
+	{
+		&zenlog( "The backup $file could not be extracted", "error", "SYSTEM" );
+		return $error;
+	}
+
 	unlink '/zevenet_version';
 
-	&zenlog( "Restoring backup $file",  "info", "SYSTEM" );
 	&zenlog( "unpacking files: @eject", "info", "SYSTEM" );
-	$error = system ( "/etc/init.d/zevenet restart 2> /dev/null" );
+	$error = &logAndRun( "/etc/init.d/zevenet restart" );
 
 	if ( !$error )
 	{

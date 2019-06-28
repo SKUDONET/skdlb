@@ -369,15 +369,20 @@ sub httpResponse    # ( \%hash ) hash_keys->( $code, %headers, $body )
 	#~ &zenlog( "Response:$output<", "debug", $LOG_TAG ); # DEBUG
 	print $output;
 
-	#~ if ( &debug )
+	# does not log the annoying logs about connections and cluster
+	unless (
+			 $ENV{ REQUEST_METHOD } eq 'GET'
+			 and (    $ENV{ SCRIPT_URL } =~ '/stats/system/connections$'
+				   or $ENV{ SCRIPT_URL } =~ '/system/cluster/nodes$'
+				   or $ENV{ SCRIPT_URL } =~ '/system/cluster/nodes/localhost$' )
+	  )
 	{
 		# log request if debug is enabled
 		my $req_msg =
 		  "STATUS: $self->{ code } REQUEST: $ENV{REQUEST_METHOD} $ENV{SCRIPT_URL}";
 
 		# include memory usage if debug is 2 or higher
-		#~ $req_msg .= " " . &getMemoryUsage() if &debug() > 1;
-		$req_msg .= " " . &getMemoryUsage();
+		$req_msg .= " " . &getMemoryUsage() if &debug() > 0;
 		&zenlog( $req_msg, "info", $LOG_TAG );
 
 		# log error message on error.

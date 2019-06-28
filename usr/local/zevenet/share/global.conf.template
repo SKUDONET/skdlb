@@ -230,7 +230,7 @@ $dpkg_bin="/usr/bin/dpkg";
 #Where is grep?
 $grep_bin="/bin/grep";
 #Where is nft?
-$nft_bin="/usr/sbin/nft";
+$nft_bin="/usr/local/sbin/nft";#update
 #Where is nftlb?
 $nftlb_bin="/usr/local/zevenet/app/nftlb/sbin/nftlb";
 #Where is poweroff
@@ -241,7 +241,8 @@ $reboot_bin="/usr/sbin/reboot";
 $arpsend_bin="/usr/sbin/arpsend";
 #Where is dhclient
 $dhcp_bin="/usr/sbin/dhclient";
-
+#Where is netcat
+$netcat_bin="/usr/bin/nc";
 
 # Pound
 #where is pound binary?
@@ -309,6 +310,8 @@ $zeninopid="/var/run/zeninotify.pid";
 $zenrsync="-azvr --delete";#update
 #ARP unsolicited
 $arp_unsolicited="";
+#ARP announcement, true / false (default)
+$arp_announce="";
 
 
 # Cron service
@@ -321,6 +324,7 @@ $netplug_init_tpl="$templatedir/netplug.template";
 $netplugd_conf_tpl="$templatedir/netplugd.conf.template";
 $netplug_init="/etc/netplug/netplug";
 $netplugd_conf="/etc/netplug/netplugd.conf";
+$netplugd_srv="/etc/init.d/netplug";
 
 
 #syslog service
@@ -366,6 +370,7 @@ $backupfor="$configdir $basedir/*.pem $confhttp $rttables $sshConf $snmpdconfig_
 
 #IPDS Module
 $ipdsCronFile="/etc/cron.d/ipds";
+$lockIpdsPackage="/tmp/ipds_package.lock";
 
 # Rabc Module
 $rbacRolesTpl_dir="$templatedir/rbac_roles";

@@ -495,7 +495,7 @@ if ( $action eq "start" )
 
 	&local_http_service('start');
 
-	&printAndLog( "Start proccess finished." );
+	&printAndLog( "Start process finished." );
 }
 
 if ( $action eq "stop" )

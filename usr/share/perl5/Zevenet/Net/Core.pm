@@ -340,8 +340,6 @@ sub delIf    # ($if_ref)
 
 	my $status;
 	my $has_more_ips;
-	my $configdir = &getGlobalConfiguration( 'configdir' );
-	my $file      = "$configdir/if_$$if_ref{name}\_conf";
 
 	# remove dhcp configuration
 	if ( exists $if_ref->{ dhcp } and $if_ref->{ dhcp } eq 'true' )
@@ -353,31 +351,8 @@ sub delIf    # ($if_ref)
 		);
 	}
 
-	require Config::Tiny;
-	my $fileHandler = Config::Tiny->new();
-	if ( -f $file )
-	{
-		$fileHandler = Config::Tiny->read( $file );
-		$fileHandler->{ $if_ref->{ name } } = {
-								  mask   => "",
-								  status => $fileHandler->{ $if_ref->{ name } }->{ status },
-								  addr   => "",
-								  mac    => $if_ref->{ mac },
-								  gateway => ""
-		};
-
-		$fileHandler->write( "$file" );
-		if ( $$if_ref{ name } ne $$if_ref{ dev } )
-		{
-			unlink ( $file ) or return 1;
-		}
-	}
-	else
-	{
-		&zenlog( "Error opening $file: $!", "info", "NETWORK" );
-		$status = 1;
-	}
-
+	require Zevenet::Net::Interface;
+	$status = &cleanInterfaceConfig( $if_ref );
 	if ( $status )
 	{
 		return $status;
@@ -386,12 +361,14 @@ sub delIf    # ($if_ref)
 	# If $if is Vini do nothing
 	if ( $$if_ref{ vini } eq '' )
 	{
-		# If $if is a Interface, delete that IP
-		my $ip_cmd =
-		  "$ip_bin addr del $$if_ref{addr}/$$if_ref{mask} dev $$if_ref{name}";
-
-		$status = &logAndRun( $ip_cmd )
-		  if ( length $if_ref->{ addr } && length $if_ref->{ mask } );
+		my $ip_cmd;
+		if ( $if_ref->{ dhcp } ne 'true' )
+		{
+			# If $if is a Interface, delete that IP
+			$ip_cmd = "$ip_bin addr del $$if_ref{addr}/$$if_ref{mask} dev $$if_ref{name}";
+			$status = &logAndRun( $ip_cmd )
+			  if ( length $if_ref->{ addr } && length $if_ref->{ mask } );
+		}
 
 		# If $if is a Vlan, delete Vlan
 		if ( $$if_ref{ vlan } ne '' )
@@ -404,7 +381,8 @@ sub delIf    # ($if_ref)
 		my $ip_v_to_check = ( $$if_ref{ ip_v } == 4 ) ? 6 : 4;
 		my $interface = &getInterfaceConfig( $$if_ref{ name }, $ip_v_to_check );
 
-		if ( !$interface )
+		if ( !$interface
+			 or ( $interface->{ type } eq "bond" and !exists $interface->{ addr } ) )
 		{
 			my $rttables = &getGlobalConfiguration( 'rttables' );
 
@@ -440,6 +418,11 @@ sub delIf    # ($if_ref)
 				func   => 'delRBACResource',
 				args   => [$$if_ref{ name }, 'interfaces'],
 		);
+
+		#reload netplug
+		&eload( module => 'Zevenet::Net::Ext',
+				func   => 'reloadNetplug', );
+
 	}
 
 	return $status;
@@ -468,6 +451,8 @@ sub delIp    # 	($if, $ip ,$netmask)
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my ( $if, $ip, $netmask ) = @_;
+
+	return 0 if ( !defined $ip or $ip eq '' );
 
 	&zenlog( "Deleting ip $ip/$netmask from interface $if", "info", "NETWORK" );
 
@@ -504,6 +489,7 @@ sub addIp    # ($if_ref)
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my ( $if_ref ) = @_;
+	my $if_announce = "";
 
 	&zenlog( "Adding IP $$if_ref{addr}/$$if_ref{mask} to interface $$if_ref{name}",
 			 "info", "NETWORK" );
@@ -539,13 +525,7 @@ sub addIp    # ($if_ref)
 
 		$ip_cmd =
 		  "$ip_bin addr add $$if_ref{addr}/$$if_ref{mask} $broadcast_opt dev $toif label $$if_ref{name} $extra_params";
-	}
-
-	# $if is a Vlan
-	elsif ( defined $$if_ref{ vlan } && $$if_ref{ vlan } ne '' )
-	{
-		$ip_cmd =
-		  "$ip_bin addr add $$if_ref{addr}/$$if_ref{mask} $broadcast_opt dev $$if_ref{name} $extra_params";
+		$if_announce = $toif;
 	}
 
 	# $if is a Network Interface
@@ -553,9 +533,33 @@ sub addIp    # ($if_ref)
 	{
 		$ip_cmd =
 		  "$ip_bin addr add $$if_ref{addr}/$$if_ref{mask} $broadcast_opt dev $$if_ref{name} $extra_params";
+		$if_announce = "$$if_ref{name}";
 	}
 
 	my $status = &logAndRun( $ip_cmd );
+
+	#if arp_announce is enabled then send garps to network
+	eval {
+		if ( $eload )
+		{
+			my $cl_status = &eload(
+									module => 'Zevenet::Cluster',
+									func   => 'getZClusterNodeStatus',
+									args   => [],
+			);
+
+			if (    &getGlobalConfiguration( 'arp_announce' ) eq "true"
+				 && $cl_status ne "backup" )
+			{
+
+				require Zevenet::Net::Util;
+
+				#&sendGArp($$if_ref{parent},$$if_ref{addr})
+				&zenlog( "Announcing garp $if_announce and $$if_ref{addr} " );
+				&sendGArp( $if_announce, $$if_ref{ addr } );
+			}
+		}
+	};
 
 	return $status;
 }

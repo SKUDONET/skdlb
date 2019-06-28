@@ -133,6 +133,7 @@ sub new_vini    # ( $json_obj )
 	$if_ref->{ addr }    = $json_obj->{ ip };
 	$if_ref->{ gateway } = "" if !$if_ref->{ gateway };
 	$if_ref->{ type }    = 'virtual';
+	$if_ref->{ dhcp }    = 'false';
 
 	unless (
 		 &getNetValidate( $if_parent->{ addr }, $if_ref->{ mask }, $if_ref->{ addr } ) )

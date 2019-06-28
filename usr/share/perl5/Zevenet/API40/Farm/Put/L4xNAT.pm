@@ -170,6 +170,12 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 					func   => 'runZClusterRemoteManager',
 					args   => ['ipds', 'stop', $farmname],
 			);
+
+			&eload(
+					module => 'Zevenet::Cluster',
+					func   => 'runZClusterRemoteManager',
+					args   => ['farm', 'stop', $farmname],
+			);
 		}
 	}
 
@@ -222,7 +228,6 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 	if ( exists ( $json_obj->{ persistence } ) )
 	{
 		my $persistence = $json_obj->{ persistence };
-		$persistence = 'none' if $persistence eq '';
 
 		if ( &getL4FarmParam( 'persist', $farmname ) ne $persistence )
 		{
@@ -308,18 +313,10 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 	&zenlog( "Success, some parameters have been changed in farm $farmname.",
 			 "info", "LSLB" );
 
-	if ( &getL4FarmParam( 'status', $farmname ) eq 'up' )
+	if ( &getL4FarmParam( 'status', $farmname ) eq 'up' and $eload )
 	{
-
-		&eload(
-				module => 'Zevenet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['farm', 'restart', $farmname],
-		) if ( $eload );
-
-		if ( $reload_ipds && $eload )
+		if ( $reload_ipds )
 		{
-
 			&eload(
 					module => 'Zevenet::IPDS::Base',
 					func   => 'runIPDSStartByFarm',
@@ -329,7 +326,21 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 			&eload(
 					module => 'Zevenet::Cluster',
 					func   => 'runZClusterRemoteManager',
+					args   => ['farm', 'start', $farmname],
+			);
+
+			&eload(
+					module => 'Zevenet::Cluster',
+					func   => 'runZClusterRemoteManager',
 					args   => ['ipds', 'start', $farmname],
+			);
+		}
+		else
+		{
+			&eload(
+					module => 'Zevenet::Cluster',
+					func   => 'runZClusterRemoteManager',
+					args   => ['farm', 'restart', $farmname],
 			);
 		}
 	}

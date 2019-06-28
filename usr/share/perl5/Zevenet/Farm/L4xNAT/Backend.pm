@@ -61,7 +61,7 @@ sub setL4FarmServer
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my ( $farm_name, $ids, $rip, $port, $weight, $priority, $max_conns ) = @_;
+	my ( $farm_name, $ids, $ip, $port, $weight, $priority, $max_conns ) = @_;
 
 	require Zevenet::Farm::L4xNAT::Config;
 	require Zevenet::Farm::L4xNAT::Action;
@@ -69,7 +69,6 @@ sub setL4FarmServer
 	require Zevenet::Netfilter;
 
 	my $farm_filename = &getFarmFile( $farm_name );
-	my $mark          = &getNewMark( $farm_name );
 	my $output        = 0;
 	my $json          = qq();
 	my $msg           = "setL4FarmServer << farm_name:$farm_name ids:$ids ";
@@ -84,50 +83,85 @@ sub setL4FarmServer
 
 	my $exists = &getFarmServer( $f_ref->{ servers }, $ids );
 
-	if ( defined $rip && $rip ne "" )
+	my $rip = $ip;
+
+	if ( defined $port && $port ne "" )
 	{
-		$exists = &getFarmServer( $f_ref->{ servers }, $rip, "rip" );
-		return -2 if ( $exists && ( $exists->{ id } ne $ids ) );
-		$json .= qq(, "ip-addr" : "$rip");
-		$msg  .= "rip:$rip ";
+		if ( &ipversion( $ip ) == 4 )
+		{
+			$rip = "$ip\:$port";
+		}
+		elsif ( &ipversion( $ip ) == 6 )
+		{
+			$rip = "[$ip]\:$port";
+		}
+
+		if ( !defined $exists || ( defined $exists && $exists->{ port } ne $port ) )
+		{
+			$json .= qq(, "port" : "$port");
+			$msg  .= "port:$port ";
+		}
 	}
 
-	if ( defined $port )
+	if (   defined $ip
+		&& $ip ne ""
+		&& ( !defined $exists || ( defined $exists && $exists->{ rip } ne $rip ) ) )
 	{
-		$json .= qq(, "port" : "$port");
-		$msg  .= "port:$port ";
+		my $existrip = &getFarmServer( $f_ref->{ servers }, $rip, "rip" );
+		return -2 if ( defined $existrip && ( $existrip->{ id } ne $ids ) );
+		$json = qq(, "ip-addr" : "$ip") . $json;
+		$msg .= "ip:$ip ";
+
+		my $mark = "0x0";
+		if ( !defined $exists )
+		{
+			$mark = &getNewMark( $farm_name );
+			return -1 if ( !defined $mark || $mark eq "" );
+			$json .= qq(, "mark" : "$mark");
+			$msg  .= "mark:$mark ";
+		}
+		else
+		{
+			$mark = $exists->{ tag };
+		}
+		&setL4BackendRule( "add", $f_ref, $mark );
 	}
 
-	if ( defined $weight && $weight ne "" )
+	if (   defined $weight
+		&& $weight ne ""
+		&& ( !defined $exists || ( defined $exists && $exists->{ weight } ne $weight ) )
+	  )
 	{
 		$weight = 1 if ( $weight == 0 );
 		$json .= qq(, "weight" : "$weight");
 		$msg  .= "weight:$weight ";
 	}
 
-	if ( defined $priority && $priority ne "" )
+	if (
+		    defined $priority
+		 && $priority ne ""
+		 && ( !defined $exists
+			  || ( defined $exists && $exists->{ priority } ne $priority ) )
+	  )
 	{
 		$priority = 1 if ( $priority == 0 );
 		$json .= qq(, "priority" : "$priority");
 		$msg  .= "priority:$priority ";
 	}
 
-	if ( defined $mark && $mark ne "" )
-	{
-		# It's a backend modification
-		$mark = $exists->{ tag } if ( $exists );
-		$json .= qq(, "mark" : "$mark");
-		$msg  .= "mark:$mark ";
-	}
-
-	if ( defined $max_conns && $max_conns ne "" )
+	if (
+		    defined $max_conns
+		 && $max_conns ne ""
+		 && ( !defined $exists
+			  || ( defined $exists && $exists->{ max_conns } ne $max_conns ) )
+	  )
 	{
 		$max_conns = 0 if ( $max_conns < 0 );
 		$json .= qq(, "est-connlimit" : "$max_conns");
 		$msg  .= "maxconns:$max_conns ";
 	}
 
-	if ( !$exists )
+	if ( !defined $exists )
 	{
 		$json .= qq(, "state" : "up");
 		$msg  .= "state:up ";
@@ -145,7 +179,16 @@ sub setL4FarmServer
 		}
 	);
 
-	&setL4BackendRule( "add", $f_ref, $mark );
+	# take care of floating interfaces without masquerading
+	if ( $json =~ /ip-addr/ && $eload )
+	{
+		my $farm_ref = &getL4FarmStruct( $farm_name );
+		&eload(
+				module => 'Zevenet::Net::Floating',
+				func   => 'setFloatingSourceAddr',
+				args   => [$farm_ref, undef],
+		);
+	}
 
 	return $output;
 }
@@ -227,16 +270,18 @@ sub setL4FarmBackendsSessionsRemove
 	my ( $farmname, $backend ) = @_;
 	my $output = 0;
 
+	my $nft_bin = &getGlobalConfiguration( 'nft_bin' );
+
 	require Zevenet::Farm::L4xNAT::Config;
 
 	my $farm = &getL4FarmStruct( $farmname );
 
-	return 0 if ( $farm->{ persist } eq "none" );
+	return 0 if ( $farm->{ persist } eq "" );
 
 	my $be = $farm->{ servers }[$backend];
 	( my $tag = $be->{ tag } ) =~ s/0x//g;
 	my $map_name   = "persist-$farmname";
-	my @persistmap = `/usr/local/sbin/nft list map nftlb $map_name`;
+	my @persistmap = `$nft_bin list map nftlb $map_name`;
 	my $data       = 0;
 
 	foreach my $line ( @persistmap )
@@ -303,7 +348,7 @@ sub setL4FarmBackendStatus
 		}
 	  );
 
-	if ( $status ne "up" && $cutmode eq "cut" )
+	if ( $status ne "up" && $cutmode eq "cut" && $farm->{ persist } ne '' )
 	{
 		&setL4FarmBackendsSessionsRemove( $farm_name, $backend );
 
@@ -369,7 +414,7 @@ Parameters:
 
 Returns:
 	backends array - array of backends structure
-		\%backend = { $id, $alias, $family, $ip, $port, $tag, $weight, $priority, $status, $rip = $ip }
+		\%backend = { $id, $alias, $family, $ip, $port, $tag, $weight, $priority, $status, $rip = $ip, $max_conns }
 
 =cut
 
@@ -465,11 +510,18 @@ sub _getL4FarmParseServers
 			$server->{ tag } = $l[3];
 		}
 
+		if ( $stage == 3 && $line =~ /\"est-connlimit\"/ )
+		{
+			my @l = split /"/, $line;
+			$server->{ max_conns } = $l[3];
+		}
+
 		if ( $stage == 3 && $line =~ /\"state\"/ )
 		{
 			my @l = split /"/, $line;
 			$server->{ status } = $l[3];
-			$server->{ status } = "maintenance" if ( $server->{ status } eq "off" );
+			$server->{ status } = "down"
+			  if ( $server->{ status } eq "off" || $server->{ status } eq "config_error" );
 			$server->{ status } = "fgDOWN" if ( $server->{ status } eq "down" );
 		}
 	}
@@ -664,6 +716,40 @@ sub setL4BackendRule
 	  ( $vip_if->{ type } eq 'virtual' ) ? $vip_if->{ parent } : $vip_if->{ name };
 
 	return &setRule( $action, $vip_if, $table_if, "", "$mark/0x7fffffff" );
+}
+
+=begin nd
+Function: getL4ServerByMark
+
+	Obtain the backend id from the mark
+
+Parameters:
+	servers_ref - reference to the servers array
+	mark - backend mark to discover the id
+
+Returns:
+	integer - > 0 if successful, -1 if error.
+
+=cut
+
+sub getL4ServerByMark
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $servers_ref = shift;
+	my $mark        = shift;
+
+	( my $tag = $mark ) =~ s/0x.0*/0x/g;
+
+	foreach my $server ( @{ $servers_ref } )
+	{
+		if ( $server->{ tag } eq $tag )
+		{
+			return $server->{ id };
+		}
+	}
+
+	return -1;
 }
 
 1;

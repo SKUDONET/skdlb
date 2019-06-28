@@ -198,14 +198,29 @@ sub httpNlbRequest
 	  if ( defined $self->{ body } && $self->{ body } ne "" );
 
 	my $execmd =
-	  qq($curl_cmd --noproxy "*" -s -H "Key: HoLa" -H \"Expect:\" -X "$self->{ method }" $body http://127.0.0.1:27$self->{ uri });
+	  qq($curl_cmd --noproxy "*" -s -H "Key: HoLa" -X "$self->{ method }" $body http://127.0.0.1:27$self->{ uri });
+
+	my $file = "/tmp/nft_$$";
+	$file = $self->{ file }
+	  if ( defined $self->{ file } && $self->{ file } =~ /ipds/ );
 
 	if ( defined $self->{ file } && $self->{ file } ne "" )
 	{
-		$execmd = $execmd . " -f -o " . $self->{ file };
+		$execmd = $execmd . " -f -o $file";
 	}
 
 	$output = &logAndRun( $execmd );
+
+	# filter ipds params into the configuration file
+	if (    defined $self->{ file }
+		 && $self->{ file } ne ""
+		 && -f "$file"
+		 && $self->{ file } !~ /\/tmp\//
+		 && $file !~ /ipds/ )
+	{
+		require Zevenet::Farm::L4xNAT::Config;
+		&writeL4NlbConfigFile( $file, $self->{ file } );
+	}
 
 	return -1 if ( $output != 0 );
 
@@ -237,9 +252,10 @@ sub execNft
 	my $chain_def = shift;
 	my $rule      = shift;
 
-	my $nft       = &getGlobalConfiguration( 'nft_bin' );
-	my ( $chain ) = $chain_def =~ /^((\w-\.\d)+)\s+.*/;
-	my $output    = 0;
+	my $nft   = &getGlobalConfiguration( 'nft_bin' );
+	my $chain = "";
+	( $chain ) = $chain_def =~ /^([\w\-\.\d]+)\s*.*$/;
+	my $output = 0;
 
 	if ( $action eq "add" )
 	{
@@ -251,19 +267,20 @@ sub execNft
 	{
 		if ( $chain eq "" )
 		{
-			$output = &logAndRun( "$nft delete table $table" );
+			&zenlog( "Deleting cluster table $table" );
+			$output = `$nft delete table $table 2> /dev/null`;
 		}
 		elsif ( $rule eq "" )
 		{
-			$output = &logAndRun( "$nft delete chain $table $chain" );
+			$output = `$nft delete chain $table $chain 2> /dev/null`;
 		}
 		else
 		{
-			my @rules  = `$nft list chain $table $chain`;
+			my @rules  = `$nft -a list chain $table $chain 2> /dev/null`;
 			my $handle = "";
 			foreach my $r ( @rules )
 			{
-				my ( $handle ) = $r =~ / $rule \# handle (\d)$/;
+				my ( $handle ) = $r =~ / $rule.* \# handle (\d)$/;
 				if ( $handle ne "" )
 				{
 					$output = &logAndRun( "$nft delete rule $table $chain handle $handle" );
@@ -274,13 +291,23 @@ sub execNft
 	}
 	elsif ( $action eq "check" )
 	{
-		my @rules = `$nft list chain $table $chain`;
-		foreach my $r ( @rules )
+		if ( $chain eq "" )
 		{
-			if ( $r =~ / $rule / )
+			$output = 1;
+			my @rules = `$nft list table $table 2> /dev/null`;
+			$output = 0 if ( scalar @rules == 0 );
+			return $output;
+		}
+		else
+		{
+			my @rules = `$nft list chain $table $chain 2> /dev/null`;
+			foreach my $r ( @rules )
 			{
-				$output = 1;
-				last;
+				if ( $r =~ / $rule / )
+				{
+					$output = 1;
+					last;
+				}
 			}
 		}
 	}

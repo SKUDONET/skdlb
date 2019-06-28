@@ -45,7 +45,7 @@ See Also:
 
 sub getGlobalConfiguration
 {
-	my $parameter = shift;
+	my $parameter    = shift;
 	my $force_reload = shift // 0;
 
 	state $global_conf = &parseGlobalConfiguration();
@@ -66,7 +66,8 @@ sub getGlobalConfiguration
 		else
 		{
 			&zenlog( "The global configuration parameter '$parameter' has not been found",
-					 'warning', 'Configuration' );
+					 'warning', 'Configuration' )
+			  if ( $parameter ne "debug" );
 			return undef;
 		}
 	}
@@ -123,7 +124,7 @@ sub parseGlobalConfiguration
 		# replace every variable used in the $var_value by its content
 		while ( $global_conf->{ $param } =~ /\$(\w+)/ )
 		{
-			$var = $1;
+			$var   = $1;
 			$value = $global_conf->{ $var } // '';
 			$global_conf->{ $param } =~ s/\$$var/$value/;
 		}

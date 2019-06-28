@@ -75,6 +75,12 @@ sub zenlog    # ($string, $type)
 	my $type   = shift // 'info';    # type   = log level (Default: info))
 	my $tag    = shift // "";
 
+	if ( $tag eq 'PROFILING' )
+	{
+		require Zevenet::Debug;
+		return 0 if ( &debug() < 5 );
+	}
+
 	if ( $type =~ /^(debug)(\d*)$/ )
 	{
 		require Zevenet::Debug;
@@ -86,6 +92,7 @@ sub zenlog    # ($string, $type)
 		return 0 if ( &debug() lt $debug_lvl );
 	}
 
+	$tag = lc $tag    if $tag;
 	$tag = "$tag :: " if $tag;
 
 	# Get the program name

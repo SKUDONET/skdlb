@@ -113,8 +113,9 @@ sub getInterfaceConfig    # \%iface ($if_name, $ip_version)
 	$fileHandler = Config::Tiny->read( $config_filename )
 	  if ( -f $config_filename );
 
+	#Return undef if the file doesn't exists and the iface is not a NIC
 	return undef
-	  if ( !-f $config_filename );
+	  if ( !-f $config_filename and $if_name =~ /\.|\:/ );
 
 	require IO::Socket;
 	my $socket = IO::Socket::INET->new( Proto => 'udp' );
@@ -256,7 +257,14 @@ sub setInterfaceConfig    # $bool ($if_ref)
 	my $configdir       = &getGlobalConfiguration( 'configdir' );
 	my $config_filename = "$configdir/if_$$if_ref{ name }_conf";
 
-	$fileHandle = Config::Tiny->read( $config_filename ) if ( -f $config_filename );
+	# create file if it is not exist
+	if ( !-f $config_filename )
+	{
+		require Zevenet::File;
+		return 0 if ( &createFile( $config_filename ) );
+	}
+
+	$fileHandle = Config::Tiny->read( $config_filename );
 
 	foreach my $field ( @if_params )
 	{
@@ -273,6 +281,53 @@ sub setInterfaceConfig    # $bool ($if_ref)
 
 	# returns a true value on success
 	return 1;
+}
+
+=begin nd
+Function: cleanInterfaceConfig
+
+	remove the configuration information of a interface from its config file
+
+Parameters:
+	if_ref - Reference to a network interface hash.
+
+Returns:
+	Integer - 0 on success, or another value on failure.
+
+=cut
+
+sub cleanInterfaceConfig
+{
+	my $if_ref    = shift;
+	my $configdir = &getGlobalConfiguration( 'configdir' );
+	my $file      = "$configdir/if_$$if_ref{name}\_conf";
+	my $err       = 0;
+
+	if ( !-f $file )
+	{
+		&zenlog( "The file $file has not been found", "info", "NETWORK" );
+		return 1;
+	}
+
+	require Config::Tiny;
+	my $fileHandler = Config::Tiny->new();
+	$fileHandler = Config::Tiny->read( $file );
+	$fileHandler->{ $if_ref->{ name } } = {
+							  mask   => "",
+							  status => $fileHandler->{ $if_ref->{ name } }->{ status },
+							  addr   => "",
+							  mac    => $if_ref->{ mac },
+							  gateway => "",
+							  dhcp    => "false"
+	};
+
+	$fileHandler->write( "$file" );
+	if ( $$if_ref{ name } ne $$if_ref{ dev } )
+	{
+		unlink ( $file ) or return 1;
+	}
+
+	return $err;
 }
 
 =begin nd
@@ -345,18 +400,11 @@ sub getConfigInterfaceList
 				my $if_name = $1;
 				my $if_ref;
 
-				#~ $if_ref = &getInterfaceConfig( $if_name, 4 );
 				$if_ref = &getInterfaceConfig( $if_name );
-				if ( $$if_ref{ addr } )
+				if ( defined $if_ref )
 				{
 					push @configured_interfaces, $if_ref;
 				}
-
-				#~ $if_ref = &getInterfaceConfig( $if_name, 6 );
-				#~ if ( $$if_ref{ addr } )
-				#~ {
-				#~ push @configured_interfaces, $if_ref;
-				#~ }
 			}
 		}
 
@@ -938,7 +986,7 @@ sub getInterfaceTypeList
 			if ( $list_type eq &getInterfaceType( $if_name ) )
 			{
 				my $output_if = &getInterfaceConfig( $if_name );
-				if ( !$output_if || !$output_if->{ mac } )
+				if ( !$output_if || !$output_if->{ mac } || $output_if->{ is_slave } eq 'true' )
 				{
 					$output_if = &getSystemInterface( $if_name );
 				}
@@ -1702,6 +1750,22 @@ sub setVlan    # if_ref
 
 	my $oldIf_ref = &getInterfaceConfig( $if_ref->{ name } );
 
+	if ( $if_ref->{ dhcp } eq "true" )
+	{
+		$if_ref->{ addr }    = "";
+		$if_ref->{ net }     = "";
+		$if_ref->{ mask }    = "";
+		$if_ref->{ gateway } = "";
+	}
+
+	if ( length $if_ref->{ mac } == 0 )
+	{
+		my $parent_if_name = &getParentInterfaceName( $if_ref->{ name } );
+		my $parent_config  = &getInterfaceConfig( $parent_if_name );
+
+		$if_ref->{ mac } = $parent_config->{ mac };
+	}
+
 	# Creating a new interface
 	if ( !defined $oldIf_ref )
 	{
@@ -1713,7 +1777,7 @@ sub setVlan    # if_ref
 	my $oldAddr;
 
 	# Add new IP, netmask and gateway
-	if ( exists $if_ref->{ addr } )
+	if ( exists $if_ref->{ addr } and length $if_ref->{ addr } > 0 )
 	{
 		return 1 if &addIp( $if_ref );
 		return 1 if &writeRoutes( $if_ref->{ name } );
@@ -1722,11 +1786,16 @@ sub setVlan    # if_ref
 	}
 
 	my $state = &upIf( $if_ref, 'writeconf' );
+	return 1 if ( !&setInterfaceConfig( $if_ref ) );
 
 	if ( $state == 0 )
 	{
 		$if_ref->{ status } = "up";
-		return 1 if &applyRoutes( "local", $if_ref );
+
+		if ( $if_ref->{ addr } > 0 )
+		{
+			return 1 if &applyRoutes( "local", $if_ref );
+		}
 	}
 
 	if ( $eload && exists $params->{ mac } )
@@ -1741,10 +1810,8 @@ sub setVlan    # if_ref
 		  );
 	}
 
-	return 1 if ( !&setInterfaceConfig( $if_ref ) );
-
 	# if the GW is changed, change it in all appending virtual interfaces
-	if ( exists $params->{ gateway } )
+	if ( exists $if_ref->{ gateway } and length $if_ref->{ gateway } > 0 )
 	{
 		foreach my $appending ( &getInterfaceChild( $if_ref->{ vlan } ) )
 		{

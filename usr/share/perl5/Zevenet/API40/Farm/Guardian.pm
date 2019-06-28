@@ -157,7 +157,7 @@ sub create_farmguardian
 	my $out = &getZapiFG( $fg_name );
 	if ( $out )
 	{
-		my $msg = "The farm guardian $fg_name has been created successfully";
+		my $msg = "The farm guardian $fg_name has been created successfully.";
 		my $body = {
 					 description => $desc,
 					 params      => $out,
@@ -312,7 +312,7 @@ sub delete_farmguardian
 			);
 		}
 
-		my $msg = "$fg_name has been deleted successful.";
+		my $msg = "$fg_name has been deleted successfully.";
 		my $body = {
 					 description => $desc,
 					 success     => "true",
