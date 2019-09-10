@@ -514,21 +514,6 @@ sub getHTTPServiceStruct
 	$dyns    = "false" if $dyns eq '';
 	$httpsbe = "false" if $httpsbe eq '';
 
-	my @fgconfig  = &getFarmGuardianConf( $farmname, $service_name );
-	my $fgttcheck = $fgconfig[1];
-	my $fgscript  = $fgconfig[2];
-	my $fguse     = $fgconfig[3];
-	my $fglog     = $fgconfig[4];
-
-	# Default values for farm guardian parameters
-	if ( !$fgttcheck ) { $fgttcheck = 5; }
-	if ( !$fguse )     { $fguse     = "false"; }
-	if ( !$fglog )     { $fglog     = "false"; }
-	if ( !$fgscript )  { $fgscript  = ""; }
-
-	$fgscript =~ s/\n//g;
-	$fguse =~ s/\n//g;
-
 	my $backends = &getHTTPFarmBackends( $farmname, $service_name );
 
 	# Backends
@@ -548,9 +533,6 @@ sub getHTTPServiceStruct
 		);
 	}
 
-	$ttl       = 0 unless $ttl;
-	$fgttcheck = 0 unless $fgttcheck;
-
 	my $service_ref = {
 						id           => $service_name,
 						vhost        => $vser,
@@ -564,6 +546,9 @@ sub getHTTPServiceStruct
 						httpsb       => $httpsbe,
 						backends     => $backends,
 	};
+
+	# add fg
+	$service_ref->{ farmguardian } = &getFGFarm( $farmname, $service_name );
 
 	if ( $eload )
 	{

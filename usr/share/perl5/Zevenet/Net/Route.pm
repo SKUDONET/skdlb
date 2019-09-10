@@ -249,8 +249,11 @@ sub applyRule
 
 	return -1 if ( $table eq "" );
 
-	$from   = "from $from"     if ( defined $from   && $from ne "" );
-	$fwmark = "fwmark $fwmark" if ( defined $fwmark && $fwmark ne "" );
+	my $prio_id = "28000";
+
+	$from = "from $from" if ( defined $from && $from ne "" );
+	$fwmark = "fwmark $fwmark prio $prio_id"
+	  if ( defined $fwmark && $fwmark ne "" );
 
 	$output =
 	  &logAndRun( "$ip_bin -$ipv rule $action $from $fwmark lookup $table" );
@@ -409,8 +412,7 @@ sub applyRoutes    # ($table,$if_ref,$gateway)
 				&zenlog(
 						 "Applying $table routes in stack IPv$$if_ref{ip_v} with gateway \""
 						   . &getGlobalConfiguration( 'defaultgw' ) . "\"",
-						 "info",
-						 "NETWORK"
+						 "info", "NETWORK"
 				);
 				my $ip_cmd =
 				  "$ip_bin -$$if_ref{ip_v} route $action default via $gateway dev $$if_ref{name} $routeparams";

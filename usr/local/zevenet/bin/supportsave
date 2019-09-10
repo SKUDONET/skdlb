@@ -21,6 +21,17 @@
 #
 ###############################################################################
 
+GLOBALCONF="/usr/local/zevenet/config/global.conf"
+
+if [ -f "/usr/local/zevenet/bin/load_global_conf" ];
+then
+	source /usr/local/zevenet/bin/load_global_conf
+	load_global_conf
+else
+	echo "Error loading the envirovement"
+fi
+NFTBIN=$nft_bin
+
 tmp_name=`/bin/date +%Y%m%d_%H%M`
 hostname=`hostname`
 home_dir="/usr/local/zevenet"
@@ -36,7 +47,7 @@ backup_dir="${prefix}/${ss_dir}"
 config_paths=`perl -MZevenet::Config -e 'print getGlobalConfiguration("backupfor");'`;
 zbindir=`perl -MZevenet::Config -e 'print getGlobalConfiguration("zbindir");'`;
 
-monitoring_paths="${home_dir}/app/zenrrd/rrd ${home_dir}/logs /var/log/messages* /var/log/syslog* /var/log/cherokee* ${home_dir}/node_status /var/log/apt";
+monitoring_paths="${home_dir}/app/zenrrd/rrd ${home_dir}/logs /var/log/messages* /var/log/syslog* /var/log/letsencrypt /var/log/cherokee* ${home_dir}/node_status /var/log/apt";
 
 
 echo "Saving information for support in the path ${backup_dir}.tar.gz"
@@ -69,6 +80,10 @@ echo -e "\n--- CPU information ---"     >> $backup_dir/system_resources.txt
 cat /proc/cpuinfo                       >> $backup_dir/system_resources.txt
 echo -e "\n--- TOP information ---"     >> $backup_dir/system_resources.txt
 /usr/bin/top -b -n1                     >> $backup_dir/system_resources.txt
+echo -e "\n--- Resolv config ---"	>> $backup_dir/system_resources.txt
+cat /etc/resolv.conf 			>> $backup_dir/system_resources.txt
+echo -e "\n---Kernel Version ---"	>> $backup_dir/system_resources.txt
+uname -a				>> $backup_dir/system_resources.txt
 
 echo "- Partitions"
 /bin/df -h                              >> $backup_dir/partitions.txt 2>&1
@@ -127,16 +142,23 @@ echo "netstat -nr"                      >> $backup_dir/netstat.txt
 /bin/netstat -nr                        >> $backup_dir/netstat.txt
 
 echo "- Netfilter"
-
-NFTBIN=`which nft`
 echo "List nftables ruleset "			>> $backup_dir/nftables.txt
-$NFTBIN list ruleset					>> $backup_dir/nftables.txt
+$NFTBIN list ruleset		>> $backup_dir/nftables.txt
 
 CURL=`which curl`
 echo "nftlb daemon farms data"			>> $backup_dir/nftlb.txt
 $CURL --noproxy "*" --connect-timeout 10 -s -H "Key: HoLa" http://127.0.0.1:27/farms >> $backup_dir/nftlb.txt
 echo "nftlb daemon policies data"		>> $backup_dir/nftlb.txt
 $CURL --noproxy "*" --connect-timeout 10 -s -H "Key: HoLa" http://127.0.0.1:27/policies >> $backup_dir/nftlb.txt
+
+echo "- Reverse Proxy"
+poundctl="/usr/local/zevenet/app/pound/sbin/poundctl"
+for i in `ls /tmp/*_pound.socket 2>/dev/null`
+do
+	echo "Farm $i"	>> $backup_dir/pound_status.txt
+	$poundctl -c $i >> $backup_dir/pound_status.txt
+done
+
 
 echo "- ARP table"
 /usr/sbin/arp -n                        >> $backup_dir/arp_table.txt

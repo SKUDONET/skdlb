@@ -169,11 +169,13 @@ sub downloadBackup
 	{
 		my $cgi = &getCGI();
 		print $cgi->header(
-							-type                         => 'application/x-download',
-							-attachment                   => $backup,
-							'Content-length'              => -s "$backupdir/$backup",
-							'Access-Control-Allow-Origin' => "https://$ENV{ HTTP_HOST }/",
-							'Access-Control-Allow-Credentials' => 'true',
+						   -type                         => 'application/x-download',
+						   -attachment                   => $backup,
+						   'Content-length'              => -s "$backupdir/$backup",
+						   'Access-Control-Allow-Origin' => ( exists $ENV{ HTTP_ZAPI_KEY } )
+						   ? '*'
+						   : "https://$ENV{ HTTP_HOST }/",
+						   'Access-Control-Allow-Credentials' => 'true',
 		);
 
 		binmode $download_fh;

@@ -292,7 +292,9 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 	if ( exists ( $json_obj->{ vport } ) )
 	{
 		# VPORT validation
-		if ( !&getValidPort( $json_obj->{ vip }, $json_obj->{ vport }, "L4XNAT" ) )
+		if (
+			 !&getValidPort( $json_obj->{ vip }, $json_obj->{ vport }, "L4XNAT", $farmname )
+		  )
 		{
 			my $msg = "The virtual port must be an acceptable value and must be available.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );

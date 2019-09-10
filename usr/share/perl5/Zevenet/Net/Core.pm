@@ -148,6 +148,10 @@ sub upIf    # ($if_ref, $writeconf)
 		);
 	}
 
+	# calculate new backend masquerade IPs
+	require Zevenet::Farm::Config;
+	&reloadFarmsSourceAddress();
+
 	return $status;
 }
 
@@ -221,6 +225,10 @@ sub downIf    # ($if_ref, $writeconf)
 		$fileHandler->{ $if_ref->{ name } }->{ status } = "down";
 		$fileHandler->write( $file );
 	}
+
+	# calculate new backend masquerade IPs
+	require Zevenet::Farm::Config;
+	&reloadFarmsSourceAddress();
 
 	return $status;
 }

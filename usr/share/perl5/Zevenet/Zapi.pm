@@ -232,4 +232,22 @@ sub validZapiKey    # ()
 	return $validKey;
 }
 
+sub listZapiVersions
+{
+	my @versions = ();
+	my $dir      = &getGlobalConfiguration( "zapi_directory" );
+
+	opendir my $dh, $dir;
+	foreach my $file ( readdir $dh )
+	{
+		if ( $file =~ s/^v// )
+		{
+			push @versions, $file;
+		}
+	}
+	closedir $dh;
+
+	return sort @versions;
+}
+
 1;

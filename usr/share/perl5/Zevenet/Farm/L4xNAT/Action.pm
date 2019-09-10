@@ -333,12 +333,12 @@ sub sendL4NlbCmd
 		my $file  = "/tmp/nft_$$";
 		my $match = 0;
 
-		$output = httpNlbRequest(
-								  {
-									method => "GET",
-									uri    => "/farms/" . $self->{ farm },
-									file   => "$file"
-								  }
+		$output = &httpNlbRequest(
+								   {
+									 method => "GET",
+									 uri    => "/farms/" . $self->{ farm },
+									 file   => "$file"
+								   }
 		);
 
 		if ( -e "$file" )

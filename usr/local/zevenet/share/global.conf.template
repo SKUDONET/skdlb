@@ -42,7 +42,9 @@ $logdir="/var/log";#update
 #piddir
 $piddir="/var/run";
 #zevenet activation certificate path
-$zlbcertfile_path="/usr/local/zevenet/www/zlbcertfile.pem";
+$zlbcertfile_path="$basedir/zlbcertfile.pem";#update
+# directory of the zapi binaries
+$zapi_directory="$basedir/zapi";
 #first boot flag
 $first_boot_flag="/etc/firstzlbboot";
 #zevenet service
@@ -63,6 +65,8 @@ $fileapt="/etc/apt/sources.list";
 $apt_source_zevenet="/etc/apt/sources.list.d/zevenet.list";
 # apt user conf
 $apt_conf_file="/etc/apt/apt.conf";
+# apt updates dir
+$update_dir="/usr/local/zevenet/updates"
 # Zevenet URL repo
 $repo_url_zevenet="repo.zevenet.com";
 # Zevenet GPG key
@@ -96,6 +100,15 @@ $licenseFileHtml="$zdir/license.html";#update
 #File configuration Zen Cluster
 $filecluster="$configdir/cluster.conf";#update
 
+#let's encrypt configuration
+$temp_farm="letsencryptZevenet";
+$le_binary="certbot-auto";
+$le_fullchain_path="/usr/local/zevenet/config/letsencrypt/";
+$le_webroot_path="/usr/local/zevenet/app/letsencryptz/webroot/";
+$le_webserver_config_file="/usr/local/zevenet/app/letsencryptz/etc/cherokee_localhost.conf";
+$le_config_path="$le_fullchain_path";
+$le_email="";
+
 #File configuration GUI
 $http_server_dir="$zdir/app/cherokee";
 $http_server_service="/etc/init.d/cherokee";
@@ -105,6 +118,7 @@ $http_server_cert="$configdir/zencert.pem";
 $http_server_key="$configdir/zencert-c.key";
 $http_server_cert_tpl="$templatedir/zencert.pem";
 $http_server_key_tpl="$templatedir/zencert-c.key";
+$http_bin="$http_server_dir/sbin/cherokee";
 
 #Where is temperature file?
 $temperatureFile="/proc/acpi/thermal_zone/THRM/temperature";
@@ -113,6 +127,8 @@ $sys_net_dir="/sys/class/net";
 
 
 ## binaries
+#Where is cat binary?
+$cat_bin="/usr/bin/cat";
 #Where is hostname binary?
 $hostname="/bin/hostname";
 #Where is kill binary?
@@ -124,7 +140,7 @@ $tar="/bin/tar";
 #where is ifconfig binary?
 $ifconfig_bin="/usr/sbin/ifconfig";
 #Where is ip bynary?
-$ip_bin="/usr/sbin/ip";
+$ip_bin="/bin/ip";#update
 #Where is wc binary?
 $wc_bin="/usr/bin/wc";
 #Where is fdisk binary?
@@ -230,7 +246,7 @@ $dpkg_bin="/usr/bin/dpkg";
 #Where is grep?
 $grep_bin="/bin/grep";
 #Where is nft?
-$nft_bin="/usr/local/sbin/nft";#update
+$nft_bin="/usr/sbin/nft";#update
 #Where is nftlb?
 $nftlb_bin="/usr/local/zevenet/app/nftlb/sbin/nftlb";
 #Where is poweroff

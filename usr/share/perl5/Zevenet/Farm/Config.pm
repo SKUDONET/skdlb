@@ -671,7 +671,7 @@ sub getFarmPlainInfo    # ($farm_name)
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $farm_name = shift;
-	my $file      = shift // undef;
+	my $file = shift // undef;
 	my @content;
 
 	my $configdir = &getGlobalConfiguration( 'configdir' );
@@ -760,11 +760,25 @@ sub reloadFarmsSourceAddressByFarm
 	my $farm_ref = &getL4FarmStruct( $farm_name );
 	return if $farm_ref->{ nattype } ne 'nat';
 
-	&eload(
-			module => 'Zevenet::Net::Floating',
-			func   => 'setFloatingSourceAddr',
-			args   => [$farm_ref, undef],
-	) if ( $eload );
+	if ( $eload )
+	{
+		&eload(
+				module => 'Zevenet::Net::Floating',
+				func   => 'setFloatingSourceAddr',
+				args   => [$farm_ref, undef],
+		);
+
+		# reload the backend source address
+		foreach my $bk ( @{ $farm_ref->{ servers } } )
+		{
+			&eload(
+					module => 'Zevenet::Net::Floating',
+					func   => 'setFloatingSourceAddr',
+					args   => [$farm_ref, $bk],
+			);
+		}
+	}
+
 }
 
 1;

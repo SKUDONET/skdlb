@@ -467,7 +467,6 @@ sub setFarmListen    # ( $farm_name, $farmlisten )
 		if ( $filefarmhttp[$i_f] =~ /.*Cert\ \"/ && $flisten eq "https" )
 		{
 			$filefarmhttp[$i_f] =~ s/#//g;
-
 		}
 
 		#
@@ -478,7 +477,6 @@ sub setFarmListen    # ( $farm_name, $farmlisten )
 		if ( $filefarmhttp[$i_f] =~ /.*Ciphers\ \"/ && $flisten eq "https" )
 		{
 			$filefarmhttp[$i_f] =~ s/#//g;
-
 		}
 
 		# Enable 'Disable TLSv1, TLSv1_1 or TLSv1_2'
@@ -536,13 +534,13 @@ sub setFarmListen    # ( $farm_name, $farmlisten )
 		}
 
 		# Check for ECDHCurve cyphers
-		if ( $filefarmhttp[$i_f] =~ /^\#*ECDHCurve/ && $flisten eq "http" )
+		if ( $filefarmhttp[$i_f] =~ /ECDHCurve/ && $flisten eq "http" )
 		{
-			$filefarmhttp[$i_f] =~ s/.*ECDHCurve/\#ECDHCurve/;
+			$filefarmhttp[$i_f] =~ s/ECDHCurve/\#ECDHCurve/;
 		}
-		if ( $filefarmhttp[$i_f] =~ /^\#*ECDHCurve/ && $flisten eq "https" )
+		if ( $filefarmhttp[$i_f] =~ /ECDHCurve/ && $flisten eq "https" )
 		{
-			$filefarmhttp[$i_f] =~ s/.*ECDHCurve.*/ECDHCurve\t"prime256v1"/;
+			$filefarmhttp[$i_f] =~ s/#ECDHCurve/ECDHCurve/;
 		}
 
 		# Generate DH Keys if needed
@@ -1600,7 +1598,7 @@ sub getHTTPFarmStruct
 		}
 		elsif ( $ciphers eq "cipherssloffloading" )
 		{
-			$ciphers = "cipherssloffloading";
+			$ciphers = "ssloffloading";
 		}
 		elsif ( $ciphers eq "cipherpci" )
 		{

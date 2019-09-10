@@ -354,9 +354,10 @@ sub getValidPort    # ( $ip, $port, $profile )
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my $ip      = shift;    # mandatory for HTTP, GSLB or no profile
-	my $port    = shift;
-	my $profile = shift;    # farm profile, optional
+	my $ip       = shift;    # mandatory for HTTP, GSLB or no profile
+	my $port     = shift;
+	my $profile  = shift;    # farm profile, optional
+	my $farmname = shift;    # farm profile, optional
 
 	#~ &zenlog("getValidPort( ip:$ip, port:$port, profile:$profile )");# if &debug;
 	require Zevenet::Net::Validate;
@@ -368,7 +369,8 @@ sub getValidPort    # ( $ip, $port, $profile )
 	elsif ( $profile =~ /^(?:L4XNAT)$/i )
 	{
 		require Zevenet::Farm::L4xNAT::Validate;
-		return &ismport( $port ) eq 'true';
+		return &ismport( $port ) eq 'true'
+		  && &checkport( $ip, $port, $farmname ) eq 'false';
 	}
 	elsif ( $profile =~ /^(?:DATALINK)$/i )
 	{

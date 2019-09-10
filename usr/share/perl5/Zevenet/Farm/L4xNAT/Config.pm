@@ -358,6 +358,10 @@ sub setL4FarmParam
 	if ( $param eq "vip" )
 	{
 		&doL4FarmRules( "reload", $farm_name, $prev_config );
+
+		# reload source address maquerade
+		require Zevenet::Farm::Config;
+		&reloadFarmsSourceAddressByFarm( $farm_name );
 	}
 
 	return $output;

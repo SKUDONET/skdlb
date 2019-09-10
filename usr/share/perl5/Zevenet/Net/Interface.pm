@@ -250,6 +250,7 @@ sub setInterfaceConfig    # $bool ($if_ref)
 		&zenlog( "Input parameter is not a hash reference", "warning", "NETWORK" );
 		return;
 	}
+	use Data::Dumper;
 	&zenlog( "setInterfaceConfig: " . Dumper $if_ref, "debug", "NETWORK" )
 	  if &debug() > 2;
 	my @if_params = ( 'status', 'name', 'addr', 'mask', 'gateway', 'mac', 'dhcp' );
@@ -271,7 +272,7 @@ sub setInterfaceConfig    # $bool ($if_ref)
 		$fileHandle->{ $if_ref->{ name } }->{ $field } = $if_ref->{ $field };
 	}
 
-	if ( !-f $config_filename )
+	if ( ! exists $fileHandle->{status} )
 	{
 		$fileHandle->{ $if_ref->{ name } }->{ status } = $if_ref->{ status } // "up";
 	}
@@ -1161,6 +1162,54 @@ sub getLinkNameList
 	closedir $if_dir;
 
 	return @if_list;
+}
+
+=begin nd
+Function: getInterfaceByIp
+
+	Ask for the name of the interface using the IP address
+
+Parameters:
+	IP - IP address
+
+Returns:
+	String - Interface name
+
+=cut
+
+sub getInterfaceByIp
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $ip = shift;
+
+	require Zevenet::Net::Validate;
+
+	my $output   = "";
+	my $ip_ver   = &ipversion( $ip );
+	my $addr_ref = NetAddr::IP->new( $ip );
+
+	foreach my $if_ref ( @{ &getConfigInterfaceList() } )
+	{
+		# IPv4
+		if ( $ip_ver == 4 && $if_ref->{ ip_v } == 4 && $if_ref->{ addr } eq $ip )
+		{
+			$output = $if_ref->{ name };
+			last;
+		}
+
+		# IPv6
+		if ( $ip_ver == 6 && $if_ref->{ ip_v } == 6 )
+		{
+			if ( NetAddr::IP->new( $if_ref->{ addr } ) eq $addr_ref )
+			{
+				$output = $if_ref->{ name };
+				last;
+			}
+		}
+	}
+
+	return $output;
 }
 
 =begin nd
