@@ -463,7 +463,7 @@ sub _getL4FarmParseServers
 			$server->{ id }        = $index + 0;
 			$server->{ port }      = undef;
 			$server->{ tag }       = "0x0";
-			$server->{ max_conns } = 0;
+			$server->{ max_conns } = 0 if ( $eload );
 		}
 
 		if ( $stage == 3 && $line =~ /\"ip-addr\"/ )
@@ -513,15 +513,15 @@ sub _getL4FarmParseServers
 		if ( $stage == 3 && $line =~ /\"est-connlimit\"/ )
 		{
 			my @l = split /"/, $line;
-			$server->{ max_conns } = $l[3] + 0;
+			$server->{ max_conns } = $l[3] + 0 if ( $eload );
 		}
 
 		if ( $stage == 3 && $line =~ /\"state\"/ )
 		{
 			my @l = split /"/, $line;
 			$server->{ status } = $l[3];
-			$server->{ status } = "down"
-			  if ( $server->{ status } eq "off" || $server->{ status } eq "config_error" );
+			$server->{ status } = "undefined" if ( $server->{ status } eq "config_error" );
+			$server->{ status } = "maintenance" if ( $server->{ status } eq "off" );
 			$server->{ status } = "fgDOWN" if ( $server->{ status } eq "down" );
 		}
 	}
