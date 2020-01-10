@@ -83,6 +83,15 @@ sub delete_interface_nic    # ( $nic )
 		return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
+	if ( $eload )
+	{
+		&eload(
+				module => 'Zevenet::Net::Zapi',
+				func   => 'checkZapiIfDepsRouting',
+				args   => [$nic, 'del'],
+		);
+	}
+
 	eval {
 		die if &delRoutes( "local", $if_ref );
 		die if &delIf( $if_ref );
@@ -176,7 +185,7 @@ sub actions_interface_nic    # ( $json_obj, $nic )
 	};
 
 	# Check allowed parameters
-	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	my $error_msg = &checkZAPIParams( $json_obj, $params, $desc );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
 	  if ( $error_msg );
 
@@ -295,7 +304,7 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 	}
 
 	# Check allowed parameters
-	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	my $error_msg = &checkZAPIParams( $json_obj, $params, $desc );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
 	  if ( $error_msg );
 
@@ -343,6 +352,15 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 			}
 		}
+	}
+
+	if ( $eload )
+	{
+		&eload(
+				module => 'Zevenet::Net::Zapi',
+				func   => 'checkZapiIfDepsRouting',
+				args   => [$nic, 'put', $json_obj],
+		);
 	}
 
 	my $dhcp_status = $json_obj->{ dhcp } // $if_ref->{ dhcp };
@@ -410,11 +428,18 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 		}
 	}
 
-# Do not modify gateway or netmask if exists a virtual interface using this interface
 	if ( exists $json_obj->{ ip } or exists $json_obj->{ netmask } )
 	{
-		my @wrong_conf;
+		# check ip and netmas are configured
+		unless ( $new_if->{ addr } ne "" and $new_if->{ mask } ne "" )
+		{
+			my $msg =
+			  "The networking configuration is not valid. It needs an IP ('$new_if->{addr}') and a netmask ('$new_if->{mask}')";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
 
+   # Do not modify gateway or netmask if exists a virtual interface using this interface
+		my @wrong_conf;
 		foreach my $child_name ( @child )
 		{
 			my $child_if = &getInterfaceConfig( $child_name );

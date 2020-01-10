@@ -145,6 +145,9 @@ echo "- Netfilter"
 echo "List nftables ruleset "			>> $backup_dir/nftables.txt
 $NFTBIN list ruleset		>> $backup_dir/nftables.txt
 
+echo "- Sysctl params"
+/usr/sbin/sysctl -a						>> $backup_dir/sysctl.txt
+
 CURL=`which curl`
 echo "nftlb daemon farms data"			>> $backup_dir/nftlb.txt
 $CURL --noproxy "*" --connect-timeout 10 -s -H "Key: HoLa" http://127.0.0.1:27/farms >> $backup_dir/nftlb.txt

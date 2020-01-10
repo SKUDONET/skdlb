@@ -66,7 +66,7 @@ sub ismport
 =begin nd
 Function: checkL4Port
 
-	Check if the port is used by some l4 farm, expanding the port lists
+	Check if the port is used by some running l4 farm. It expands the port lists if the farm is using multiport
 
 Parameters:
 	ip - IP used for the vip of the farm
@@ -104,6 +104,7 @@ sub checkL4Port
 	foreach my $farm ( @farm_list )
 	{
 		next if ( &getFarmType( $farm ) ne 'l4xnat' );
+		next if ( &getFarmStatus( $farm ) ne 'up' );
 
 		my $f_port = &getFarmVip( 'vipp', $farm );
 

@@ -55,7 +55,7 @@ sub new_vini    # ( $json_obj )
 	};
 
 	# Check allowed parameters
-	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	my $error_msg = &checkZAPIParams( $json_obj, $params, $desc );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
 	  if ( $error_msg );
 
@@ -234,6 +234,15 @@ sub delete_interface_virtual    # ( $virtual )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
+	if ( $eload )
+	{
+		&eload(
+				module => 'Zevenet::Net::Zapi',
+				func   => 'checkZapiVirtDepsRouting',
+				args   => [$virtual, 'del'],
+		);
+	}
+
 	require Zevenet::Net::Route;
 	require Zevenet::Net::Core;
 
@@ -350,7 +359,7 @@ sub actions_interface_virtual    # ( $json_obj, $virtual )
 	};
 
 	# Check allowed parameters
-	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	my $error_msg = &checkZAPIParams( $json_obj, $params, $desc );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
 	  if ( $error_msg );
 
@@ -459,7 +468,7 @@ sub modify_interface_virtual    # ( $json_obj, $virtual )
 	};
 
 	# Check allowed parameters
-	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	my $error_msg = &checkZAPIParams( $json_obj, $params, $desc );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
 	  if ( $error_msg );
 
@@ -477,6 +486,15 @@ sub modify_interface_virtual    # ( $json_obj, $virtual )
 		my $msg =
 		  "Before modifying $virtual interface, disable the floating IPs: $child_string.";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+
+	if ( $eload )
+	{
+		&eload(
+				module => 'Zevenet::Net::Zapi',
+				func   => 'checkZapiVirtDepsRouting',
+				args   => [$virtual, 'put', $json_obj],
+		);
 	}
 
 	require Zevenet::Farm::Base;

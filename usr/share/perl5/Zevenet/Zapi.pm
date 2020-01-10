@@ -234,18 +234,8 @@ sub validZapiKey    # ()
 
 sub listZapiVersions
 {
-	my @versions = ();
-	my $dir      = &getGlobalConfiguration( "zapi_directory" );
-
-	opendir my $dh, $dir;
-	foreach my $file ( readdir $dh )
-	{
-		if ( $file =~ s/^v// )
-		{
-			push @versions, $file;
-		}
-	}
-	closedir $dh;
+	my $version_st = &getGlobalConfiguration( "zapi_versions" );
+	my @versions = split ( ' ', $version_st );
 
 	return sort @versions;
 }

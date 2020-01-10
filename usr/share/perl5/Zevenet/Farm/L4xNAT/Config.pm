@@ -168,7 +168,6 @@ sub setL4FarmParam
 		{
 			require Zevenet::Farm::L4xNAT::L4sd;
 			&setL4sdType( $farm_name, "none" );
-			&setL4FarmParam( 'persist', "", $farm_name );
 
 			if ( $eload )
 			{

@@ -317,8 +317,7 @@ sub stopIf    # ($if_ref)
 			my ( $net, $mask ) = ipv4_network( "$ip / $$if_ref{mask}" );
 			my $cmd = "$ip_bin addr del $ip/$mask brd + dev $ifphysic[0] label $if";
 
-			system ( "$cmd >/dev/null 2>&1" );
-			&zenlog( "failed: $cmd", "info", "NETWORK" ) if $?;
+			&logAndRun( "$cmd" );
 		}
 	}
 
@@ -596,6 +595,8 @@ Returns:
 
 sub setRuleIPtoTable
 {
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 
 	my ( $iface, $ip, $action ) = @_;
 	my $prio = 30000;
@@ -606,19 +607,13 @@ sub setRuleIPtoTable
 		return 0;
 	}
 
-#if ($action ne "add" || $action ne "del"){
-#       &zenlog("Action $action for Rule configuration not known", "error", "NETWORK");
-#       return 1;
-#}
-
 	#In case <if>:<name> is sent
 	my @ifname = split ( /:/, $iface );
 	my $ip_cmd =
-	  "$ip_bin rule $action from $ip/32 lookup table_@ifname[0] prio $prio";
+	  "$ip_bin rule $action from $ip/32 lookup table_$ifname[0] prio $prio";
 	&zenlog( "ip rule command: $ip_cmd", "debug", "NETWORK" );
 	my $status = &logAndRun( $ip_cmd );
 	return $status;
-
 }
 
 1;

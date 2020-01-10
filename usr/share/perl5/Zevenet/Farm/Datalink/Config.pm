@@ -334,6 +334,7 @@ sub setDatalinkFarmVirtualConf    # ($vip,$interface,$farm_name)
 
 	require Tie::File;
 	require Zevenet::Farm::Action;
+	require Zevenet::Farm::Base;
 
 	# set the interface that has defined the vip
 	require Zevenet::Net::Interface;

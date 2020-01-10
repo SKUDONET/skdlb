@@ -45,6 +45,9 @@ sub modify_datalink_farm    # ( $json_obj, $farmname )
 	my $error          = "false";
 	my $status;
 
+	require Zevenet::Net::Interface;
+	my $ip_list = &getIpAddressList();
+
 	my $params = {
 				   "newfarmname" => {
 									  'valid_format' => 'farm_name',
@@ -55,14 +58,14 @@ sub modify_datalink_farm    # ( $json_obj, $farmname )
 									'non_blank' => 'true',
 				   },
 				   "vip" => {
-							  'valid_format' => 'ip_addr',
-							  'non_blank'    => 'true',
-							  'format_msg'   => 'expects an IP'
+							  'values'     => $ip_list,
+							  'non_blank'  => 'true',
+							  'format_msg' => 'expects an IP'
 				   },
 	};
 
 	# Check allowed parameters
-	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	my $error_msg = &checkZAPIParams( $json_obj, $params, $desc );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
 	  if ( $error_msg );
 

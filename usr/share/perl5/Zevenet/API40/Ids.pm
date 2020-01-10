@@ -23,8 +23,23 @@
 
 use strict;
 
-use Zevenet::Log;
-use Zevenet::Config;
-use Zevenet::Debug;
+include 'Zevenet::Ids';
+
+# GET /ids
+sub list_ids
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $desc = "Get a load balancer object IDs";
+
+	my $tree = &getIdsTree();
+
+	my $body = {
+				 description => $desc,
+				 params      => $tree,
+	};
+
+	return &httpResponse( { code => 200, body => $body } );
+}
 
 1;

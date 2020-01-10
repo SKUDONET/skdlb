@@ -23,6 +23,12 @@
 
 use strict;
 
+my $eload;
+if ( eval { require Zevenet::ELoad; } )
+{
+	$eload = 1;
+}
+
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
 =begin nd
@@ -100,6 +106,8 @@ sub setFarmCertificate    # ($cfile,$farm_name)
 	my $lock_fh       = &openlock( $lock_file, 'w' );
 	my $output        = -1;
 
+	my $certdir = &getGlobalConfiguration( 'certdir' );
+
 	&zenlog( "Setting 'Certificate $cfile' for $farm_name farm https",
 			 "info", "LSLB" );
 
@@ -108,7 +116,7 @@ sub setFarmCertificate    # ($cfile,$farm_name)
 	{
 		if ( $_ =~ /Cert "/ )
 		{
-			s/.*Cert\ .*/\tCert\ \"$configdir\/$cfile\"/g;
+			s/.*Cert\ .*/\tCert\ \"$certdir\/$cfile\"/g;
 			$output = $?;
 		}
 	}
@@ -271,7 +279,8 @@ sub getFarmCipherSet    # ($farm_name)
 	{
 		$output = "cipherpci";
 	}
-	elsif ( $cipher_list eq &getGlobalConfiguration( 'cipher_ssloffloading' ) )
+	elsif (    $eload
+			&& $cipher_list eq &getGlobalConfiguration( 'cipher_ssloffloading' ) )
 	{
 		$output = "cipherssloffloading";
 	}

@@ -8,6 +8,8 @@ $version="_VERSION_";#update
 ## Variables
 # debug level
 $debug="0";
+#ZAPI Versions
+$zapi_versions="3 3.1 3.2 4.0.1";
 #ZAPI KEY
 $zapikey="";
 #proxy
@@ -29,6 +31,8 @@ $zbindir="$zdir/bin";#update
 $basedir="$zdir/www";#update
 #configuration directory.In this section all config files are saved.
 $configdir="$zdir/config";#update
+#certificates directory
+$certdir="$zdir/config/certificates";#update
 # directory for local configurations, it is not sync by the cluster
 $localconfig="$configdir/local";#update
 #Directory where is check script. In this directory you can save your own check scripts.
@@ -68,7 +72,7 @@ $apt_source_zevenet="/etc/apt/sources.list.d/zevenet.list";
 # apt user conf
 $apt_conf_file="/etc/apt/apt.conf";
 # apt updates dir
-$update_dir="/usr/local/zevenet/updates"
+$update_dir="/usr/local/zevenet/updates";
 # Zevenet URL repo
 $repo_url_zevenet="repo.zevenet.com";
 # Zevenet GPG key
@@ -115,9 +119,9 @@ $le_email="";
 $http_server_dir="$zdir/app/cherokee";
 $http_server_service="/etc/init.d/cherokee";
 $confhttp="$http_server_dir/etc/cherokee/cherokee.conf";#update
-$confhttp_tpl="$http_server_dir/etc/cherokee/cherokee.conf.template";#update
-$http_server_cert="$configdir/zencert.pem";
-$http_server_key="$configdir/zencert-c.key";
+$confhttp_tpl="$templatedir/cherokee.conf.template";#update
+$http_server_cert="$certdir/zencert.pem";#update
+$http_server_key="$certdir/zencert-c.key";#update
 $http_server_cert_tpl="$templatedir/zencert.pem";
 $http_server_key_tpl="$templatedir/zencert-c.key";
 $http_bin="$http_server_dir/sbin/cherokee";
@@ -129,6 +133,8 @@ $sys_net_dir="/sys/class/net";
 
 
 ## binaries
+#Where is file binary?
+$file_bin="/usr/bin/file";
 #Where is cat binary?
 $cat_bin="/usr/bin/cat";
 #Where is hostname binary?
@@ -197,6 +203,10 @@ $logger="/usr/bin/logger";
 $sec="/usr/bin/sec";
 #Where is touch?
 $touch="/usr/bin/touch";
+#Where is sed?
+$sed_bin="/bin/sed";
+#Where is cut?
+$cut_bin="/bin/cut";
 #Where is ls?
 $ls="/bin/ls";
 #Where is stat?
@@ -260,22 +270,45 @@ $arpsend_bin="/usr/sbin/arpsend";
 #Where is dhclient
 $dhcp_bin="/usr/sbin/dhclient";
 #Where is netcat
-$netcat_bin="/usr/bin/nc";
+$netcat_bin="/usr/bin/nc.openbsd";#update
 #Where is dmidecode
 $dmidecode_bin="/usr/sbin/dmidecode";
 
 
+# zproxy
+#where is zproxy dir?
+$base_zproxy="$zdir/app/zproxy";#update
+#where is zproxy binary?
+$zproxy="$base_zproxy/bin/zproxy";#update
+#where is zproxy ctl?
+$zproxyctl="$base_zproxy/bin/zproxyctl";#update
+
+# Pound
+#where is pound binary?
+$base_pound="$zdir/app/pound";#update
+#where is pound binary?
+$pound="$base_pound/sbin/pound";#update
+#where is pound ctl?
+$poundctl="$base_pound/sbin/poundctl";#update
+
 # l7 proxy
+# Set the l7 binary: NG = true => zproxy, NG = false => pound
+$proxy_ng="true";
+
 #where is l7 proxy dir?
-$base_proxy="$zdir/app/zproxy";#update
+$base_proxy="$base_zproxy";
 #where is l7 proxy binary?
-$proxy="$base_proxy/bin/zproxy";#update
+$proxy="$zproxy";
 #where is l7 proxy ctl?
-$proxyctl="$base_proxy/bin/zproxyctl";#update
+$proxyctl="$zproxyctl";
 #l7 file configuration template?
 $proxytpl="$templatedir/proxytpl.cfg";#update
-#maximum value of http body to pass to modsecurity
 
+#maximum value of http body to pass to modsecurity
+#Where is modsec rules check
+$waf_rule_check_bin="/usr/bin/modsec-rules-check";
+#time to ensure that the farm has been stopped completaly
+$http_farm_stop_grace_time="2";
 
 #Cipher PCI
 $cipher_pci="kEECDH+ECDSA+AES128:kEECDH+ECDSA+AES256:kEECDH+AES128:kEECDH+AES256:kEDH+AES128:kEDH+AES256:DES-CBC3-SHA:+SHA:!aNULL:!eNULL:!LOW:!kECDH:!DSS:!MD5:!EXP:!PSK:!SRP:!CAMELLIA:!SEED";#update
@@ -333,6 +366,10 @@ $zenrsync="-azvr --delete";#update
 $arp_unsolicited="";
 #ARP announcement, true / false (default)
 $arp_announce="";
+#Where is the script ARP announcement?
+$arp_announce_bin="/usr/local/zevenet/bin/arp_announce";
+#path for cron task of arp announcement
+$arp_announce_cron_path="/etc/cron.d/arp_announce";
 
 #Network duplicated net
 $duplicated_net="false";
@@ -407,6 +444,18 @@ $rbacRolesTpl_dir="$templatedir/rbac_roles";
 #L4sd configuration
 $l4sdpid="/var/run/l4sd.pid";#update
 $l4sdcfg="$configdir/l4sd.cfg";#update
+
+# routing
+# initial farm prio
+$routingRulePrioFarm="25000";
+# Min prio for rules created by the user. It must be greater than all farms rules
+$routingRulePrioUserMin="29000";
+# Maximum prio for rules created by the user. It must be lower than ifaces priority
+$routingRulePrioUserMax="30999";
+# initial interface tables prio
+$routingRulePrioIfaces="31000";
+# deafult priority for routing entries
+$routingRoutePrio="5";
 
 # time period to get the interface throughput stats
 

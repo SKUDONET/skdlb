@@ -121,8 +121,7 @@ sub _runDatalinkFarmStart    # ($farm_name, $writeconf)
 		my $ip_command =
 		  "$ip_bin route add default scope global table table_$iface $routes";
 
-		&zenlog( "running $ip_command", "info", "DSLB" );
-		$status = system ( "$ip_command >/dev/null 2>&1" );
+		$status = &logAndRun( "$ip_command" );
 	}
 	else
 	{
@@ -230,32 +229,41 @@ sub _runDatalinkFarmStop    # ($farm_name,$writeconf)
 }
 
 =begin nd
-Function: setDatalinkNewFarmName
+Function: copyDatalinkFarm
 
-	Function that renames a farm
+	Function that does a copy of a farm configuration.
+	If the flag has the value 'del', the old farm will be deleted.
 
 Parameters:
 	farmname - Farm name
 	newfarmname - New farm name
+	flag - It expets a 'del' string to delete the old farm. It is used to copy or rename the farm.
 
 Returns:
 	Integer - Error code: return 0 on success or -1 on failure
 
 =cut
 
-sub setDatalinkNewFarmName    # ($farm_name,$new_farm_name)
+sub copyDatalinkFarm    # ($farm_name,$new_farm_name)
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my ( $farm_name, $new_farm_name ) = @_;
+	my ( $farm_name, $new_farm_name, $rm ) = @_;
 
 	require Tie::File;
+	use File::Copy qw(copy);
 
 	my $farm_filename = &getFarmFile( $farm_name );
 	my $newffile      = "$new_farm_name\_datalink.cfg";
 	my $output        = -1;
 
-	tie my @configfile, 'Tie::File', "$configdir\/$farm_filename";
+	my $piddir = &getGlobalConfiguration( 'piddir' );
+	copy( "$configdir\/$farm_filename", "$configdir\/$newffile" );
+	copy( "$piddir\/$farm_name\_datalink.pid",
+		  "$piddir\/$new_farm_name\_datalink.pid" );
+	$output = $?;
+
+	tie my @configfile, 'Tie::File', "$configdir\/$newffile";
 
 	for ( @configfile )
 	{
@@ -263,11 +271,11 @@ sub setDatalinkNewFarmName    # ($farm_name,$new_farm_name)
 	}
 	untie @configfile;
 
-	my $piddir = &getGlobalConfiguration( 'piddir' );
-	rename ( "$configdir\/$farm_filename", "$configdir\/$newffile" );
-	rename ( "$piddir\/$farm_name\_datalink.pid",
-			 "$piddir\/$new_farm_name\_datalink.pid" );
-	$output = $?;
+	if ( $rm eq 'del' )
+	{
+		unlink "$configdir\/$farm_filename";
+		unlink "$piddir\/$farm_name\_datalink.pid";
+	}
 
 	return $output;
 }

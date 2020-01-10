@@ -23,6 +23,7 @@
 
 use strict;
 
+require Zevenet::Core;
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
 =begin nd
@@ -35,6 +36,7 @@ Parameters:
 	port - Virtual port where the virtual service is listening
 	farmname - Farm name
 	type - Specify if farm is HTTP or HTTPS
+	status - Set the initial status of the farm. The possible values are: 'down' for creating the farm and do not run it or 'up' (default) for running the farm when it has been created
 
 Returns:
 	Integer - return 0 on success or different of 0 on failure
@@ -45,7 +47,8 @@ sub runHTTPFarmCreate    # ( $vip, $vip_port, $farm_name, $farm_type )
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my ( $vip, $vip_port, $farm_name, $farm_type ) = @_;
+	my ( $vip, $vip_port, $farm_name, $farm_type, $status ) = @_;
+	$status = 'up' if not defined $status;
 
 	require Tie::File;
 	require File::Copy;
@@ -95,18 +98,33 @@ sub runHTTPFarmCreate    # ( $vip, $vip_port, $farm_name, $farm_type )
 	my $proxy  = &getGlobalConfiguration( 'proxy' );
 	my $piddir = &getGlobalConfiguration( 'piddir' );
 
+	require Zevenet::Farm::HTTP::Config;
+	$output = &getHTTPFarmConfigIsOK( $farm_name );
+
+	if ( $output )
+	{
+		require Zevenet::Farm::Action;
+		&runFarmDelete( $farm_name );
+		return 1;
+	}
+
 	#run farm
-	&zenlog(
-		"Running $proxy -f $configdir\/$farm_name\_proxy.cfg -p $piddir\/$farm_name\_proxy.pid",
-		"info", "LSLB"
-	);
-
 	require Zevenet::System;
+	if ( $status eq 'up' )
+	{
+		&zenlog(
+			"Running $proxy -f $configdir\/$farm_name\_proxy.cfg -p $piddir\/$farm_name\_proxy.pid",
+			"info", "LSLB"
+		);
 
-	&zsystem(
-		"$proxy -f $configdir\/$farm_name\_proxy.cfg -p $piddir\/$farm_name\_proxy.pid 2>/dev/null"
-	);
-	$output = $?;
+		$output = &zsystem(
+			"$proxy -f $configdir\/$farm_name\_proxy.cfg -p $piddir\/$farm_name\_proxy.pid 2>/dev/null"
+		);
+	}
+	else
+	{
+		$output = &setHTTPFarmBootStatus( $farm_name, 'down' );
+	}
 
 	return $output;
 }

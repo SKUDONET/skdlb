@@ -66,6 +66,15 @@ sub get_supportsave
 			 "debug", "PROFILING" );
 	my $desc = "Get supportsave file";
 
+	my $req_size = &checkSupportSaveSpace();
+	if ( $req_size )
+	{
+		my $space = &getSpaceFormatHuman( $req_size );
+		my $msg =
+		  "Supportsave cannot be generated because '/tmp' needs '$space' Bytes of free space";
+		return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+
 	my $ss_filename = &getSupportSave();
 
 	&httpDownloadResponse( desc => $desc, dir => '/tmp', file => $ss_filename );
@@ -162,7 +171,7 @@ sub set_language
 	};
 
 	# Check allowed parameters
-	my $error_msg = &checkZAPIParams( $json_obj, $params );
+	my $error_msg = &checkZAPIParams( $json_obj, $params, $desc );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
 	  if ( $error_msg );
 

@@ -116,7 +116,7 @@ sub local_http_service
 	die "local_http_service '$command' command not recognized"
 	  unless $command =~ /^(?:start|stop|restart)$/;
 
-	system ( "/etc/init.d/cherokee $command >/dev/null &" );
+	&logAndRunBG ( "/etc/init.d/cherokee $command" );
 }
 
 # Compare and rewrite the zna version in the zevenet_version file if they are different.
@@ -146,6 +146,7 @@ sub zna_version
 
 if ( $action eq "restart" )
 {
+	# does not use 'logAndRun' function, it is necessary to print the stdoutput
 	system ( '/etc/init.d/zevenet stop' );
 	system ( '/etc/init.d/zevenet start' );
 	&local_http_service( 'restart' );    # force a cherokee restart
@@ -153,12 +154,14 @@ if ( $action eq "restart" )
 
 if ( $action eq "start" )
 {
+	# does not use 'logAndRun' function, it is necessary to print the stdoutput
 	system ( '/usr/local/zevenet/bin/checkglobalconf' );
 
 	# ZNA firmware upgrade
 	my $migration_flag = &getGlobalConfiguration( 'migration_flag' );
 	if ( -f $migration_flag )
 	{
+		my $rm = &getGlobalConfiguration( 'rm' );
 		&zna_version;
 
 		# Migrating config files
@@ -167,9 +170,10 @@ if ( $action eq "start" )
 		while ( my $SCRIPT = readdir ( DIR ) )
 		{
 			next if ( $SCRIPT =~ m/^\./ );
+			# does not use 'logAndRun' function, it is necessary to print the stdoutput
 			system ( $MIG_DIR . $SCRIPT );
 		}
-		system ( "rm $migration_flag" );
+		&logAndRun ( "$rm $migration_flag" );
 		closedir ( DIR );
 	}
 
@@ -550,9 +554,9 @@ if ( $action eq "start" )
 	&eload( module => $mod, func => 'start_cluster' ) if $eload;
 
 	# make sure related system services are runnig
-	if ( system ( "/etc/init.d/ssh status >/dev/null 2>&1" ) )
+	if ( &logAndRunCheck ( "/etc/init.d/ssh status" ) )
 	{
-		system ( "/etc/init.d/ssh start >/dev/null 2>&1" );
+		&logAndRun ( "/etc/init.d/ssh start" );
 	}
 
 	&local_http_service( 'start' );

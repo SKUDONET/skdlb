@@ -89,13 +89,9 @@ fi
 MIG_DIR="/usr/local/zevenet/migrating/"
 for SCRIPT in `ls $MIG_DIR`; do ${MIG_DIR}$SCRIPT; done
 
-#kill all previous l7 implementation
-pkill -9 pound &>/dev/null
-
 # Restarting zevenet service
 echo "Zevenet will be unavailable while the service is restarting."
 /etc/init.d/zevenet stop
-sleep 5
 /etc/init.d/zevenet start
 
 # Add Zevenet Load Balancer service to boot process

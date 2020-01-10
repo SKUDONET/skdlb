@@ -49,7 +49,7 @@ sub getCertFiles    # ()
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my $configdir = &getGlobalConfiguration( 'configdir' );
+	my $configdir = &getGlobalConfiguration( 'certdir' );
 
 	opendir ( DIR, $configdir );
 	my @files = grep ( /.*\.pem$/, readdir ( DIR ) );
@@ -324,6 +324,7 @@ sub getFarmCertUsed    #($cfile)
 
 	require Zevenet::Farm::Core;
 
+	my $certdir   = &getGlobalConfiguration( 'certdir' );
 	my $configdir = &getGlobalConfiguration( 'configdir' );
 	my @farms     = &getFarmsByType( "https" );
 	my $output    = -1;
@@ -335,7 +336,7 @@ sub getFarmCertUsed    #($cfile)
 
 		use File::Grep qw( fgrep );
 
-		if ( fgrep { /Cert \"$configdir\/$cfile\"/ } "$configdir/$farm_filename" )
+		if ( fgrep { /Cert \"$certdir\/$cfile\"/ } "$configdir/$farm_filename" )
 		{
 			$output = 0;
 		}
@@ -416,7 +417,7 @@ sub delCert    # ($certname)
 	$certname = quotemeta $certname;
 	my $certdir;
 
-	$certdir = &getGlobalConfiguration( 'configdir' );
+	$certdir = &getGlobalConfiguration( 'certdir' );
 
 	# verify existance in config directory for security reasons
 	opendir ( DIR, $certdir );
@@ -470,31 +471,31 @@ sub createCSR # ($certname, $certfqdn, $certcountry, $certstate, $certlocality, 
 		 $certkey,      $certpassword
 	) = @_;
 
-	my $configdir = &getGlobalConfiguration( 'configdir' );
+	my $configdir = &getGlobalConfiguration( 'certdir' );
 	my $output;
 
 	##sustituir los espacios por guiones bajos en el nombre de archivo###
 	if ( $certpassword eq "" )
 	{
+		$output =
+		  logAndRun(
+			"$openssl req -nodes -newkey rsa:$certkey -keyout $configdir/$certname.key -out $configdir/$certname.csr -batch -subj \"/C=$certcountry\/ST=$certstate/L=$certlocality/O=$certorganization/OU=$certdivision/CN=$certfqdn/emailAddress=$certmail\" 2> /dev/null"
+		  );
 		&zenlog(
 			"Creating CSR: $openssl req -nodes -newkey rsa:$certkey -keyout $configdir/$certname.key -out $configdir/$certname.csr -batch -subj \"/C=$certcountry\/ST=$certstate/L=$certlocality/O=$certorganization/OU=$certdivision/CN=$certfqdn/emailAddress=$certmail\"",
 			"info", "LSLB"
-		);
-		$output =
-		  system (
-			"$openssl req -nodes -newkey rsa:$certkey -keyout $configdir/$certname.key -out $configdir/$certname.csr -batch -subj \"/C=$certcountry\/ST=$certstate/L=$certlocality/O=$certorganization/OU=$certdivision/CN=$certfqdn/emailAddress=$certmail\" 2> /dev/null"
-		  );
+		) if ( !$output );
 	}
 	else
 	{
 		$output =
-		  system (
-			"$openssl req -passout pass:$certpassword -newkey rsa:$certkey -keyout $configdir/$certname.key -out $configdir/$certname.csr -batch -subj \"/C=$certcountry/ST=$certstate/L=$certlocality/O=$certorganization/OU=$certdivision/CN=$certfqdn/emailAddress=$certmail\" 2> /dev/null"
+		  &logAndRun(
+			"$openssl req -passout pass:$certpassword -newkey rsa:$certkey -keyout $configdir/$certname.key -out $configdir/$certname.csr -batch -subj \"/C=$certcountry/ST=$certstate/L=$certlocality/O=$certorganization/OU=$certdivision/CN=$certfqdn/emailAddress=$certmail\""
 		  );
 		&zenlog(
 			"Creating CSR: $openssl req -passout pass:$certpassword -newkey rsa:$certkey -keyout $configdir/$certname.key -out $configdir/$certname.csr -batch -subj \"/C=$certcountry\/ST=$certstate/L=$certlocality/O=$certorganization/OU=$certdivision/CN=$certfqdn/emailAddress=$certmail\"",
 			"info", "LSLB"
-		);
+		) if ( !$output );
 	}
 	return $output;
 }
@@ -535,6 +536,26 @@ sub getCertData    # ($certfile)
 
 	return @eject;
 }
+
+=begin nd
+Function: getCertInfo
+
+	It returns an object with the certificate information parsed
+
+Parameters:
+	certificate path - path to the certificate
+
+Returns:
+	hash ref - The hash contains the following keys:
+		file, name of the certificate with extension and without path. "zert.pem"
+		type, type of file. CSR or Certificate
+		CN, common name
+		key, cerificate key
+		issuer, name of the certificate authority
+		creation, date of certificate creation. "019-08-13 09:31:33 UTC"
+		expiration, date of certificate expiration. "2020-07-11 09:31:33 UTC"
+
+=cut
 
 sub getCertInfo    # ($certfile)
 {
@@ -662,8 +683,18 @@ sub getCertInfo    # ($certfile)
 	return \%response;
 }
 
-# 2018-05-17 15:04:52 UTC
-# May 17 15:04:52 2018 GMT
+=begin nd
+Function: getDateEpoc
+
+	It converts a human date (2018-05-17 15:04:52 UTC) in a epoc date (1594459893)
+
+Parameters:
+	date - string with the date. The string has to be as "2018-05-17 15:04:52"
+
+Returns:
+	Integer - Time in epoc time. "1594459893"
+=cut
+
 sub getDateEpoc
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
@@ -677,6 +708,18 @@ sub getDateEpoc
 	$month--;
 	return timegm( $sec, $min, $hours, $day, $month, $year );
 }
+
+=begin nd
+Function: getCertDaysToExpire
+
+	It calculates the number of days to expire the certificate.
+
+Parameters:
+	ending date - String with the ending date with the following format "2018-05-17 15:04:52 UTC"
+
+Returns:
+	Integer - Number of days to expire the certificate
+=cut
 
 sub getCertDaysToExpire
 {

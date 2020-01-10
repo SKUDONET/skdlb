@@ -25,6 +25,14 @@ use strict;
 
 my $q = getCGI();
 
+if ( $ENV{ PATH_INFO } =~ qr{^/ids$} )
+{
+	my $mod = 'Zevenet::API40::Ids';
+
+	#  GET /rbac/users
+	GET qr{^/ids$}, 'list_ids', $mod;
+}
+
 # Certificates
 my $cert_re     = &getValidFormat( 'certificate' );
 my $cert_pem_re = &getValidFormat( 'cert_pem' );

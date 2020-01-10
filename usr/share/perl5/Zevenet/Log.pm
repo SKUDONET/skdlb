@@ -81,14 +81,14 @@ sub zenlog    # ($string, $type)
 		return 0 if ( &debug() < 5 );
 	}
 
-	if ( $type =~ /^(debug)(\d*)$/ )
+	if ( $type =~ /^(debug)(\d*)?$/ )
 	{
 		require Zevenet::Debug;
 
 		# debug lvl
 		my $debug_lvl = $2;
 		$debug_lvl = 1 if not $debug_lvl;
-		$type = $1;
+		$type = "$1$debug_lvl";
 		return 0 if ( &debug() lt $debug_lvl );
 	}
 
@@ -183,12 +183,13 @@ sub logAndRun    # ($command)
 	if ( $return_code )
 	{
 		&zenlog( $program . " running: $command", "error", "SYSTEM" );
-		&zenlog( "@cmd_output", "error", "error", "SYSTEM" );
+		&zenlog( "out: @cmd_output", "error", "error", "SYSTEM" );
 		&zenlog( "last command failed!", "error", "SYSTEM" );
 	}
 	else
 	{
-		&zenlog( $program . " running: $command", "debug", "SYSTEM" );
+		&zenlog( $program . " running: $command", "debug",  "SYSTEM" );
+		&zenlog( "out: @cmd_output",              "debug2", "SYSTEM" );
 	}
 
 	# returning error code from execution
@@ -242,6 +243,148 @@ sub zdie
 
 	&zenlog( @_ );
 	carp( @_ );
+}
+
+=begin nd
+Function: zsystem
+
+	Run a command with the environment parameters customized.
+
+Parameters:
+	exec - Command to run.
+
+Returns:
+	integer - Returns 0 on success or another value on failure
+
+See Also:
+	<runFarmGuardianStart>, <_runHTTPFarmStart>, <runHTTPFarmCreate>, <_runGSLBFarmStart>, <_runGSLBFarmStop>, <runGSLBFarmReload>, <runGSLBFarmCreate>, <setGSLBFarmStatus>
+=cut
+
+sub zsystem
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my ( @exec ) = @_;
+	my $program = $basename;
+
+	my @cmd_output = `. /etc/profile -notzenbui >/dev/null 2>&1 && @exec 2>&1`;
+	my $out        = $?;
+
+	if ( $out )
+	{
+		&zenlog( $program . " running: @exec", "error", "SYSTEM" );
+		&zenlog( "@cmd_output", "error", "error", "SYSTEM" );
+		&zenlog( "last command failed!", "error", "SYSTEM" );
+	}
+	else
+	{
+		&zenlog( $program . " running: @exec", "debug",  "SYSTEM" );
+		&zenlog( "out: @cmd_output",           "debug2", "SYSTEM" );
+	}
+
+	return $out;
+}
+
+=begin nd
+Function: logAndGet
+
+	Execute a command in the system to get the output. If the command fails,
+	it logs the error and returns a empty string.
+
+Parameters:
+	command - String with the command to be run in order to get info from the system.
+	type output - Force that the output will be convert to 'string' or 'array'. String by default
+
+Returns:
+	Array ref or string - data obtained from the system. The type of output is specified
+	in the type input param
+
+See Also:
+	logAndRun
+
+=cut
+
+sub logAndGet
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $cmd = shift;
+	my $type = shift // 'string';
+
+	my $program = $basename;
+	my @print_err;
+
+	my $resource = "logAndGet";
+
+	my $out      = `$cmd 2>/dev/null`;
+	my $err_code = $?;
+	my $tag      = ( $err_code ) ? 'error' : 'debug2';
+	&zenlog( "Executed: $cmd", $tag, "system" );
+
+	if ( $err_code )
+	{
+		# execute again, removing stdout and getting stderr
+		@print_err = `$cmd 2>&1 >/dev/null`;
+		if ( @print_err )
+		{
+			&zenlog( "out: @print_err", "error", "SYSTEM" );
+		}
+	}
+
+	# logging if there is not any error
+	if ( !@print_err )
+	{
+		&zenlog( "out: $out", "debug3", "SYSTEM" );
+	}
+
+	if ( $type eq 'array' )
+	{
+		my @out = split ( "\n", $out );
+		return \@out;
+	}
+
+	return $out;
+}
+
+=begin nd
+Function: logAndRunCheck
+
+	It executes a command but is does not log anything if it fails. This functions
+	is useful to check things in the system as if a process is running or doing connectibity tests.
+	This function will log the command if the loglevel is greater than 1, and will
+	log the error output if the loglevel is greater than 2.
+
+Parameters:
+	command - String with the command to be run.
+
+Returns:
+	integer - error code of the command. 0 on success or another value on failure
+
+See Also:
+	logAndRun
+
+=cut
+
+sub logAndRunCheck
+{
+	my $command = shift;
+	my $program = $basename;
+
+	my @cmd_output  = `$command 2>&1`;
+	my $return_code = $?;
+
+	if ( &debug() >= 2 )
+	{
+		&zenlog( $program . " err_code '$return_code' checking: $command",
+				 "debug2", "SYSTEM" );
+	}
+	if ( &debug() >= 3 )
+	{
+		&zenlog( $program . " output: @cmd_output", "debug3", "SYSTEM" );
+	}
+
+	# returning error code of the execution
+	return $return_code;
 }
 
 1;

@@ -26,14 +26,18 @@ use Zevenet::Farm::Core;
 use Zevenet::Farm::Base;
 
 my $eload;
-if ( eval { require Zevenet::ELoad; } ) { $eload = 1; }
+if ( eval { require Zevenet::ELoad; } )
+{
+	$eload = 1;
+}
 
 unless ( $eload ) { require Zevenet::Farm::HTTP::HTTPS; }
 
 # POST /farms/FARM/certificates (Add certificate to farm)
 sub add_farm_certificate    # ( $json_obj, $farmname )
 {
-	&zenlog(__FILE__ . ":" . __LINE__ . ":" . (caller(0))[3] . "( @_ )", "debug", "PROFILING" );
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $json_obj = shift;
 	my $farmname = shift;
 
@@ -46,11 +50,11 @@ sub add_farm_certificate    # ( $json_obj, $farmname )
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
 	}
 
-	my $configdir   = &getGlobalConfiguration( 'configdir' );
+	my $certdir     = &getGlobalConfiguration( 'certdir' );
 	my $cert_pem_re = &getValidFormat( 'cert_pem' );
 
 	# validate certificate filename and format
-	unless ( -f $configdir . "/" . $json_obj->{ file }
+	unless ( -f $certdir . "/" . $json_obj->{ file }
 			 && &getValidFormat( 'cert_pem', $json_obj->{ file } ) )
 	{
 		my $msg = "Invalid certificate name, please insert a valid value.";
@@ -60,10 +64,12 @@ sub add_farm_certificate    # ( $json_obj, $farmname )
 	my $cert_in_use;
 	if ( $eload )
 	{
-		$cert_in_use = grep ( /^$json_obj->{ file }$/, &eload(
-					module => 'Zevenet::Farm::HTTP::HTTPS::Ext',
-					func   => 'getFarmCertificatesSNI',
-					args   => [$farmname] ) );
+		$cert_in_use = grep ( /^$json_obj->{ file }$/,
+							  &eload(
+									  module => 'Zevenet::Farm::HTTP::HTTPS::Ext',
+									  func   => 'getFarmCertificatesSNI',
+									  args   => [$farmname]
+							  ) );
 	}
 	else
 	{
@@ -81,9 +87,9 @@ sub add_farm_certificate    # ( $json_obj, $farmname )
 	if ( $eload )
 	{
 		$status = &eload(
-			module => 'Zevenet::Farm::HTTP::HTTPS::Ext',
-			func   => 'setFarmCertificateSNI',
-			args   => [$json_obj->{ file }, $farmname],
+						  module => 'Zevenet::Farm::HTTP::HTTPS::Ext',
+						  func   => 'setFarmCertificateSNI',
+						  args   => [$json_obj->{ file }, $farmname],
 		);
 	}
 	else
@@ -126,7 +132,8 @@ sub add_farm_certificate    # ( $json_obj, $farmname )
 # DELETE /farms/FARM/certificates/CERTIFICATE
 sub delete_farm_certificate    # ( $farmname, $certfilename )
 {
-	&zenlog(__FILE__ . ":" . __LINE__ . ":" . (caller(0))[3] . "( @_ )", "debug", "PROFILING" );
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $farmname     = shift;
 	my $certfilename = shift;
 
@@ -153,11 +160,11 @@ sub delete_farm_certificate    # ( $farmname, $certfilename )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-    my @certSNI = &eload(
-            module => 'Zevenet::Farm::HTTP::HTTPS::Ext',
-            func   => 'getFarmCertificatesSNI',
-            args   => [$farmname],
-    );
+	my @certSNI = &eload(
+						  module => 'Zevenet::Farm::HTTP::HTTPS::Ext',
+						  func   => 'getFarmCertificatesSNI',
+						  args   => [$farmname],
+	);
 
 	my $number = scalar grep ( { $_ eq $certfilename } @certSNI );
 	if ( !$number )
@@ -168,13 +175,13 @@ sub delete_farm_certificate    # ( $farmname, $certfilename )
 
 	my $status;
 
-	# This is a BUGFIX: delete the certificate all times that it appears in config file
+ # This is a BUGFIX: delete the certificate all times that it appears in config file
 	for ( my $it = 0 ; $it < $number ; $it++ )
 	{
 		$status = &eload(
-			module => 'Zevenet::Farm::HTTP::HTTPS::Ext',
-			func   => 'setFarmDeleteCertNameSNI',
-			args   => [$certfilename, $farmname],
+						  module => 'Zevenet::Farm::HTTP::HTTPS::Ext',
+						  func   => 'setFarmDeleteCertNameSNI',
+						  args   => [$certfilename, $farmname],
 		);
 		last if ( $status == -1 );
 	}
@@ -189,11 +196,12 @@ sub delete_farm_certificate    # ( $farmname, $certfilename )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	# check if removing the certificate would leave the SNI list empty, not supported
+   # check if removing the certificate would leave the SNI list empty, not supported
 	if ( $status == 1 )
 	{
 		&zenlog(
-			"It's not possible to delete all certificates, at least one is required for HTTPS.", "warning", "LSLB"
+			"It's not possible to delete all certificates, at least one is required for HTTPS.",
+			"warning", "LSLB"
 		);
 
 		my $msg =
@@ -217,7 +225,8 @@ sub delete_farm_certificate    # ( $farmname, $certfilename )
 		$body->{ status } = 'needed restart';
 	}
 
-	&zenlog( "Success, trying to delete a certificate to the SNI list.", "info", "LSLB" );
+	&zenlog( "Success, trying to delete a certificate to the SNI list.",
+			 "info", "LSLB" );
 	&httpResponse( { code => 200, body => $body } );
 }
 

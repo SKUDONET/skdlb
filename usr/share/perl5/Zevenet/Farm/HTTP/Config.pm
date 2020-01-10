@@ -322,6 +322,7 @@ Function: setFarmHttpVerb
 		2. standardWebDAV, add the verbs LOCK, UNLOCK, PROPFIND, PROPPATCH, SEARCH, MKCOL, MOVE, COPY, OPTIONS, TRACE, MKACTIVITY, CHECKOUT, MERGE, REPORT.
 		3. MSextWebDAV, add the verbs SUBSCRIBE, UNSUBSCRIBE, NOTIFY, BPROPFIND, BPROPPATCH, POLL, BMOVE, BCOPY, BDELETE, CONNECT.
 		4. MSRPCext, add the verbs RPC_IN_DATA, RPC_OUT_DATA.
+		5. OptionsHTTP, add the verb OPTIONS to the set extendedHTTP.
 
 Parameters:
 	verb - accepted verbs: 0, 1, 2, 3 or 4
@@ -379,6 +380,7 @@ Function: getFarmHttpVerb
 		2. standardWebDAV, add the verbs LOCK, UNLOCK, PROPFIND, PROPPATCH, SEARCH, MKCOL, MOVE, COPY, OPTIONS, TRACE, MKACTIVITY, CHECKOUT, MERGE, REPORT.
 		3. MSextWebDAV, add the verbs SUBSCRIBE, UNSUBSCRIBE, NOTIFY, BPROPFIND, BPROPPATCH, POLL, BMOVE, BCOPY, BDELETE, CONNECT.
 		4. MSRPCext, add the verbs RPC_IN_DATA, RPC_OUT_DATA.
+		5. OptionsHTTP, add the verb OPTIONS to the set extendedHTTP.
 
 Parameters:
 	farmname - Farm name
@@ -1083,7 +1085,7 @@ sub getHTTPFarmBootStatus    # ($farm_name)
 =begin nd
 Function: setHTTPFarmBootStatus
 
-	Return the farm status at boot zevenet
+	Set the farm status in the configuration file to boot zevenet process
 
 Parameters:
 	farmname - Farm name
@@ -1437,8 +1439,8 @@ sub getHTTPFarmConfigErrorMessage    # ($farm_name)
 	chomp @run;
 	my $msg;
 
-	&zenlog( "Error checking $configdir\/$farm_filename." );
-	&zenlog( $run[0], "Error", "http" );
+	&zenlog( "Error checking $configdir\/$farm_filename.", "Error", "http" );
+	&zenlog( $run[0],                                      "Error", "http" );
 
 	return "Error loading waf configuration" if ( $run[0] =~ /waf/i );
 
@@ -1536,6 +1538,7 @@ sub getHTTPFarmStruct
 	elsif ( $httpverb == 2 ) { $httpverb = "standardWebDAV"; }
 	elsif ( $httpverb == 3 ) { $httpverb = "MSextWebDAV"; }
 	elsif ( $httpverb == 4 ) { $httpverb = "MSRPCext"; }
+	elsif ( $httpverb == 5 ) { $httpverb = "optionsHTTP"; }
 
 	my $err414 = &getFarmErr( $farmname, "414" );
 	my $err500 = &getFarmErr( $farmname, "500" );
@@ -1652,6 +1655,7 @@ sub getHTTPVerbCode
 					   standardWebDAV => 2,
 					   MSextWebDAV    => 3,
 					   MSRPCext       => 4,
+					   optionsHTTP    => 5,
 	);
 
 	if ( exists $http_verbs{ $verbs_set } )

@@ -79,6 +79,7 @@ Returns:
 		'interval'    => "10",     # Time between checks
 		'cut_conns' => "false",    # cut the connections with the backend is marked as down
 		'template'  => "false",    # it is a template. The fg cannot be deleted, only reset its configuration
+		'backend_alias'     => "false",    # Use the backend alias to do the farmguardian check. The load balancer must resolve the alias
 	};
 
 =cut
@@ -95,6 +96,7 @@ sub getFGStruct
 		'interval'    => "10",     # Time between checks
 		'cut_conns' => "false", # cut the connections with the backend is marked as down
 		'template'  => "false",
+		'backend_alias' => "false",
 	};
 }
 
@@ -255,6 +257,7 @@ Returns:
 		'interval'    => "10",     # Time between checks
 		'cut_conns' => "false",    # cut the connections with the backend is marked as down
 		'template'  => "false",    # it is a template. The fg cannot be deleted, only reset its configuration
+		'backend_alias'     => "false",    # Use the backend alias to do the farmguardian check. The load balancer must resolve the alias
 	};
 
 =cut
@@ -1076,10 +1079,7 @@ sub runFGFarmStart
 	}
 	elsif ( $ftype eq 'l4xnat' || $ftype =~ /http/ )
 	{
-		my $fgname       = &getFGFarm( $farm, $svice );
-		my $farmguardian = &getGlobalConfiguration( 'farmguardian' );
-		my $fg_cmd       = "$farmguardian $farm $sv $log";
-		&zenlog( "running $fg_cmd", "info", "FG" );
+		my $fgname = &getFGFarm( $farm, $svice );
 
 		return 0 if not $fgname;
 
@@ -1100,9 +1100,7 @@ sub runFGFarmStart
 		my $fg_cmd       = "$farmguardian $farm $sv $log";
 
 		require Zevenet::Log;
-		$status = system ( "$fg_cmd >/dev/null 2>&1 &" );
-		if   ( $status ) { &zenlog( "running $fg_cmd", "error", "FG" ); }
-		else             { &zenlog( "running $fg_cmd", 'debug', 'FG' ); }
+		$status = &logAndRunBG( "$fg_cmd" );
 
 		# necessary for waiting that fg process write its process
 		sleep ( 1 );

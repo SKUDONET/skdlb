@@ -44,9 +44,11 @@ Returns:
 See Also:
 	zapi/v3/system.cgi
 =cut
+
 sub getLogs
 {
-	&zenlog(__FILE__ . ":" . __LINE__ . ":" . (caller(0))[3] . "( @_ )", "debug", "PROFILING" );
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my @logs;
 	my $logdir = &getGlobalConfiguration( 'logdir' );
 
@@ -59,8 +61,8 @@ sub getLogs
 		# not list if it is a directory
 		next if -d "$logdir/$line";
 
-		use File::stat; # Cannot 'require' this module
-		#~ use Time::localtime qw(ctime);
+		use File::stat;    # Cannot 'require' this module
+		                   #~ use Time::localtime qw(ctime);
 
 		require Time::localtime;
 		Time::localtime->import;
@@ -69,6 +71,7 @@ sub getLogs
 		chomp ( $filepath );
 		my $datetime_string = ctime( stat ( $filepath )->mtime );
 		$datetime_string = `date -d "${datetime_string}" +%F" "%T" "%Z -u`;
+		chomp $datetime_string;
 		push @logs, { 'file' => $line, 'date' => $datetime_string };
 	}
 
@@ -90,9 +93,11 @@ Returns:
 See Also:
 	zapi/v31/system.cgi
 =cut
+
 sub getLogLines
 {
-	&zenlog(__FILE__ . ":" . __LINE__ . ":" . (caller(0))[3] . "( @_ )", "debug", "PROFILING" );
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my ( $logFile, $lines_number ) = @_;
 
 	my @lines;

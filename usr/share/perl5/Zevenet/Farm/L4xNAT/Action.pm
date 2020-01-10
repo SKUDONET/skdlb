@@ -168,6 +168,49 @@ sub setL4NewFarmName    # ($farm_name, $new_farm_name)
 }
 
 =begin nd
+Function: copyL4Farm
+
+	Function that copies a l4xnat farm.
+	If the flag has the value 'del', the old farm will be deleted.
+
+Parameters:
+	farmname - Farm name
+	newfarmname - New farm name
+	flag - It expets a 'del' string to delete the old farm. It is used to copy or rename the farm.
+
+Returns:
+	Integer - return 0 on success or <> 0 on failure
+
+=cut
+
+sub copyL4Farm    # ($farm_name, $new_farm_name)
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $farm_name     = shift;
+	my $new_farm_name = shift;
+	my $del           = shift // '';
+	my $output        = 0;
+
+	require Tie::File;
+	use File::Copy qw(copy);
+
+	my $file_ori = "$configdir/" . &getFarmFile( $farm_name );
+	my $file_new = "$configdir/${new_farm_name}_l4xnat.cfg";
+
+	copy( $file_ori, $file_new );
+
+	# replace the farm directive
+	tie my @lines, 'Tie::File', $file_new;
+	s/"name": "$farm_name"/"name": "$new_farm_name"/ for @lines;
+	untie @lines;
+
+	unlink $file_ori if ( $del eq 'del' );
+
+	return $output;
+}
+
+=begin nd
 Function: loadL4NlbFarm
 
 	Load farm configuration in nftlb
