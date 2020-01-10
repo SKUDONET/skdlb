@@ -27,10 +27,10 @@ my $q = getCGI();
 
 if ( $ENV{ PATH_INFO } =~ qr{^/ids$} )
 {
-	my $mod = 'Zevenet::API40::Ids';
+	require Zevenet::API40::Ids;
 
 	#  GET /rbac/users
-	GET qr{^/ids$}, 'list_ids', $mod;
+	GET qr{^/ids$} => \&list_ids;
 }
 
 # Certificates

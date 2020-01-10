@@ -23,7 +23,7 @@
 
 use strict;
 
-include 'Zevenet::Ids';
+require Zevenet::Ids;
 
 # GET /ids
 sub list_ids
