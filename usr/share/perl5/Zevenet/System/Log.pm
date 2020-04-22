@@ -52,6 +52,8 @@ sub getLogs
 	my @logs;
 	my $logdir = &getGlobalConfiguration( 'logdir' );
 
+	require Zevenet::File;
+
 	opendir ( DIR, $logdir );
 	my @files = readdir ( DIR );
 	closedir ( DIR );
@@ -61,18 +63,10 @@ sub getLogs
 		# not list if it is a directory
 		next if -d "$logdir/$line";
 
-		use File::stat;    # Cannot 'require' this module
-		                   #~ use Time::localtime qw(ctime);
-
-		require Time::localtime;
-		Time::localtime->import;
-
 		my $filepath = "$logdir/$line";
 		chomp ( $filepath );
-		my $datetime_string = ctime( stat ( $filepath )->mtime );
-		$datetime_string = `date -d "${datetime_string}" +%F" "%T" "%Z -u`;
-		chomp $datetime_string;
-		push @logs, { 'file' => $line, 'date' => $datetime_string };
+
+		push @logs, { 'file' => $line, 'date' => &getFileDateGmt( $filepath ) };
 	}
 
 	return \@logs;
@@ -107,14 +101,16 @@ sub getLogLines
 	if ( $logFile =~ /\.gz$/ )
 	{
 		my $zcat = &getGlobalConfiguration( 'zcat' );
-		@lines = `$zcat ${path}/$logFile | $tail -n $lines_number`;
+		@lines =
+		  @{ &logAndGet( "$zcat ${path}/$logFile | $tail -n $lines_number", "array" ) };
 	}
 	else
 	{
-		@lines = `$tail -n $lines_number ${path}/$logFile`;
+		@lines = @{ &logAndGet( "$tail -n $lines_number ${path}/$logFile", "array" ) };
 	}
 
 	return \@lines;
 }
 
 1;
+

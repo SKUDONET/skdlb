@@ -97,8 +97,8 @@ sub farm_actions    # ( $json_obj, $farmname )
 		}
 
 		require Zevenet::Farm::Base;
-		require Zevenet::Lock;
-		if ( &getLockStatus( $farmname ) )
+		require Zevenet::Farm::Action;
+		if ( &getFarmRestartStatus( $farmname ) )
 		{
 			my $msg = "The farm has changes pending of applying, it has to be restarted.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
@@ -272,8 +272,8 @@ sub service_backend_maintenance # ( $json_obj, $farmname, $service, $backend_id 
 	}
 
    # Do not allow to modify the maintenance status if the farm needs to be restarted
-	require Zevenet::Lock;
-	if ( &getLockStatus( $farmname ) )
+	require Zevenet::Farm::Action;
+	if ( &getFarmRestartStatus( $farmname ) )
 	{
 		my $msg = "The farm needs to be restarted before to apply this action.";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
@@ -433,3 +433,4 @@ sub backend_maintenance    # ( $json_obj, $farmname, $backend_id )
 }
 
 1;
+

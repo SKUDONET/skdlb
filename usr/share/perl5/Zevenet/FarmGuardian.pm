@@ -309,7 +309,7 @@ sub getFGFarm
 
 	my $fg;
 	my $farm_tag = ( $srv ) ? "${farm}_$srv" : "$farm";
-	my $fg_list = &getTiny( $fg_conf );
+	my $fg_list  = &getTiny( $fg_conf );
 
 	foreach my $fg_name ( keys %{ $fg_list } )
 	{
@@ -420,7 +420,7 @@ sub delFGObject
 	my $fg_name = shift;
 
 	my $out = &runFGStop( $fg_name );
-	my $out = &delTinyObj( $fg_conf, $fg_name );
+	$out = &delTinyObj( $fg_conf, $fg_name );
 
 	return $out;
 }
@@ -673,7 +673,7 @@ sub delFGFarm
 	require Zevenet::Farm::Service;
 
 	my $fg;
-	my $err = &runFGFarmStop( $farm, $service );
+	my $err  = &runFGFarmStop( $farm, $service );
 	my $type = &getFarmType( $farm );
 
 	if ( $type =~ /http/ or $type eq 'gslb' )
@@ -972,11 +972,10 @@ sub runFGFarmStop
 					while ( $lines >= 0 )
 					{
 						$lines--;
-						my $line = $fileAux[$lines];
 						if ( $fileAux[$lines] =~ /0 $idsv (\d+) fgDOWN/ )
 						{
 							my $index = $1;
-							my $auxlin = splice ( @fileAux, $lines, 1, );
+							splice ( @fileAux, $lines, 1, );
 
 							&logAndRun( "$proxyctl -c $portadmin -B 0 $idsv $index" );
 						}
@@ -1070,7 +1069,7 @@ sub runFGFarmStart
 
 		# Iterate over every farm service
 		my $services = &getFarmVS( $farm, "", "" );
-		my @servs = split ( " ", $services );
+		my @servs    = split ( " ", $services );
 
 		foreach my $service ( @servs )
 		{
@@ -1103,7 +1102,23 @@ sub runFGFarmStart
 		$status = &logAndRunBG( "$fg_cmd" );
 
 		# necessary for waiting that fg process write its process
-		sleep ( 1 );
+		use Time::HiRes qw(usleep);
+		$status = 0;
+		my $pid_file = &getFGPidFile( $farm, $svice );
+
+		# wait for 2 seconds
+		for ( my $it = 0 ; $it < 4000 ; $it += 1 )
+		{
+			if ( -f $pid_file )
+			{
+				$status = 1;
+				last;
+			}
+
+			# 500 microseconds == 0.5 milliseconds
+			usleep( 500 );
+		}
+
 	}
 	elsif ( $ftype ne 'gslb' )
 	{
@@ -1409,7 +1424,7 @@ sub runFarmGuardianCreate    # ($fname,$ttcheck,$script,$usefg,$fglog,$svice)
 				'enable'   => $usefg,
 	};
 
-	my $output = &setOldFarmguardian( $obj );
+	$output = &setOldFarmguardian( $obj );
 
 	# start
 	$output |= &runFGFarmStart( $fname, $svice );
@@ -1496,7 +1511,7 @@ sub getFarmGuardianConf    # ($fname,$svice)
 	my $fg = &getFGFarm( $fname, $svice );
 	if ( not $fg )
 	{
-		$fg = $old if &getFGExists( $old );
+		$fg    = $old if &getFGExists( $old );
 		$usefg = "false";
 	}
 
@@ -1545,3 +1560,4 @@ sub getFarmGuardianPid    # ($fname,$svice)
 }
 
 1;
+

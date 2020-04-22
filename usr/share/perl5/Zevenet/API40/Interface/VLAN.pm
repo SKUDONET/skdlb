@@ -47,20 +47,22 @@ sub new_vlan    # ( $json_obj )
 	my $vlan_tag_re = &getValidFormat( 'vlan_tag' );
 
 	my $params = {
-				   "name" => {
-							   'valid_format' => 'vlan_interface',
-							   'required'     => 'true',
-							   'non_blank'    => 'true',
-				   },
-				   "ip" => {
-							 'valid_format' => 'ip_addr',
-				   },
-				   "netmask" => {
-								  'valid_format' => 'ip_mask',
-				   },
-				   "gateway" => {
-								  'valid_format' => 'ip_addr',
-				   },
+		"name" => {
+			'valid_format' => 'vlan_interface',
+			'required'     => 'true',
+			'non_blank'    => 'true',
+			"format_msg" =>
+			  "is a string formed with the parent interface name, dot ('.') and a VLAN tag. E.g. 'eth1.1'",
+		},
+		"ip" => {
+				  'valid_format' => 'ip_addr',
+		},
+		"netmask" => {
+					   'valid_format' => 'ip_mask',
+		},
+		"gateway" => {
+					   'valid_format' => 'ip_addr',
+		},
 	};
 
 	if ( $eload )
@@ -118,9 +120,8 @@ sub new_vlan    # ( $json_obj )
 	$json_obj->{ tag }    = $2;
 
 	# validate PARENT
-	my $parent_exist = &ifexist( $json_obj->{ parent } );
-
-	unless ( $parent_exist eq "true" || $parent_exist eq "created" )
+	my $if_parent = &getInterfaceConfig( $json_obj->{ parent } );
+	unless ( defined $if_parent )
 	{
 		my $msg = "The parent interface $json_obj->{ parent } doesn't exist";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
@@ -159,7 +160,7 @@ sub new_vlan    # ( $json_obj )
 	$if_ref = {
 				name   => $json_obj->{ name },
 				dev    => $json_obj->{ parent },
-				status => "up",
+				status => $if_parent->{ status },
 				vlan   => $json_obj->{ tag },
 				dhcp   => $json_obj->{ dhcp } // 'false',
 				mac    => $socket->if_hwaddr( $json_obj->{ parent } ),
@@ -312,15 +313,6 @@ sub delete_interface_vlan    # ( $vlan )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	if ( $eload )
-	{
-		&eload(
-				module => 'Zevenet::Net::Zapi',
-				func   => 'checkZapiIfDepsRouting',
-				args   => [$vlan, 'del'],
-		);
-	}
-
 	require Zevenet::Net::Core;
 	require Zevenet::Net::Route;
 
@@ -332,6 +324,7 @@ sub delete_interface_vlan    # ( $vlan )
 
 	if ( $@ )
 	{
+		&zenlog( "Module failed: $@", "error", "net" );
 		my $msg = "The VLAN interface $vlan can't be deleted";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
@@ -524,6 +517,8 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 
 	my $desc   = "Modify VLAN interface";
 	my $if_ref = &getInterfaceConfig( $vlan );
+	my $old_ip = $if_ref->{ addr };
+
 	my @farms;
 
 	# Check interface errors
@@ -603,15 +598,6 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 			}
 		}
-	}
-
-	if ( $eload )
-	{
-		&eload(
-				module => 'Zevenet::Net::Zapi',
-				func   => 'checkZapiIfDepsRouting',
-				args   => [$vlan, 'put', $json_obj],
-		);
 	}
 
 	my $dhcp_status = $json_obj->{ dhcp } // $if_ref->{ dhcp };
@@ -753,6 +739,15 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 	$if_ref->{ ip_v } = &ipversion( $if_ref->{ addr } );
 	$if_ref->{ net } =
 	  &getAddressNetwork( $if_ref->{ addr }, $if_ref->{ mask }, $if_ref->{ ip_v } );
+
+	if ( $eload )
+	{
+		&eload(
+				module => 'Zevenet::Net::Routing',
+				func   => 'updateRoutingVirtualIfaces',
+				args   => [$if_ref->{ parent }, $old_ip],
+		);
+	}
 
 	require Zevenet::Lock;
 	my $vlan_config_file =

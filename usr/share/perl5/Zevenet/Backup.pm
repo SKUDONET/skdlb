@@ -63,7 +63,8 @@ sub getBackup
 		use Time::localtime qw(ctime);
 
 		my $datetime_string = ctime( stat ( $filepath )->mtime );
-		$datetime_string = `date -d "${datetime_string}" +%F"  "%T" "%Z -u`;
+		$datetime_string =
+		  &logAndGet( "date -d \"${datetime_string}\" +%F\"  \"%T\" \"%Z -u" );
 		chomp ( $datetime_string );
 		push @backups,
 		  {
@@ -325,10 +326,10 @@ sub applyBackup
 	my $version = &getGlobalConfiguration( 'version' );
 
 	&zenlog( "Restoring backup $file", "info", "SYSTEM" );
-	my @eject = `$tar -xvzf $file -C /`;
-	my $error = $?;
+	my $cmd = "$tar -xvzf $file -C /";
+	my $eject = &logAndGet( $cmd, 'array' );
 
-	if ( $error )
+	if ( not @{ $eject } )
 	{
 		&zenlog( "The backup $file could not be extracted", "error", "SYSTEM" );
 		return $error;
@@ -340,7 +341,7 @@ sub applyBackup
 
 	unlink '/zevenet_version';
 
-	&zenlog( "unpacking files: @eject", "info", "SYSTEM" );
+	&zenlog( "unpacking files: @{$eject}", "info", "SYSTEM" );
 	$error = &logAndRun( "/etc/init.d/zevenet restart" );
 
 	if ( !$error )
@@ -384,7 +385,6 @@ sub getBackupVersion
 	$config_path =~ s/^\///;
 
 	my @out = @{ &logAndGet( "$tar -xOf $file $config_path", 'array' ) };
-	chomp @out;
 
 	my $version = "";
 
@@ -403,3 +403,4 @@ sub getBackupVersion
 }
 
 1;
+

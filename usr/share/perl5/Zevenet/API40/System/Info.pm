@@ -128,6 +128,7 @@ sub get_system_info
 	my $user          = &getUser();
 	my @zapi_versions = &listZapiVersions();
 	my $edition       = ( $eload ) ? "enterprise" : "community";
+	my $platform      = &getGlobalConfiguration( 'cloud_provider' );
 
 	my $params = {
 				   'system_date'             => $date,
@@ -140,6 +141,7 @@ sub get_system_info
 				   'last_zapi_version'       => $zapi_versions[-1],
 				   'edition'                 => $edition,
 				   'language'                => $lang,
+				   'platform'                => $platform,
 	};
 
 	if ( $eload )
@@ -176,7 +178,7 @@ sub set_language
 	  if ( $error_msg );
 
 	# Check allowed parameters
-	my $error_msg = &setGlobalConfiguration( 'lang', $json_obj->{ language } );
+	&setGlobalConfiguration( 'lang', $json_obj->{ language } );
 
 	&httpResponse(
 				   {
@@ -190,3 +192,4 @@ sub set_language
 }
 
 1;
+

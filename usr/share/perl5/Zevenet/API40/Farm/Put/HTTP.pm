@@ -42,7 +42,6 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 	my $desc = "Modify HTTP farm $farmname";
 
 	require Zevenet::Net::Interface;
-	my $ip_list = &getIpAddressList();
 
 	my $params = {
 		"newfarmname" => {
@@ -54,9 +53,9 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 					 'non_blank' => 'true',
 		},
 		"vip" => {
-				   'values'     => $ip_list,
-				   'non_blank'  => 'true',
-				   'format_msg' => 'expects an IP'
+				   'valid_format' => 'ip_addr',
+				   'non_blank'    => 'true',
+				   'format_msg'   => 'expects an IP'
 		},
 		"contimeout" => {
 						  'valid_format' => 'natural_num',
@@ -173,7 +172,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 	if ( exists ( $json_obj->{ vip } ) or exists ( $json_obj->{ vport } ) )
 	{
 		require Zevenet::Net::Validate;
-		if (     $farm_st->{ status } eq 'up'
+		if (     $farm_st->{ status } ne 'down'
 			 and &checkport( $vip, $vport, $farmname ) eq 'true' )
 		{
 			my $msg =
@@ -604,13 +603,24 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 
 	if ( $farm_st->{ status } ne 'down' )
 	{
-		&setFarmRestart( $farmname );
-		$body->{ status } = 'needed restart';
-		$body->{ info } =
-		  "There're changes that need to be applied, stop and start farm to apply them!";
+		if ( &getGlobalConfiguration( 'proxy_ng' ) ne 'true' )
+		{
+			&setFarmRestart( $farmname );
+			$body->{ status } = 'needed restart';
+		}
+		else
+		{
+			&runFarmReload( $farmname );
+			&eload(
+					module => 'Zevenet::Cluster',
+					func   => 'runZClusterRemoteManager',
+					args   => ['farm', 'reload', $farmname],
+			) if ( $eload );
+		}
 	}
 
 	&httpResponse( { code => 200, body => $body } );
 }
 
 1;
+

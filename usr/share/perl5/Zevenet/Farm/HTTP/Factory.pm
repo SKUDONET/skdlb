@@ -23,6 +23,11 @@
 
 use strict;
 
+my $eload;
+if ( eval { require Zevenet::ELoad; } )
+{
+	$eload = 1;
+}
 require Zevenet::Core;
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
@@ -95,8 +100,14 @@ sub runHTTPFarmCreate    # ( $vip, $vip_port, $farm_name, $farm_type )
 	print $f_err "The service is not available. Please try again later.\n";
 	close $f_err;
 
-	my $proxy  = &getGlobalConfiguration( 'proxy' );
-	my $piddir = &getGlobalConfiguration( 'piddir' );
+	if ( $eload )
+	{
+		&eload(
+				module => 'Zevenet::Farm::HTTP::Ext',
+				func   => 'setHTTPFarmLogs',
+				args   => [$farm_name, 'false'],
+		);
+	}
 
 	require Zevenet::Farm::HTTP::Config;
 	$output = &getHTTPFarmConfigIsOK( $farm_name );
@@ -110,6 +121,9 @@ sub runHTTPFarmCreate    # ( $vip, $vip_port, $farm_name, $farm_type )
 
 	#run farm
 	require Zevenet::System;
+	my $proxy  = &getGlobalConfiguration( 'proxy' );
+	my $piddir = &getGlobalConfiguration( 'piddir' );
+
 	if ( $status eq 'up' )
 	{
 		&zenlog(
@@ -130,3 +144,4 @@ sub runHTTPFarmCreate    # ( $vip, $vip_port, $farm_name, $farm_type )
 }
 
 1;
+

@@ -99,7 +99,7 @@ sub download_backup
 
 	# Download function ends communication if itself finishes successful.
 	# It is not necessary to send "200 OK" msg here
-	my $error = &downloadBackup( $backup );
+	&downloadBackup( $backup );
 
 	my $msg = "Error, downloading backup.";
 	&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
@@ -234,17 +234,18 @@ sub apply_backup
 		}
 	}
 
-	#~ my $error = &applyBackup( $backup );
-
-	#~ if ( $error )
-	#~ {
-	#~ my $msg = "There was a error applying the backup.";
-	#~ &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	#~ }
-
 	my $msg =
 	  "The backup was properly applied. Some changes need a system reboot to work.";
+	my $error = &applyBackup( $backup );
+
+	if ( $error )
+	{
+		$msg = "There was a error applying the backup.";
+		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+
 	&httpResponse( { code => 200, body => { description => $desc, msg => $msg } } );
 }
 
 1;
+

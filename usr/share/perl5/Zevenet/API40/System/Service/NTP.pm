@@ -75,3 +75,4 @@ sub set_ntp
 }
 
 1;
+

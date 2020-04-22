@@ -120,7 +120,7 @@ sub checkL4Port
 		# there is a port list
 		foreach my $p ( @port_list )
 		{
-			foreach my $f_p ( @f_port_list )
+			for ( @f_port_list )
 			{
 				return 1 if &checkPortMultiport( $p, $f_port );
 			}
@@ -207,3 +207,4 @@ sub checkPortIntervals
 }
 
 1;
+

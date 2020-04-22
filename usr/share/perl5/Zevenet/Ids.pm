@@ -114,7 +114,7 @@ sub getIdsTree
 				if ( $type eq 'gslb' )
 				{
 					my @zones = &eload(
-										module => 'Zevenet::Code',
+										module => 'Zevenet::Farm::GSLB::Zone',
 										func   => 'getGSLBFarmZones',
 										args   => [$f],
 					);
@@ -186,6 +186,11 @@ sub getIdsTree
 
 	if ( $eload )
 	{
+		# add routing
+		my @routing_table = &eload( module => 'Zevenet::Net::Route',
+									func   => 'listRoutingTablesNames', );
+		$tree->{ 'routing' }->{ 'tables' } = &addIdsArrays( \@routing_table );
+
 		# add ipds rules
 		$tree->{ 'ipds' } = &eload( module => 'Zevenet::IPDS::Core',
 									func   => 'getIPDSIds', );
@@ -255,3 +260,4 @@ sub addIdsArrays
 }
 
 1;
+

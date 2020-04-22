@@ -42,11 +42,9 @@ sub certificates    # ()
 	my $configdir    = &getGlobalConfiguration( 'certdir' );
 	my @out;
 
-	foreach my $cert ( @certificates )
+	foreach my $cert ( sort @certificates )
 	{
-		my $cert = &getCertInfo( "$configdir/$cert" );
-		delete $cert->{ key };
-		push @out, $cert;
+		push @out, &getCertInfo( "$configdir/$cert" );
 	}
 
 	my $body = {
@@ -55,6 +53,44 @@ sub certificates    # ()
 	};
 
 	&httpResponse( { code => 200, body => $body } );
+}
+
+# GET /certificates/CERTIFICATE/info
+sub get_certificate_info    # ()
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $cert_filename = shift;
+
+	require Zevenet::Certificate;
+
+	my $desc     = "Show certificate details";
+	my $cert_dir = &getGlobalConfiguration( 'certdir' );
+
+	# check is the certificate file exists
+	if ( !-f "$cert_dir\/$cert_filename" )
+	{
+		my $msg = "Certificate file not found.";
+		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
+	}
+
+	if ( &getValidFormat( 'certificate', $cert_filename ) )
+	{
+		my @cert_info = &getCertData( "$cert_dir\/$cert_filename" );
+		my $body;
+
+		foreach my $line ( @cert_info )
+		{
+			$body .= $line;
+		}
+
+		&httpResponse( { code => 200, body => $body, type => 'text/plain' } );
+	}
+	else
+	{
+		my $msg = "Could not get such certificate information";
+		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
 }
 
 # GET /certificates/CERTIFICATE
@@ -404,9 +440,20 @@ sub add_farm_certificate    # ( $json_obj, $farmname )
 	if ( &getFarmStatus( $farmname ) ne 'down' )
 	{
 		require Zevenet::Farm::Action;
-
-		&setFarmRestart( $farmname );
-		$body->{ status } = 'needed restart';
+		if ( &getGlobalConfiguration( 'proxy_ng' ) ne 'true' )
+		{
+			&setFarmRestart( $farmname );
+			$body->{ status } = 'needed restart';
+		}
+		else
+		{
+			&runFarmReload( $farmname );
+			&eload(
+					module => 'Zevenet::Cluster',
+					func   => 'runZClusterRemoteManager',
+					args   => ['farm', 'reload', $farmname],
+			) if ( $eload );
+		}
 	}
 
 	&httpResponse( { code => 200, body => $body } );
@@ -513,14 +560,26 @@ sub delete_farm_certificate    # ( $farmname, $certfilename )
 	if ( &getFarmStatus( $farmname ) ne 'down' )
 	{
 		require Zevenet::Farm::Action;
-
-		&setFarmRestart( $farmname );
-		$body->{ status } = 'needed restart';
+		if ( &getGlobalConfiguration( 'proxy_ng' ) ne 'true' )
+		{
+			&setFarmRestart( $farmname );
+			$body->{ status } = 'needed restart';
+		}
+		else
+		{
+			&runFarmReload( $farmname );
+			&eload(
+					module => 'Zevenet::Cluster',
+					func   => 'runZClusterRemoteManager',
+					args   => ['farm', 'reload', $farmname],
+			) if ( $eload );
+		}
 	}
 
 	&zenlog( "Success trying to delete a certificate to the SNI list.",
-			 "error", "LSLB" );
+			 "info", "LSLB" );
 	&httpResponse( { code => 200, body => $body } );
 }
 
 1;
+

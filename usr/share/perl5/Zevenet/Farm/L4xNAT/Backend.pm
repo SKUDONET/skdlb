@@ -24,9 +24,10 @@
 use strict;
 use warnings;
 
-my $configdir = &getGlobalConfiguration( 'configdir' );
-
+use Zevenet::Config;
 use Zevenet::Nft;
+
+my $configdir = &getGlobalConfiguration( 'configdir' );
 
 my $eload;
 
@@ -280,9 +281,10 @@ sub setL4FarmBackendsSessionsRemove
 
 	my $be = $farm->{ servers }[$backend];
 	( my $tag = $be->{ tag } ) =~ s/0x//g;
-	my $map_name   = "persist-$farmname";
-	my @persistmap = `$nft_bin list map nftlb $map_name`;
-	my $data       = 0;
+	my $map_name = "persist-$farmname";
+	my @persistmap =
+	  @{ &logAndGet( "$nft_bin list map nftlb $map_name", "array" ) };
+	my $data = 0;
 
 	foreach my $line ( @persistmap )
 	{
@@ -317,7 +319,7 @@ Parameters:
 	backend - Backend id
 	status - Backend status. The possible values are: "up" or "down"
 	cutmode - cut to force the traffic stop for such backend
-	priority - true / false, if true then only sessions and conntrack inputs are deleted, current backend need to release connections because higher priority has been enabled. 
+	priority - true / false, if true then only sessions and conntrack inputs are deleted, current backend need to release connections because higher priority has been enabled.
 
 Returns:
 	Integer - 0 on success or other value on failure
@@ -470,6 +472,11 @@ sub _getL4FarmParseServers
 			push ( @servers, $server );
 		}
 
+		if ( $stage == 2 && $line =~ /\]/ )
+		{
+			last;
+		}
+
 		if ( $stage == 3 && $line =~ /\"name\"/ )
 		{
 			my @l = split /"/, $line;
@@ -486,6 +493,12 @@ sub _getL4FarmParseServers
 			my @l = split /"/, $line;
 			$server->{ ip }  = $l[3];
 			$server->{ rip } = $l[3];
+		}
+
+		if ( $stage == 3 && $line =~ /\"source-addr\"/ )
+		{
+			my @l = split /"/, $line;
+			$server->{ sourceip } = $l[3];
 		}
 
 		if ( $stage == 3 && $line =~ /\"port\"/ )
@@ -606,7 +619,6 @@ sub getL4BackendsWeightProbability
 		# only calculate probability for the servers running
 		if ( $$server{ status } eq 'up' )
 		{
-			my $delta = $$server{ weight };
 			$weight_sum += $$server{ weight };
 			$$server{ prob } = $weight_sum / $$farm{ prob };
 		}
@@ -730,16 +742,11 @@ sub setL4BackendRule
 	my $table_if =
 	  ( $vip_if->{ type } eq 'virtual' ) ? $vip_if->{ parent } : $vip_if->{ name };
 
-	use NetAddr::IP;
-	my $from = ($vip_if->{ mask } =~ /^\d$/ ) ?
-			"$vip_if->{ net }/$vip_if->{ mask }" :
-			NetAddr::IP->new( $vip_if->{ net }, $vip_if->{ mask });
-
 	my $rule = {
-		table => "table_$table_if",
-		type => 'farm',
-		from => $from,
-		fwmark => "$mark/0x7fffffff",
+				 table  => "table_$table_if",
+				 type   => 'farm-l4',
+				 from   => 'all',
+				 fwmark => "$mark/0x7fffffff",
 	};
 	return &setRule( $action, $rule );
 }
@@ -778,4 +785,40 @@ sub getL4ServerByMark
 	return -1;
 }
 
+=begin nd
+Function: getL4FarmPriorities
+
+	Get the list of the backends priorities in a L4 farm
+
+Parameters:
+	farmname - Farm name
+
+Returns:
+	Array Ref - it returns an array ref of priority values
+
+=cut
+
+sub getL4FarmPriorities    # ( $farmname )
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my ( $farmname ) = shift;
+	my @priorities;
+	my $backends = &getL4FarmServers( $farmname );
+	foreach my $backend ( @{ $backends } )
+	{
+		if ( defined $backend->{ priority } )
+		{
+			push @priorities, $backend->{ priority };
+		}
+		else
+		{
+			push @priorities, 1;
+		}
+
+	}
+	return \@priorities;
+}
+
 1;
+

@@ -43,7 +43,7 @@ sub getTotalConnections
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $conntrack = &getGlobalConfiguration( "conntrack" );
-	my $conns     = `$conntrack -C`;
+	my $conns     = &logAndGet( "$conntrack -C" );
 	$conns =~ s/(\d+)/$1/;
 	$conns += 0;
 
@@ -173,8 +173,7 @@ sub getSpaceFree
 
 	my $cmd =
 	  "$df_bin -B1 $dir | $grep_bin -Ev '^(Filesystem|\$)' | $sed_bin -E 's/\\s+/ /g' | $cut_bin -d ' ' -f4";
-	my $size = `$cmd`;
-	chomp $size;
+	my $size = &logAndGet( $cmd );
 
 	&zenlog( "Dir: $dir, Free space (Bytes): $size", "debug2" );
 
@@ -220,7 +219,7 @@ sub getSpaceFormatHuman
 		$unit  = "GB";
 	}
 
-	my $human = sprintf ( "%.2f", $human );
+	$human = sprintf ( "%.2f", $human );
 	my $out = $human . $unit;
 	return $out;
 }
@@ -233,7 +232,7 @@ Function: getSupportSaveSize
 	a offset of 20MB
 
 Parameters:
-	directory - Directory where the supportsave will be created
+	none - .
 
 Returns:
 	Integer - Number of bytes that supportsave will use
@@ -245,12 +244,12 @@ sub getSupportSaveSize
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 
-	my $dir    = shift;
 	my $offset = "20971520";                             # 20 MB
 	my $dirs   = "/usr/local/zevenet/config /var/log";
 
 	my $tar_bin = &getGlobalConfiguration( 'tar' );
-	my $size    = `$tar_bin cz - $dirs 2>/dev/null | wc -c`;
+	my $wc      = &getGlobalConfiguration( 'wc_bin' );
+	my $size    = &logAndGet( "$tar_bin cz - $dirs 2>/dev/null | $wc -c" );
 
 	return $offset + $size;
 }
@@ -315,8 +314,8 @@ sub getSupportSave
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my $zbindir   = &getGlobalConfiguration( 'zbindir' );
-	my @ss_output = `${zbindir}/supportsave 2>&1`;
+	my $zbindir = &getGlobalConfiguration( 'zbindir' );
+	my @ss_output = @{ &logAndGet( "${zbindir}/supportsave", "array" ) };
 
 	# get the last "word" from the first line
 	my $first_line = shift @ss_output;
@@ -378,3 +377,4 @@ sub applyFactoryReset
 }
 
 1;
+

@@ -110,19 +110,8 @@ sub getSnmpdStatus    # ()
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my $pidof       = &getGlobalConfiguration( 'pidof' );
-	my $status      = `$pidof snmpd`;
-	my $return_code = $?;
-
-	# if not empty pid
-	if ( $return_code == 0 )
-	{
-		$return_code = "true";
-	}
-	else
-	{
-		$return_code = "false";
-	}
+	my $pidof = &getGlobalConfiguration( 'pidof' );
+	my $return_code = ( &logAndRunCheck( "$pidof snmpd" ) ) ? 'false' : 'true';
 
 	return $return_code;
 }
@@ -237,3 +226,4 @@ sub setSnmpdConfig    # ($snmpd_conf)
 }
 
 1;
+

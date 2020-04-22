@@ -122,8 +122,20 @@ sub add_farm_certificate    # ( $json_obj, $farmname )
 	{
 		require Zevenet::Farm::Action;
 
-		&setFarmRestart( $farmname );
-		$body->{ status } = 'needed restart';
+		if ( &getGlobalConfiguration( 'proxy_ng' ) ne 'true' )
+		{
+			&setFarmRestart( $farmname );
+			$body->{ status } = 'needed restart';
+		}
+		else
+		{
+			&runFarmReload( $farmname );
+			&eload(
+					module => 'Zevenet::Cluster',
+					func   => 'runZClusterRemoteManager',
+					args   => ['farm', 'reload', $farmname],
+			) if ( $eload );
+		}
 	}
 
 	&httpResponse( { code => 200, body => $body } );
@@ -221,8 +233,20 @@ sub delete_farm_certificate    # ( $farmname, $certfilename )
 	{
 		require Zevenet::Farm::Action;
 
-		&setFarmRestart( $farmname );
-		$body->{ status } = 'needed restart';
+		if ( &getGlobalConfiguration( 'proxy_ng' ) ne 'true' )
+		{
+			&setFarmRestart( $farmname );
+			$body->{ status } = 'needed restart';
+		}
+		else
+		{
+			&runFarmReload( $farmname );
+			&eload(
+					module => 'Zevenet::Cluster',
+					func   => 'runZClusterRemoteManager',
+					args   => ['farm', 'reload', $farmname],
+			) if ( $eload );
+		}
 	}
 
 	&zenlog( "Success, trying to delete a certificate to the SNI list.",

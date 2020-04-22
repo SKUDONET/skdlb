@@ -65,7 +65,7 @@ sub loadL4FarmModules
 		my $nftbin = &getGlobalConfiguration( "nft_bin" );
 
 		# Flush nft tables
-		&logAndRun( "$nftbin flush ruleset" );
+		&logAndRun( "$nftbin flush table ip dummyTable" );
 
 		my $nftCmd =
 		  "$nftbin add table ip dummyTable; $nftbin add chain ip dummyTable dummyChain { type nat hook input priority 0 \\; }; $nftbin add rule ip dummyTable dummyChain ct state established accept";
@@ -78,3 +78,4 @@ sub loadL4FarmModules
 }
 
 1;
+

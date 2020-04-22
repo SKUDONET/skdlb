@@ -97,8 +97,6 @@ sub _runHTTPFarmStop    # ($farm_name, $writeconf)
 
 	require Zevenet::FarmGuardian;
 
-	my $status = -1;
-
 	&runFarmGuardianStop( $farm_name, "" );
 	&setHTTPFarmBootStatus( $farm_name, "down" ) if ( $writeconf );
 
@@ -114,10 +112,11 @@ sub _runHTTPFarmStop    # ($farm_name, $writeconf)
 		else
 		{
 			my $time = &getGlobalConfiguration( "http_farm_stop_grace_time" );
+			my $signal = ( &getGlobalConfiguration( "proxy_ng" ) eq 'true' ) ? 9 : 15;
 			&zenlog( "Stopping HTTP farm $farm_name with PID $pid", "info", "LSLB" );
 
 			# Returns the number of arguments that were successfully used to signal.
-			kill 15, $pid;
+			kill $signal, $pid;
 			sleep ( $time );
 		}
 
@@ -238,3 +237,4 @@ sub copyHTTPFarm    # ($farm_name,$new_farm_name)
 }
 
 1;
+

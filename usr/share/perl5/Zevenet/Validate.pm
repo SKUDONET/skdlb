@@ -119,6 +119,7 @@ my %format_re = (
 	'gslb_service'          => qr/[a-zA-Z0-9][\w\-]*/,
 	'farm_modules'          => qr/(?:gslb|dslb|lslb)/,
 	'service_position'      => qr/\d+/,
+	'l4_session'            => qr/[ \._\:\w]+/,
 	'farm_maintenance_mode' => qr/(?:drain|cut)/,              # not used from API 4
 
 	# cipher
@@ -273,12 +274,12 @@ my %format_re = (
 	'alias_id'        => qr/(?:$ipv4v6|$interface)/,
 	'alias_backend'   => qr/$ipv4v6/,
 	'alias_interface' => qr/$interface/,
-	'alias_name'      => qr/[\w-]+/,
+	'alias_name'      => qr/(?:$zone|[\w-]+)/,
 	'alias_type'      => qr/(?:backend|interface)/,
 
 	# routing
 	'route_rule_id'  => qr/$natural/,
-	'route_table_id' => qr/\w+/,
+	'route_table_id' => qr/[\w\.]+/,
 	'route_entry_id' => qr/$natural/,
 
 );
@@ -349,7 +350,6 @@ Function: getValidPort
 	Validate if the port is valid for a type of farm.
 
 Parameters:
-	ip - IP address.
 	port - Port number.
 	profile - Farm profile (HTTP, L4XNAT, GSLB or DATALINK). Optional.
 
@@ -366,12 +366,9 @@ sub getValidPort    # ( $ip, $port, $profile )
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my $ip       = shift;    # mandatory for HTTP, GSLB or no profile
-	my $port     = shift;
-	my $profile  = shift;    # farm profile, optional
-	my $farmname = shift;    # farm profile, optional
+	my $port    = shift;
+	my $profile = shift;    # farm profile, optional
 
-	#~ &zenlog("getValidPort( ip:$ip, port:$port, profile:$profile )");# if &debug;
 	require Zevenet::Net::Validate;
 	if ( $profile =~ /^(?:HTTP|GSLB)$/i )
 	{
@@ -907,6 +904,10 @@ sub httpResponseHelp
 		{
 			$param->{ description } = $param_obj->{ $p }->{ format_msg };
 		}
+		if ( exists $param_obj->{ $p }->{ ref } )
+		{
+			$param->{ ref } = $param_obj->{ $p }->{ ref };
+		}
 
 		push @{ $resp_param }, $param;
 	}
@@ -1002,3 +1003,4 @@ sub putArrayAsText
 }
 
 1;
+

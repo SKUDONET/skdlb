@@ -944,7 +944,8 @@ sub getHTTPFarmGlobalStatus    # ($farm_name)
 
 	my $proxyctl = &getGlobalConfiguration( 'proxyctl' );
 
-	return `$proxyctl -c "/tmp/$farm_name\_proxy.socket"`;
+	return
+	  @{ &logAndGet( "$proxyctl -c \"/tmp/$farm_name\_proxy.socket\"", "array" ) };
 }
 
 =begin nd
@@ -1103,8 +1104,6 @@ sub setHTTPFarmBootStatus    # ($farm_name, $value)
 	my ( $farm_name, $value ) = @_;
 
 	my $farm_filename = &getFarmFile( $farm_name );
-	my $output        = "down";
-	my $lastline;
 
 	my $lock_file = &getLockFile( $farm_name );
 	my $lock_fh = &openlock( $lock_file, 'w' );
@@ -1202,11 +1201,11 @@ sub getHTTPFarmPid    # ($farm_name)
 
 	my $output  = -1;
 	my $piddir  = &getGlobalConfiguration( 'piddir' );
+	my $nproc   = &getGlobalConfiguration( 'nproc_bin' );
 	my $pidfile = "$piddir\/$farm_name\_proxy.pid";
 
 	# Get number of cores
-	my $processors = `nproc`;
-	chomp $processors;
+	my $processors = &logAndGet( $nproc );
 
 	# If the LB has one core, wait 20ms for l7 proxy child process to generate pid.
 	select ( undef, undef, undef, 0.020 ) if ( $processors == 1 );
@@ -1394,14 +1393,16 @@ sub getHTTPFarmConfigIsOK    # ($farm_name)
 	my $farm_filename = &getFarmFile( $farm_name );
 	my $proxy_command = "$proxy -f $configdir\/$farm_filename -c";
 
+# do not use the function 'logAndGet' here is managing the error output and error code
 	my $run = `$proxy_command 2>&1`;
 	my $rc  = $?;
 
 	if ( $rc or &debug() )
 	{
-		my $message = $rc ? 'failed' : 'running';
-		&zenlog( "$message: $proxy_command", "error", "LSLB" );
-		&zenlog( "output: $run ",            "error", "LSLB" );
+		my $tag     = ( $rc ) ? 'error'  : 'debug';
+		my $message = $rc     ? 'failed' : 'running';
+		&zenlog( "$message: $proxy_command", $tag, "LSLB" );
+		&zenlog( "output: $run ",            $tag, "LSLB" );
 	}
 
 	return $rc;
@@ -1425,11 +1426,13 @@ sub getHTTPFarmConfigErrorMessage    # ($farm_name)
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $farm_name = shift;
+	my $service;
 
 	my $proxy         = &getGlobalConfiguration( 'proxy' );
 	my $farm_filename = &getFarmFile( $farm_name );
 	my $proxy_command = "$proxy -f $configdir\/$farm_filename -c";
 
+# do not use the function 'logAndGet' here is managing the error output and error code
 	my @run = `$proxy_command 2>&1`;
 	my $rc  = $?;
 
@@ -1448,7 +1451,7 @@ sub getHTTPFarmConfigErrorMessage    # ($farm_name)
 	my $line_num = $1;
 
 	# get line
-	my ( $farm_name, $service ) = @_;
+	( $farm_name, $service ) = @_;
 	my $file_id = 0;
 	my $file_line;
 	my $srv;
@@ -1516,7 +1519,7 @@ sub getHTTPFarmStruct
 	# Output hash reference or undef if the farm does not exist.
 	my $farm;
 
-	return unless $farmname;
+	return $farm unless $farmname;
 
 	my $vip   = &getFarmVip( "vip",  $farmname );
 	my $vport = &getFarmVip( "vipp", $farmname ) + 0;
@@ -1545,21 +1548,21 @@ sub getHTTPFarmStruct
 	my $err501 = &getFarmErr( $farmname, "501" );
 	my $err503 = &getFarmErr( $farmname, "503" );
 
-	my $farm = {
-				 status          => $status,
-				 restimeout      => $timeout,
-				 contimeout      => $connto,
-				 resurrectime    => $alive,
-				 reqtimeout      => $client,
-				 rewritelocation => $rewritelocation,
-				 httpverb        => $httpverb,
-				 listener        => $type,
-				 vip             => $vip,
-				 vport           => $vport,
-				 error500        => $err500,
-				 error414        => $err414,
-				 error501        => $err501,
-				 error503        => $err503
+	$farm = {
+			  status          => $status,
+			  restimeout      => $timeout,
+			  contimeout      => $connto,
+			  resurrectime    => $alive,
+			  reqtimeout      => $client,
+			  rewritelocation => $rewritelocation,
+			  httpverb        => $httpverb,
+			  listener        => $type,
+			  vip             => $vip,
+			  vport           => $vport,
+			  error500        => $err500,
+			  error414        => $err414,
+			  error501        => $err501,
+			  error503        => $err503
 	};
 
 	# HTTPS parameters
@@ -1971,7 +1974,7 @@ Control 	"$conf->{ Control }"
 
 	if ( $listener_type eq 'HTTP' )
 	{
-		$global_str .= qq(#DHParams 	"/usr/local/zevenet/app/zhttp/etc/dh2048.pem"
+		$global_str .= qq(#DHParams 	"/usr/local/zevenet/app/zproxy/etc/dh2048.pem"
 #ECDHCurve	"prime256v1"
 );
 	}
@@ -2162,4 +2165,113 @@ sub cleanHashValues
 	return $hash_ref if defined wantarray;
 }
 
+=begin nd
+Function: setFarmProxyNGConf
+
+	It changes the meaning of params Priority and weight in config file.
+
+Parameters:
+	ProxyNGEnabled - 'true' if ProxyNG is used, 'false' if not.
+
+Returns:
+	Integer - return 0 on success or different on failure
+
+=cut
+
+sub setFarmProxyNGConf    # ($proxy_mode,$farm_name)
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my ( $proxy_mode, $farm_name ) = @_;
+
+	my $farm_filename = &getFarmFile( $farm_name );
+	my $stat          = 1;
+
+	my $lock_file = &getLockFile( $farm_name );
+	my $lock_fh = &openlock( $lock_file, 'w' );
+
+	require Tie::File;
+	tie my @array, 'Tie::File', "$configdir\/$farm_filename";
+	my $size      = @array;
+	my @array_bak = @array;
+
+	for ( my $i = 0 ; $i < $size ; $i++ )
+	{
+		if ( $array[$i] =~ /Priority\ (\d+)/ )
+		{
+			my $priority = $1;
+			if ( $proxy_mode eq "true" )
+			{
+				if ( $array[$i] =~ s/.*Priority\ .*/\t\t\tWeight\ $priority/ )
+				{
+					$stat = 0;
+				}
+			}
+			elsif ( $proxy_mode eq "false" )
+			{
+				if ( $array[$i + 1] =~ /Weight\ (\d+)/ )
+				{
+					my $weight = $1;
+					if ( $array[$i] =~ s/.*Priority\ .*/\t\t\tPriority\ $weight/ )
+					{
+						splice @array, $i + 1, 1;
+						$stat = 0;
+						$size--;
+					}
+				}
+				else
+				{
+					splice @array, $i, 1;
+					$stat = 0;
+					$size--;
+				}
+
+			}
+		}
+		elsif ( $array[$i] =~ /Weight\ (\d+)/ )
+		{
+			my $weight = $1;
+			if ( $proxy_mode eq "false" )
+			{
+				if ( $array[$i] =~ s/.*Weight\ .*/\t\t\tPriority\ $weight/ )
+				{
+					$stat = 0;
+				}
+			}
+			elsif ( $proxy_mode eq "true" )
+			{
+				#This directive should not be here
+				splice @array, $i, 1;
+				$size--;
+			}
+		}
+	}
+
+	if ( $eload )
+	{
+		&eload(
+				module => 'Zevenet::Farm::HTTP::Ext',
+				func   => 'migrateHTTPFarmLogs',
+				args   => [$farm_name, $proxy_mode],
+		);
+	}
+
+	if ( &getHTTPFarmConfigIsOK( $farm_name ) )
+	{
+		@array = @array_bak;
+		$stat  = 1;
+		&zenlog( "Error in $farm_name config file!", "error", "SYSTEM" );
+	}
+	else
+	{
+		$stat = 0;
+	}
+
+	untie @array;
+	close $lock_fh;
+
+	return $stat;
+}
+
 1;
+

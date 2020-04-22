@@ -88,8 +88,6 @@ sub _runFarmStart    # ($farm_name, $writeconf)
 		}
 	}
 
-	my $farm_filename = &getFarmFile( $farm_name );
-
 	&zenlog( "Starting farm $farm_name with type $farm_type", "info", "FARMS" );
 
 	if ( $farm_type eq "http" || $farm_type eq "https" )
@@ -160,7 +158,6 @@ sub runFarmStart    # ($farm_name, $writeconf)
 		);
 
 		require Zevenet::Farm::Config;
-		&reloadFarmsSourceAddressByFarm( $farm_name );
 		if ( &getPersistence( $farm_name ) == 0 )
 		{
 			&eload(
@@ -170,7 +167,6 @@ sub runFarmStart    # ($farm_name, $writeconf)
 			);
 		}
 	}
-
 	return $status;
 }
 
@@ -316,11 +312,7 @@ sub runFarmDelete    # ($farm_name)
 	require Zevenet::Netfilter;
 
 	# global variables
-	my $basedir   = &getGlobalConfiguration( 'basedir' );
 	my $configdir = &getGlobalConfiguration( 'configdir' );
-	my $rrdap_dir = &getGlobalConfiguration( 'rrdap_dir' );
-	my $logdir    = &getGlobalConfiguration( 'logdir' );
-	my $rrd_dir   = &getGlobalConfiguration( 'rrd_dir' );
 
 	if ( $eload )
 	{
@@ -394,6 +386,132 @@ sub runFarmDelete    # ($farm_name)
 }
 
 =begin nd
+Function: runFarmReload
+
+	Reload a farm
+
+Parameters:
+	farm_name - Farm name
+
+Returns:
+Integer - return 0 on success, another value on another failure
+
+=cut
+
+sub runFarmReload    # ($farm_name)
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $farm_name = shift;
+	require Zevenet::Farm::Action;
+	if ( &getFarmRestartStatus( $farm_name ) )
+	{
+		&zenlog( "'Reload' on $farm_name is not executed. 'Restart' is needed.",
+				 "info", "FARMS" );
+		return 2;
+	}
+	my $status = 0;
+
+	&zenlog( "running 'Reload' for $farm_name", "info", "FARMS" );
+
+	# Reload config daemon
+	$status = &_runFarmReload( $farm_name );
+
+	# Reload Farm status from its cfg file
+	require Zevenet::Farm::HTTP::Backend;
+	&setHTTPFarmBackendStatus( $farm_name );
+
+	return $status;
+}
+
+=begin nd
+Function: _runFarmReload
+
+	It reloads a farm to update the configuration.
+
+Parameters:
+	Farm - It is the farm name
+
+Returns:
+	Integer - It returns 0 on success or another value on failure.
+
+=cut
+
+sub _runFarmReload    # ($farm_name)
+
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $farm = shift;
+	my $err  = 0;
+
+	require Zevenet::Farm::Base;
+	return 0 if ( &getFarmStatus( $farm ) ne 'up' );
+
+	require Zevenet::Farm::HTTP::Config;
+	my $proxy_ctl = &getGlobalConfiguration( 'proxyctl' );
+	my $socket    = &getHTTPFarmSocket( $farm );
+
+	$err = &logAndRun( "$proxy_ctl -c $socket -R 0" );
+
+	return $err;
+}
+
+=begin nd
+Function: getFarmRestartFile
+
+	This function returns a file name that indicates that a farm is waiting to be restarted
+
+Parameters:
+	farmname - Farm name
+
+Returns:
+	sting - path to flag file
+
+NOTE:
+	Generic function
+
+=cut
+
+sub getFarmRestartFile    # ($farm_name)
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $farm_name = shift;
+
+	return "/tmp/_farm_need_restart_$farm_name";
+}
+
+=begin nd
+Function: getFarmRestartStatus
+
+	This function responses if a farm has pending changes waiting for restarting
+
+Parameters:
+	farmname - Farm name
+
+Returns:
+	Integer - 1 if the farm has to be restarted or 0 if it is not
+
+NOTE:
+	Generic function
+
+=cut
+
+sub getFarmRestartStatus
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $fname = shift;
+
+	require Zevenet::Farm::Action;
+	my $lfile = &getFarmRestartFile( $fname );
+
+	return 1 if ( -e $lfile );
+	return 0;
+}
+
+=begin nd
 Function: setFarmRestart
 
 	This function creates a file to tell that the farm needs to be restarted to apply changes
@@ -420,7 +538,7 @@ sub setFarmRestart    # ($farm_name)
 	return if &getFarmStatus( $farm_name ) ne 'up';
 
 	require Zevenet::Lock;
-	my $lf = &getLockFile( $farm_name );
+	my $lf = &getFarmRestartFile( $farm_name );
 	my $fh = &openlock( $lf, 'w' );
 	close $fh;
 }
@@ -447,8 +565,7 @@ sub setFarmNoRestart    # ($farm_name)
 			 "debug", "PROFILING" );
 	my $farm_name = shift;
 
-	require Zevenet::Lock;
-	my $lf = &getLockFile( $farm_name );
+	my $lf = &getFarmRestartFile( $farm_name );
 	unlink ( $lf ) if -e $lf;
 }
 
@@ -478,7 +595,6 @@ sub setNewFarmName    # ($farm_name,$new_farm_name)
 	my $farm_type = &getFarmType( $farm_name );
 	my $output    = -1;
 
-	my $fg_status;
 	my $farm_status;
 
 	# farmguardian renaming
@@ -608,3 +724,4 @@ sub copyFarm    # ($farm_name,$new_farm_name)
 }
 
 1;
+

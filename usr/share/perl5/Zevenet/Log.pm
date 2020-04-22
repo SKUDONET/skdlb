@@ -63,7 +63,7 @@ Function: zenlog
 Parametes:
 	string - String to be written in log.
 	type   - Log level. info, error, debug, debug2, warn
-	tag    - RBAC, LSLB, GSLB, DSLB, IPDS, FG, NOTIF, NETWORK, MONITOR, SYSTEM, CLUSTER
+	tag    - RBAC, LSLB, GSLB, DSLB, IPDS, FG, NOTIF, NETWORK, MONITOR, SYSTEM, CLUSTER, AWS
 
 Returns:
 	none - .
@@ -77,6 +77,7 @@ sub zenlog    # ($string, $type)
 
 	if ( $tag eq 'PROFILING' )
 	{
+		$type = "debug5";
 		require Zevenet::Debug;
 		return 0 if ( &debug() < 5 );
 	}
@@ -289,11 +290,13 @@ sub zsystem
 Function: logAndGet
 
 	Execute a command in the system to get the output. If the command fails,
-	it logs the error and returns a empty string.
+	it logs the error and returns a empty string or array.
+	It returns only the standard output, it does not return stderr.
 
 Parameters:
 	command - String with the command to be run in order to get info from the system.
-	type output - Force that the output will be convert to 'string' or 'array'. String by default
+	output format - Force that the output will be convert to 'string' or 'array'. String by default
+	stderr flag - If this parameter is different of 0, the stderr will be added to the command output '2>&1'
 
 Returns:
 	Array ref or string - data obtained from the system. The type of output is specified
@@ -302,34 +305,43 @@ Returns:
 See Also:
 	logAndRun
 
+TODO:
+	Add an option to manage exclusively the output error and discard the standard output
+
 =cut
 
 sub logAndGet
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my $cmd = shift;
-	my $type = shift // 'string';
+	my $cmd        = shift;
+	my $type       = shift // 'string';
+	my $add_stderr = shift // 0;
 
-	my $program = $basename;
+	my $tmp_err = ( $add_stderr ) ? '&1' : "/tmp/err.log";
 	my @print_err;
 
-	my $resource = "logAndGet";
-
-	my $out      = `$cmd 2>/dev/null`;
+	my $out      = `$cmd 2>$tmp_err`;
 	my $err_code = $?;
-	my $tag      = ( $err_code ) ? 'error' : 'debug2';
-	&zenlog( "Executed: $cmd", $tag, "system" );
+	&zenlog( "Executed (out: $err_code): $cmd", "debug", "system" );
 
-	if ( $err_code )
+	if ( $err_code and !$add_stderr )
 	{
 		# execute again, removing stdout and getting stderr
-		@print_err = `$cmd 2>&1 >/dev/null`;
-		if ( @print_err )
+		if ( open ( my $fh, '<', $tmp_err ) )
 		{
-			&zenlog( "out: @print_err", "error", "SYSTEM" );
+			local $/ = undef;
+			my $err_str = <$fh>;
+			&zenlog( "sterr: $err_str", "debug2", "SYSTEM" );
+			close $fh;
+		}
+		else
+		{
+			&zenlog( "file '$tmp_err' not found", "error", "SYSTEM" );
 		}
 	}
+
+	chomp ( $out );
 
 	# logging if there is not any error
 	if ( !@print_err )
@@ -388,3 +400,4 @@ sub logAndRunCheck
 }
 
 1;
+

@@ -427,6 +427,7 @@ sub httpErrorResponse
 	# check errors loading the hash reference
 	if ( $@ )
 	{
+		&zenlog( $@, "debug", "zapi" );
 		&zdie( "httpErrorResponse: Wrong argument received" );
 	}
 
@@ -513,6 +514,7 @@ sub httpDownloadResponse
 	# check errors loading the hash reference
 	if ( $@ )
 	{
+		&zenlog( $@, "debug", "zapi" );
 		&zdie( "httpDownloadResponse: Wrong argument received" );
 	}
 
@@ -622,3 +624,4 @@ sub buildBackendAPIParams
 	}
 }
 1;
+

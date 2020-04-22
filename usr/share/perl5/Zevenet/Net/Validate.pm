@@ -357,11 +357,14 @@ sub checkNetworkExists
 			 "debug", "PROFILING" );
 	my ( $net, $mask, $exception ) = @_;
 
+	#if duplicated network is allowed then don't check if network exists.
+	require Zevenet::Config;
+	return "" if ( &getGlobalConfiguration( "duplicated_net" ) eq "true" );
+
 	require Zevenet::Net::Interface;
 	require NetAddr::IP;
 
 	my $net1 = NetAddr::IP->new( $net, $mask );
-
 	my @interfaces = &getInterfaceTypeList( 'nic' );
 	push @interfaces, &getInterfaceTypeList( 'bond' );
 	push @interfaces, &getInterfaceTypeList( 'vlan' );

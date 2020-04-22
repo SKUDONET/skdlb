@@ -39,10 +39,8 @@ sub modify_datalink_farm    # ( $json_obj, $farmname )
 	my $farmname = shift;
 
 	my $desc           = "Modify datalink farm '$farmname'";
-	my $reload_flag    = "false";
 	my $restart_flag   = "false";
 	my $initial_status = &getFarmStatus( $farmname );
-	my $error          = "false";
 	my $status;
 
 	require Zevenet::Net::Interface;
@@ -165,3 +163,4 @@ sub modify_datalink_farm    # ( $json_obj, $farmname )
 }
 
 1;
+
