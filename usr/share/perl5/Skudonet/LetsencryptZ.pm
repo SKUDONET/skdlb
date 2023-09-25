@@ -960,6 +960,7 @@ sub runLetsencryptRenew  # ( $le_cert_name, $farm_name, $vip, $force, $lock_fh )
 	# run le_binary command
 	my $test_opt = "--test-cert"
 	  unless ( &checkLetsencryptStaging( $le_cert_name ) );
+	my $certname_opt = "--cert-name " . $le_cert_name;
 	my $force_opt = "--force-renewal --break-my-certs" if ( $force eq "true" );
 	my $fullchain_opt =
 	  "--fullchain-path " . &getGlobalConfiguration( 'le_fullchain_path' );
@@ -972,7 +973,7 @@ sub runLetsencryptRenew  # ( $le_cert_name, $farm_name, $vip, $force, $lock_fh )
 
 	my $le_binary = &getGlobalConfiguration( 'le_certbot_bin' );
 	my $cmd =
-	  "$le_binary certonly -d $le_cert_name $fullchain_opt $webroot_opt $configdir_opt $email_opt $test_opt $force_opt $opts";
+	  "$le_binary certonly $certname_opt $fullchain_opt $webroot_opt $configdir_opt $email_opt $test_opt $force_opt $opts";
 	&zenlog( "Executing Letsencryptz renew command : $cmd",
 			 "Info", "LetsencryptZ" );
 	$status = &logRunAndGet( $cmd, "array" );
