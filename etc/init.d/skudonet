@@ -1,0 +1,56 @@
+#!/usr/bin/perl
+### BEGIN INIT INFO
+# Provides:          skudonet
+# Required-Start:    $local_fs $remote_fs $syslog
+# Required-Stop:     $local_fs $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: skudonet
+# Description:
+#
+### END INIT INFO
+###############################################################################
+#
+#    Skudonet Software License
+#    This file is part of the Skudonet Load Balancer software package.
+#
+#    Copyright (C) 2014-today SKUDONET SL, Sevilla (Spain)
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+###############################################################################
+
+$zenbin="/usr/local/skudonet/bin/skudonet";
+$action=$ARGV[0];
+
+if ( "$action" eq "start"){
+        my @run = `$zenbin start > /dev/console`;
+        exit;
+}
+
+if ( "$action" eq "stop"){
+
+        my @run = `$zenbin stop > /dev/console`;
+        exit;
+}
+
+if ( "$action" eq "restart"){
+
+        my @run = `$zenbin stop > /dev/console`;
+	sleep(5);
+        my @run = `$zenbin start > /dev/console`;
+        exit;
+}
+
+print "Usage: /etc/init.d/skudonet ( stop | start | restart )\n";
