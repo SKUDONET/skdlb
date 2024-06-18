@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: runFarmCreate
@@ -91,20 +86,6 @@ sub runFarmCreate    # ($farm_type,$vip,$vip_port,$farm_name,$fdev)
 		require Skudonet::Farm::L4xNAT::Factory;
 		$output = &runL4FarmCreate( $vip, $farm_name, $vip_port, $status );
 	}
-	elsif ( $farm_type =~ /^GSLB$/i )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Farm::GSLB::Factory',
-						  func   => 'runGSLBFarmCreate',
-						  args   => [$vip, $vip_port, $farm_name, $status],
-		) if $eload;
-	}
-
-	&eload(
-			module => 'Skudonet::RBAC::Group::Config',
-			func   => 'addRBACUserResource',
-			args   => [$farm_name, 'farms'],
-	) if $eload;
 
 	return $output;
 }
@@ -137,21 +118,8 @@ sub runFarmCreateFrom
 	# lock farm
 	require Skudonet::Lock;
 	my $lock_file = &getLockFile( $params->{ farmname } );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
-	# add ipds rules
-	my $ipds;
-	if ( $eload )
-	{
-		$ipds = &eload(
-						module => 'Skudonet::IPDS::Core',
-						func   => 'getIPDSfarmsRules',
-						args   => [$params->{ copy_from }],
-		);
-
-		# they doesn't have to be applied, they already are in the config file
-		delete $ipds->{ waf };
-	}
 
 	# create file
 	require Skudonet::Farm::Action;
@@ -198,14 +166,6 @@ sub runFarmCreateFrom
 		);
 	}
 
-	if ( $eload and !$err )
-	{
-		$err = &eload(
-					   module => 'Skudonet::IPDS::Core',
-					   func   => 'addIPDSFarms',
-					   args   => [$params->{ farmname }, $ipds],
-		);
-	}
 
 	if ( ( $params->{ profile } eq 'l4xnat' ) and ( !$err ) )
 	{

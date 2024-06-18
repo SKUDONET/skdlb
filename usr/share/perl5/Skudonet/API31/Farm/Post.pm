@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -25,11 +26,6 @@ use Skudonet::Net::Util;
 use Skudonet::Farm::Core;
 use Skudonet::Farm::Factory;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 sub new_farm    # ( $json_obj )
 {
@@ -149,20 +145,6 @@ sub new_farm    # ( $json_obj )
 				 params      => $out_p,
 	};
 
-	if ( $eload )
-	{
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'zClusterFarmUp',
-				args   => [$json_obj->{ farmname }],
-		) if $json_obj->{ profile } =~ /^l4xnat$/i;
-
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['farm', 'start', $json_obj->{ farmname }],
-		);
-	}
 
 	&httpResponse( { code => 201, body => $body } );
 }

@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -25,11 +26,6 @@ use Skudonet::Config;
 use Skudonet::Farm::Core;
 use Skudonet::Farm::Base;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 #GET /farms
 sub farms    # ()
@@ -46,7 +42,7 @@ sub farms    # ()
 		my $name   = &getFarmName( $file );
 		my $type   = &getFarmType( $name );
 		my $status = &getFarmVipStatus( $name );
-		my $vip    = &getFarmVip( 'vip', $name );
+		my $vip    = &getFarmVip( 'vip',  $name );
 		my $port   = &getFarmVip( 'vipp', $name );
 
 		push @out,
@@ -57,17 +53,6 @@ sub farms    # ()
 			vip      => $vip,
 			vport    => $port
 		  };
-	}
-
-	if ( $eload )
-	{
-		@out = @{
-			&eload(
-					module => 'Skudonet::RBAC::Group::Core',
-					func   => 'getRBACUserSet',
-					args   => ['farms', \@out],
-			)
-		};
 	}
 
 	my $body = {
@@ -94,7 +79,7 @@ sub farms_lslb    # ()
 		my $type = &getFarmType( $name );
 		next unless $type =~ /^(?:https?|l4xnat)$/;
 		my $status = &getFarmVipStatus( $name );
-		my $vip    = &getFarmVip( 'vip', $name );
+		my $vip    = &getFarmVip( 'vip',  $name );
 		my $port   = &getFarmVip( 'vipp', $name );
 
 		push @out,
@@ -107,16 +92,6 @@ sub farms_lslb    # ()
 		  };
 	}
 
-	if ( $eload )
-	{
-		@out = @{
-			&eload(
-					module => 'Skudonet::RBAC::Group::Core',
-					func   => 'getRBACUserSet',
-					args   => ['farms', \@out],
-			)
-		};
-	}
 
 	my $body = {
 				 description => "List LSLB farms",
@@ -142,7 +117,7 @@ sub farms_dslb    # ()
 		my $type = &getFarmType( $name );
 		next unless $type eq 'datalink';
 		my $status = &getFarmVipStatus( $name );
-		my $vip    = &getFarmVip( 'vip', $name );
+		my $vip    = &getFarmVip( 'vip',  $name );
 		my $iface  = &getFarmVip( 'vipp', $name );
 
 		push @out,
@@ -154,16 +129,6 @@ sub farms_dslb    # ()
 		  };
 	}
 
-	if ( $eload )
-	{
-		@out = @{
-			&eload(
-					module => 'Skudonet::RBAC::Group::Core',
-					func   => 'getRBACUserSet',
-					args   => ['farms', \@out],
-			)
-		};
-	}
 
 	my $body = {
 				 description => "List DSLB farms",
@@ -234,14 +199,6 @@ sub farms_name    # ( $farmname )
 		require Skudonet::API40::Farm::Get::Datalink;
 		&farms_name_datalink( $farmname );
 	}
-	if ( $type eq 'gslb' && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API40::Farm::Get::GSLB',
-				func   => 'farms_name_gslb',
-				args   => [$farmname],
-		);
-	}
 }
 
 #GET /farms/<name>/status
@@ -307,24 +264,12 @@ sub getAPIFarmBackends
 			push @api_keys, qw(id ip port weight status timeout);
 		}
 	}
-	elsif ( $type eq 'gslb' )
-	{
-		push @api_keys, qw(id ip );
-	}
 
 	# add static translations
 	$translate->{ status } = { "fgdown" => "down", "undefined" => "up" };
 
 	&buildAPIParams( $out_b, \@api_keys, $translate );
 
-	if ( $eload )
-	{
-		$out_b = &eload(
-						 module => 'Skudonet::Alias',
-						 func   => 'addAliasBackendsStruct',
-						 args   => [$out_b],
-		);
-	}
 
 	return undef;
 }
@@ -336,8 +281,9 @@ sub farms_module_summary
 			 "debug", "PROFILING" );
 
 	require Skudonet::Farm::Service;
-	my $out = { lslb => [], gslb => [], dslb => [], };
+	my $out = { lslb => [], dslb => [], };
 
+	my $action_srv = 0;
 	foreach my $farm_name ( &getFarmNameList() )
 	{
 		my $type = &getFarmType( $farm_name );
@@ -347,15 +293,16 @@ sub farms_module_summary
 				   profile => $type,
 		};
 
-		if ( $type eq 'gslb' or $type eq 'http' )
+		$action_srv = 1 if ( $type eq 'http' );
+		if ( $action_srv )
 		{
 			my @srv = &getFarmServices( $farm_name );
 			$it->{ services } = \@srv;
 		}
 
-		if    ( $type eq 'datalink' ) { push @{ $out->{ dslb } }, $it; }
-		elsif ( $type eq 'gslb' )     { push @{ $out->{ gslb } }, $it; }
-		else                          { push @{ $out->{ lslb } }, $it; }
+		if ( $type eq 'datalink' ) { push @{ $out->{ dslb } }, $it; }
+		else { push @{ $out->{ lslb } }, $it; }
+		$action_srv = 0;
 	}
 
 	my $body = {

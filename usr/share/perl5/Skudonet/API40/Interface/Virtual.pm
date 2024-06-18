@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # POST /interfaces/virtual Create a new virtual network interface
 sub new_vini    # ( $json_obj )
@@ -123,7 +118,6 @@ sub new_vini    # ( $json_obj )
 	$if_ref->{ addr }    = $json_obj->{ ip };
 	$if_ref->{ gateway } = "" if !$if_ref->{ gateway };
 	$if_ref->{ type }    = 'virtual';
-	$if_ref->{ dhcp }    = 'false';
 
 	unless (
 		&validateGateway( $if_parent->{ addr }, $if_ref->{ mask }, $if_ref->{ addr } ) )
@@ -148,14 +142,6 @@ sub new_vini    # ( $json_obj )
 		}
 
 		&setInterfaceConfig( $if_ref ) or die;
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::RBAC::Group::Config',
-					func   => 'addRBACUserResource',
-					args   => [$if_ref->{ name }, 'interfaces'],
-			);
-		}
 	};
 
 	if ( $@ )
@@ -165,11 +151,6 @@ sub new_vini    # ( $json_obj )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['interface', 'start', $if_ref->{ name }],
-	) if ( $eload );
 
 	my $body = {
 			   description => $desc,
@@ -232,20 +213,6 @@ sub delete_interface_virtual    # ( $virtual )
 
 	eval {
 
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['interface', 'stop', $if_ref->{ name }],
-			);
-
-			&eload(
-					module => 'Skudonet::Net::Routing',
-					func   => 'delRoutingDependIfaceVirt',
-					args   => [$if_ref],
-			);
-		}
 
 		if ( $if_ref->{ status } eq 'up' )
 		{
@@ -263,14 +230,6 @@ sub delete_interface_virtual    # ( $virtual )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	if ( $eload )
-	{
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['interface', 'delete', $if_ref->{ name }],
-		);
-	}
 
 	my $message = "The virtual interface $virtual has been deleted.";
 	my $body = {
@@ -291,14 +250,6 @@ sub get_virtual_list    # ()
 	my $desc        = "List virtual interfaces";
 	my $output_list = &get_virtual_list_struct();
 
-	if ( $eload )
-	{
-		$output_list = &eload(
-							   module => 'Skudonet::RBAC::Group::Core',
-							   func   => 'getRBACUserSet',
-							   args   => ['interfaces', $output_list],
-		);
-	}
 
 	my $body = {
 				 description => $desc,
@@ -390,11 +341,6 @@ sub actions_interface_virtual    # ( $json_obj, $virtual )
 			require Skudonet::Net::Route;
 			&applyRoutes( "local", $if_ref );
 
-			&eload(
-					module => 'Skudonet::Net::Routing',
-					func   => 'applyRoutingDependIfaceVirt',
-					args   => ['add', $if_ref]
-			) if $eload;
 		}
 		else
 		{
@@ -402,11 +348,6 @@ sub actions_interface_virtual    # ( $json_obj, $virtual )
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['interface', 'start', $if_ref->{ name }],
-		) if ( $eload );
 	}
 	elsif ( $json_obj->{ action } eq "down" )
 	{
@@ -420,14 +361,6 @@ sub actions_interface_virtual    # ( $json_obj, $virtual )
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['interface', 'stop', $if_ref->{ name }],
-			);
-		}
 	}
 
 	my $body = {
@@ -525,14 +458,6 @@ sub modify_interface_virtual    # ( $json_obj, $virtual )
 	my $state = $if_ref->{ 'status' };
 	&downIf( $if_ref ) if $state eq 'up';
 
-	if ( $eload )
-	{
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['interface', 'stop', $if_ref->{ name }],
-		);
-	}
 
 	eval {
 		# Set the new params
@@ -549,14 +474,6 @@ sub modify_interface_virtual    # ( $json_obj, $virtual )
 		# Add new IP, netmask and gateway
 		&setInterfaceConfig( $if_ref ) or die;
 
-		if ( $eload and $old_ip )
-		{
-			&eload(
-					module => 'Skudonet::Net::Routing',
-					func   => 'updateRoutingVirtualIfaces',
-					args   => [$if_ref->{ parent }, $old_ip, $json_obj->{ ip }],
-			);
-		}
 
 		# change farm vip,
 		if ( @farms )
@@ -574,24 +491,11 @@ sub modify_interface_virtual    # ( $json_obj, $virtual )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	if ( $eload )
-	{
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['interface', 'start', $if_ref->{ name }],
-		);
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['farm', 'restart_farms', @farms],
-		);
-	}
 
 	my $body = {
 			   description => $desc,
 			   params      => $json_obj,
-			   message =>
+			   message     =>
 				 "The $if_ref->{ name } Virtual interface has been updated successfully"
 	};
 

@@ -42,7 +42,7 @@ my $ipv4v6        = qr/(?:$ipv4_addr|$ipv6_addr)/;
 my $boolean       = qr/(?:true|false)/;
 my $enable        = qr/(?:enable|disable)/;
 my $integer       = qr/\d+/;
-my $natural = qr/[1-9]\d*/;    # natural number = {1, 2, 3, ...}
+my $natural       = qr/[1-9]\d*/;    # natural number = {1, 2, 3, ...}
 my $weekdays = qr/(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)/;
 my $minutes  = qr/(?:\d|[0-5]\d)/;
 my $hours    = qr/(?:\d|[0-1]\d|2[0-3])/;
@@ -60,8 +60,8 @@ my $cert_name = qr/(?:\*[_|\.])?\w[\w\.\(\)\@ \-]*/;
 my $vlan_tag    = qr/\d{1,4}/;
 my $virtual_tag = qr/[a-zA-Z0-9\-]{1,13}/;
 my $nic_if      = qr/[a-zA-Z0-9\-]{1,15}/;
-my $vlan_if     = qr/[a-zA-Z0-9\-]{1,13}\.$vlan_tag/;
-my $interface   = qr/$nic_if(?:\.$vlan_tag)?(?:\:$virtual_tag)?/;
+my $vlan_if   = qr/[a-zA-Z0-9\-]{1,13}\.$vlan_tag/;
+my $interface = qr/$nic_if(?:\.$vlan_tag)?(?:\:$virtual_tag)?/;
 my $port_range =
   qr/(?:[1-9]\d{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])/;
 my $graphsFrequency = qr/(?:daily|weekly|monthly|yearly)/;
@@ -89,7 +89,7 @@ my %format_re = (
 	'license_format' => qr/(?:txt|html)/,
 
 	# log
-	'log'      => qr/[\.\-\w]+/,
+	'log' => qr/[\.\-\w]+/,
 
 	#zapi
 	'zapi_key'      => qr/[a-zA-Z0-9]+/,
@@ -97,7 +97,7 @@ my %format_re = (
 	'zapi_password' => qr/.+/,
 
 	# common
-	'port' => $port_range,
+	'port'      => $port_range,
 	'multiport' =>
 	  qr/(?:\*|(?:$port_range|$port_range\:$port_range)(?:,$port_range|,$port_range\:$port_range)*)/,
 
@@ -113,20 +113,20 @@ my %format_re = (
 	'snmp_port'      => $port_range,
 	'snmp_scope'     => qr{(?:\d{1,3}\.){3}\d{1,3}\/\d{1,2}},    # ip/mask
 	'ntp'            => qr{[\w\.\-]+},
-	'http_proxy' => qr{\S*},    # use any character except the spaces
+	'http_proxy'     => qr{\S*},    # use any character except the spaces
 
 
 	# farms
-	'farm_name'             => qr/[a-zA-Z0-9\-]+/,
-	'farm_profile'          => qr/HTTP|GSLB|L4XNAT|DATALINK/,
-	'backend'               => qr/\d+/,
-	'service'               => $service,
-	'http_service'          => qr/[a-zA-Z0-9\-]+/,
-	'farm_modules'          => qr/(?:gslb|dslb|lslb)/,
+	'farm_name'    => qr/[a-zA-Z0-9\-]+/,
+	'farm_profile' => qr/HTTP|L4XNAT|DATALINK/,
+	'backend'      => qr/\d+/,
+	'service'      => $service,
+	'http_service' => qr/[a-zA-Z0-9\-]+/,
+	'farm_modules'          => qr/(?:dslb|lslb)/,
 	'service_position'      => qr/\d+/,
 	'l4_session'            => qr/[ \._\:\w]+/,
 	'l7_session'            => qr/[ \._\:\w]+/,
-	'farm_maintenance_mode' => qr/(?:drain|cut)/,              # not used from API 4
+	'farm_maintenance_mode' => qr/(?:drain|cut)/,    # not used from API 4
 
 	# cipher
 	'ciphers' =>
@@ -149,13 +149,13 @@ my %format_re = (
 
 
 	# interfaces ( WARNING: length in characters < 16  )
-	'mac_addr'         => $mac_addr,
-	'interface'        => $interface,
-	'nic_interface'    => $nic_if,
+	'mac_addr'      => $mac_addr,
+	'interface'     => $interface,
+	'nic_interface' => $nic_if,
 	'vlan_interface'   => $vlan_if,
-	'virt_interface'   => qr/(?:$bond_if|$nic_if)(?:\.$vlan_tag)?:$virtual_tag/,
-	'routed_interface' => qr/(?:$nic_if|$bond_if|$vlan_if)/,
-	'interface_type'   => qr/(?:nic|vlan|virtual|bond)/,
+	'virt_interface'   => qr/(?:$nic_if)(?:\.$vlan_tag)?:$virtual_tag/,
+	'routed_interface' => qr/(?:$nic_if|$vlan_if)/,
+	'interface_type'   => qr/(?:nic|vlan|virtual)/,
 	'vlan_tag'         => qr/$vlan_tag/,
 	'virtual_tag'      => qr/$virtual_tag/,
 
@@ -184,13 +184,14 @@ my %format_re = (
 
 	# farm guardian
 	'fg_name'    => qr/[\w-]+/,
-	'fg_type'    => qr/(?:http|https|l4xnat|gslb)/,    # not used from API 4
+	'fg_type'    => qr/(?:http|https|l4xnat)/,    # not used from API 4
 	'fg_enabled' => $boolean,
 	'fg_log'     => $boolean,
-	'fg_time'    => qr/$natural/,                      # this value can't be 0
+	'fg_time'    => qr/$natural/,                 # this value can't be 0
 
 
 );
+
 
 sub getZAPIModel
 {
@@ -305,7 +306,7 @@ sub getValidPort    # ( $ip, $port, $profile )
 	my $port    = shift;
 	my $profile = shift;    # farm profile, optional
 
-	if ( $profile =~ /^(?:HTTP|GSLB)$/i )
+	if ( $profile =~ /^(?:HTTP)$/i )
 	{
 		return &getValidFormat( 'port', $port );
 	}
@@ -509,13 +510,12 @@ sub checkZAPIParams
 	## Remove parameters do not according to the edition
 	foreach my $p ( keys %$param_obj )
 	{
-		if (
-			 exists $param_obj->{ $p }->{ edition }
-			 && (    ( $param_obj->{ $p }->{ edition } eq 'ee' && !$eload )
-				  || ( $param_obj->{ $p }->{ edition } eq 'ce' && $eload ) )
-		  )
+		if ( exists $param_obj->{ $p }->{ edition } )
 		{
-			delete $param_obj->{ $p };
+			if ( $param_obj->{ $p }->{ edition } eq 'ce' )
+			{
+				delete $param_obj->{ $p };
+			}
 		}
 	}
 
@@ -647,7 +647,8 @@ sub checkZAPIParams
 			 ( exists $param_obj->{ $param }->{ 'exceptions' } )
 			 and (
 				   grep ( /^$json_obj->{ $param }$/,
-						  @{ $param_obj->{ $param }->{ 'exceptions' } } ) )
+						  @{ $param_obj->{ $param }->{ 'exceptions' } } )
+			 )
 		  )
 		{
 			return
@@ -897,8 +898,8 @@ sub httpResponseHelp
 		if ( exists $param_obj->{ $p }->{ interval } )
 		{
 			my ( $ll, $hl ) = split ( ',', $param_obj->{ $p }->{ interval } );
-			$ll = '-' if ( !defined $ll );
-			$hl = '-' if ( !defined $hl );
+			$ll                  = '-' if ( !defined $ll );
+			$hl                  = '-' if ( !defined $hl );
 			$param->{ interval } = "Expects a value between '$ll' and '$hl'.";
 		}
 		if ( exists $param_obj->{ $p }->{ non_blank }
@@ -926,8 +927,8 @@ sub httpResponseHelp
 	my $msg  = "No parameter has been sent. Please, try with:";
 	my $body = {
 
-		message => $msg,
-		params  => $resp_param,
+				message => $msg,
+				params  => $resp_param,
 	};
 	$body->{ description } = $desc if ( defined $desc );
 
@@ -1003,7 +1004,7 @@ sub putArrayAsText
 		$msg =~ s/<bs>.+<\|>(.+)<\/bp>/$1/g;
 
 		my $lastItem = pop @array;
-		my $list = join ( ", ", @array );
+		my $list     = join ( ", ", @array );
 		$list .= " and $lastItem";
 
 		# put list

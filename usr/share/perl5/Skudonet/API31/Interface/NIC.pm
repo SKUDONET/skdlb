@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 sub delete_interface_nic    # ( $nic )
 {
@@ -92,15 +87,6 @@ sub get_nic_list    # ()
 	my @vlans = &getInterfaceTypeList( 'vlan' );
 	my @output_list;
 
-	# get cluster interface
-	my $cluster_if;
-
-	if ( $eload )
-	{
-		my $zcl_conf = &eload( module => 'Skudonet::Cluster',
-							   func   => 'getZClusterConfig', );
-		$cluster_if = $zcl_conf->{ _ }->{ interface };
-	}
 
 	for my $if_ref ( &getInterfaceTypeList( 'nic' ) )
 	{
@@ -123,8 +109,6 @@ sub get_nic_list    # ()
 						mac     => $if_ref->{ mac },
 		};
 
-		$if_conf->{ is_slave } = $if_ref->{ is_slave } if $eload;
-		$if_conf->{ is_cluster } = 'true' if $cluster_if eq $if_ref->{ name };
 
 		# include 'has_vlan'
 		for my $vlan_ref ( @vlans )
@@ -183,7 +167,6 @@ sub get_nic    # ()
 					   mac     => $if_ref->{ mac },
 		};
 
-		$interface->{ is_slave } = $if_ref->{ is_slave } if $eload;
 	}
 
 	unless ( $interface )

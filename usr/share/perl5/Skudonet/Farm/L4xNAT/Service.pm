@@ -24,11 +24,6 @@
 use strict;
 use warnings;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
@@ -52,13 +47,6 @@ sub loadL4FarmModules
 
 	my $modprobe_bin = &getGlobalConfiguration( "modprobe" );
 	my $error        = 0;
-	if ( $eload )
-	{
-		my $cmd = "$modprobe_bin nf_conntrack enable_hooks=1";
-		$error += &logAndRun( "$cmd" );
-	}
-	else
-	{
 		$error += &logAndRun( "$modprobe_bin nf_conntrack" );
 
 		# Initialize conntrack
@@ -72,7 +60,6 @@ sub loadL4FarmModules
 
 		$error += &logAndRun( "$nftCmd" )
 		  if ( &logAndRunCheck( "$nftbin list table dummyTable" ) );
-	}
 
 	return $error;
 }

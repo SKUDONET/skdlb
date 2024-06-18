@@ -85,7 +85,8 @@ if ( $q->path_info =~ qr{^/certificates} )
 	GET qr{^/certificates/($cert_re)/info$}, \&get_certificate_info;
 
 	#  Download SSL certificate
-	GET qr{^/certificates/($cert_re)$} => \&download_certificate;
+	GET qr{^/certificates/($cert_re)$}         => \&download_certificate;
+	GET qr{^/certificates/($cert_csr_key_re)$} => \&download_certificate;
 
 	#  GET CSR Key information
 	GET qr{^/certificates/($cert_csr_key_re)/info$}, \&get_csr_key_info;
@@ -134,10 +135,10 @@ if (    $q->path_info =~ qr{^/monitoring/fg}
 	DELETE qr{^/farms/($farm_re)(?:/services/($service_re))?/fg/($fg_name_re)$} =>
 	  \&rem_farmguardian_farm;
 
-	GET qr{^/monitoring/fg$}                  => \&list_farmguardian;
-	POST qr{^/monitoring/fg$}                 => \&create_farmguardian;
-	GET qr{^/monitoring/fg/($fg_name_re)$}    => \&get_farmguardian;
-	PUT qr{^/monitoring/fg/($fg_name_re)$}    => \&modify_farmguardian;
+	GET qr{^/monitoring/fg$} => \&list_farmguardian;
+	POST qr{^/monitoring/fg$} => \&create_farmguardian;
+	GET qr{^/monitoring/fg/($fg_name_re)$} => \&get_farmguardian;
+	PUT qr{^/monitoring/fg/($fg_name_re)$} => \&modify_farmguardian;
 	DELETE qr{^/monitoring/fg/($fg_name_re)$} => \&delete_farmguardian;
 }
 
@@ -188,9 +189,9 @@ if ( $q->path_info =~ qr{^/farms/$farm_re/services} )
 {
 	require Skudonet::API40::Farm::Service;
 
-	POST qr{^/farms/($farm_re)/services$}                 => \&new_farm_service;
-	GET qr{^/farms/($farm_re)/services/($service_re)$}    => \&farm_services;
-	PUT qr{^/farms/($farm_re)/services/($service_re)$}    => \&modify_services;
+	POST qr{^/farms/($farm_re)/services$} => \&new_farm_service;
+	GET qr{^/farms/($farm_re)/services/($service_re)$} => \&farm_services;
+	PUT qr{^/farms/($farm_re)/services/($service_re)$} => \&modify_services;
 	DELETE qr{^/farms/($farm_re)/services/($service_re)$} => \&delete_service;
 }
 
@@ -244,17 +245,16 @@ if ( $q->path_info =~ qr{^/farms} )
 
 # Network Interfaces
 my $nic_re  = &getValidFormat( 'nic_interface' );
-my $bond_re = &getValidFormat( 'bond_interface' );
 my $vlan_re = &getValidFormat( 'vlan_interface' );
 
 if ( $q->path_info =~ qr{^/interfaces/nic} )
 {
 	require Skudonet::API40::Interface::NIC;
 
-	GET qr{^/interfaces/nic$}                    => \&get_nic_list;
-	GET qr{^/interfaces/nic/($nic_re)$}          => \&get_nic;
-	PUT qr{^/interfaces/nic/($nic_re)$}          => \&modify_interface_nic;
-	DELETE qr{^/interfaces/nic/($nic_re)$}       => \&delete_interface_nic;
+	GET qr{^/interfaces/nic$}           => \&get_nic_list;
+	GET qr{^/interfaces/nic/($nic_re)$} => \&get_nic;
+	PUT qr{^/interfaces/nic/($nic_re)$} => \&modify_interface_nic;
+	DELETE qr{^/interfaces/nic/($nic_re)$} => \&delete_interface_nic;
 	POST qr{^/interfaces/nic/($nic_re)/actions$} => \&actions_interface_nic;
 }
 
@@ -262,11 +262,11 @@ if ( $q->path_info =~ qr{^/interfaces/vlan} )
 {
 	require Skudonet::API40::Interface::VLAN;
 
-	GET qr{^/interfaces/vlan$}                     => \&get_vlan_list;
-	POST qr{^/interfaces/vlan$}                    => \&new_vlan;
-	GET qr{^/interfaces/vlan/($vlan_re)$}          => \&get_vlan;
-	PUT qr{^/interfaces/vlan/($vlan_re)$}          => \&modify_interface_vlan;
-	DELETE qr{^/interfaces/vlan/($vlan_re)$}       => \&delete_interface_vlan;
+	GET qr{^/interfaces/vlan$} => \&get_vlan_list;
+	POST qr{^/interfaces/vlan$} => \&new_vlan;
+	GET qr{^/interfaces/vlan/($vlan_re)$} => \&get_vlan;
+	PUT qr{^/interfaces/vlan/($vlan_re)$} => \&modify_interface_vlan;
+	DELETE qr{^/interfaces/vlan/($vlan_re)$} => \&delete_interface_vlan;
 	POST qr{^/interfaces/vlan/($vlan_re)/actions$} => \&actions_interface_vlan;
 }
 
@@ -274,13 +274,13 @@ if ( $q->path_info =~ qr{^/interfaces/virtual} )
 {
 	require Skudonet::API40::Interface::Virtual;
 
-	GET qr{^/interfaces/virtual$}  => \&get_virtual_list;
+	GET qr{^/interfaces/virtual$} => \&get_virtual_list;
 	POST qr{^/interfaces/virtual$} => \&new_vini;
 
 	my $virtual_re = &getValidFormat( 'virt_interface' );
 
-	GET qr{^/interfaces/virtual/($virtual_re)$}    => \&get_virtual;
-	PUT qr{^/interfaces/virtual/($virtual_re)$}    => \&modify_interface_virtual;
+	GET qr{^/interfaces/virtual/($virtual_re)$} => \&get_virtual;
+	PUT qr{^/interfaces/virtual/($virtual_re)$} => \&modify_interface_virtual;
 	DELETE qr{^/interfaces/virtual/($virtual_re)$} => \&delete_interface_virtual;
 	POST qr{^/interfaces/virtual/($virtual_re)/actions$} =>
 	  \&actions_interface_virtual;
@@ -290,8 +290,8 @@ if ( $q->path_info =~ qr{^/interfaces/gateway(?:/ipv([46]))?$} )
 {
 	require Skudonet::API40::Interface::Gateway;
 
-	GET qr{^/interfaces/gateway(?:/ipv([46]))?$}    => \&get_gateway;
-	PUT qr{^/interfaces/gateway(?:/ipv([46]))?$}    => \&modify_gateway;
+	GET qr{^/interfaces/gateway(?:/ipv([46]))?$} => \&get_gateway;
+	PUT qr{^/interfaces/gateway(?:/ipv([46]))?$} => \&modify_gateway;
 	DELETE qr{^/interfaces/gateway(?:/ipv([46]))?$} => \&delete_gateway;
 }
 
@@ -404,7 +404,7 @@ if ( $q->path_info =~ qr{^/system/dns} )
 {
 	require Skudonet::API40::System::Service::DNS;
 
-	GET qr{^/system/dns$}  => \&get_dns;
+	GET qr{^/system/dns$} => \&get_dns;
 	POST qr{^/system/dns$} => \&set_dns;
 }
 
@@ -412,7 +412,7 @@ if ( $q->path_info =~ qr{^/system/snmp} )
 {
 	require Skudonet::API40::System::Service::SNMP;
 
-	GET qr{^/system/snmp$}  => \&get_snmp;
+	GET qr{^/system/snmp$} => \&get_snmp;
 	POST qr{^/system/snmp$} => \&set_snmp;
 }
 
@@ -420,7 +420,7 @@ if ( $q->path_info =~ qr{^/system/ntp} )
 {
 	require Skudonet::API40::System::Service::NTP;
 
-	GET qr{^/system/ntp$}  => \&get_ntp;
+	GET qr{^/system/ntp$} => \&get_ntp;
 	POST qr{^/system/ntp$} => \&set_ntp;
 }
 
@@ -428,7 +428,7 @@ if ( $q->path_info =~ qr{^/system/users} )
 {
 	require Skudonet::API40::System::User;
 
-	GET qr{^/system/users$}  => \&get_system_user;    #  GET users
+	GET qr{^/system/users$} => \&get_system_user;     #  GET users
 	POST qr{^/system/users$} => \&set_system_user;    #  POST users
 }
 
@@ -449,7 +449,7 @@ if ( $q->path_info =~ qr{^/system/backup} )
 {
 	require Skudonet::API40::System::Backup;
 
-	GET qr{^/system/backup$}  => \&get_backup;       #  GET list backups
+	GET qr{^/system/backup$} => \&get_backup;        #  GET list backups
 	POST qr{^/system/backup$} => \&create_backup;    #  POST create backups
 
 	my $backup_re = &getValidFormat( 'backup' );
@@ -473,7 +473,7 @@ if ( $q->path_info =~
 	my $license_re = &getValidFormat( 'license_format' );
 	GET qr{^/system/license/($license_re)$} => \&get_license;
 
-	GET qr{^/system/language$}  => \&get_language;
+	GET qr{^/system/language$} => \&get_language;
 	POST qr{^/system/language$} => \&set_language;
 
 	GET qr{^/system/packages$} => \&get_packages_info;
@@ -504,11 +504,11 @@ if ( $ENV{ PATH_INFO } =~
 {
 	require Skudonet::API40::Farm::HTTP;
 
-	POST qr{^/farms/($farm_re)/addheader$}          => \&add_addheader;
-	PUT qr{^/farms/($farm_re)/addheader/(\d+)$}     => \&modify_addheader;
-	DELETE qr{^/farms/($farm_re)/addheader/(\d+)$}  => \&del_addheader;
-	POST qr{^/farms/($farm_re)/headremove$}         => \&add_headremove;
-	PUT qr{^/farms/($farm_re)/headremove/(\d+)$}    => \&modify_headremove;
+	POST qr{^/farms/($farm_re)/addheader$} => \&add_addheader;
+	PUT qr{^/farms/($farm_re)/addheader/(\d+)$} => \&modify_addheader;
+	DELETE qr{^/farms/($farm_re)/addheader/(\d+)$} => \&del_addheader;
+	POST qr{^/farms/($farm_re)/headremove$} => \&add_headremove;
+	PUT qr{^/farms/($farm_re)/headremove/(\d+)$} => \&modify_headremove;
 	DELETE qr{^/farms/($farm_re)/headremove/(\d+)$} => \&del_headremove;
 
 	POST qr{^/farms/($farm_re)/addresponseheader$} => \&add_addResponseheader;

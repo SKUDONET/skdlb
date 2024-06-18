@@ -24,12 +24,6 @@
 use strict;
 use warnings;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
-
 #
 sub loadNfModule    # ($modname,$params)
 {

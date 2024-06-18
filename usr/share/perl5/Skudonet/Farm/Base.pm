@@ -26,11 +26,6 @@ use Skudonet::Config;
 use Skudonet::Farm::Core;
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: getFarmVip
@@ -71,14 +66,6 @@ sub getFarmVip    # ($info,$farm_name)
 	{
 		require Skudonet::Farm::Datalink::Config;
 		$output = &getDatalinkFarmVip( $info, $farm_name );
-	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Farm::GSLB::Config',
-						  func   => 'getGSLBFarmVip',
-						  args   => [$info, $farm_name],
-		);
 	}
 
 	return $output;
@@ -125,14 +112,6 @@ sub getFarmStatus    # ($farm_name)
 	{
 		require Skudonet::Farm::HTTP::Config;
 		return &getHTTPFarmStatus( $farm_name );
-	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Farm::GSLB::Config',
-						  func   => 'getGSLBFarmStatus',
-						  args   => [$farm_name],
-		);
 	}
 
 	return $output;
@@ -217,20 +196,7 @@ sub getFarmVipStatus    # ($farm_name)
 		}
 	}
 
-	# GSLB
-	elsif ( $type eq "gslb" && $eload )
-	{
-		my $stats = &eload(
-							module => 'Skudonet::Farm::GSLB::Stats',
-							func   => 'getGSLBFarmBackendsStats',
-							args   => [$farm_name],
-		);
-		$backends = $stats->{ backends };
-	}
-	else
-	{
 		$backends = &getFarmServers( $farm_name );
-	}
 
 	# checking status
 	foreach my $be ( @{ $backends } )
@@ -313,15 +279,6 @@ sub getFarmPid    # ($farm_name)
 			@output = &getHTTPFarmPidPound( $farm_name );
 		}
 	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		my $pid = &eload(
-						  module => 'Skudonet::Farm::GSLB::Config',
-						  func   => 'getGSLBFarmPid',
-						  args   => [$farm_name],
-		);
-		push @output, $pid;
-	}
 
 	return @output;
 }
@@ -362,14 +319,6 @@ sub getFarmBootStatus    # ($farm_name)
 		require Skudonet::Farm::L4xNAT::Config;
 		$output = &getL4FarmParam( 'bootstatus', $farm_name );
 	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Farm::GSLB::Config',
-						  func   => 'getGSLBFarmBootStatus',
-						  args   => [$farm_name],
-		);
-	}
 
 	return $output;
 }
@@ -409,10 +358,6 @@ sub getFarmProto    # ($farm_name)
 	elsif ( $farm_type =~ /http/i )
 	{
 		$output = "tcp";
-	}
-	elsif ( $farm_type eq "gslb" )
-	{
-		$output = "all";
 	}
 
 	return $output;

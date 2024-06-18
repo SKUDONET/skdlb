@@ -24,11 +24,6 @@
 use strict;
 use feature 'state';
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $ip_bin = &getGlobalConfiguration( 'ip_bin' );
 
@@ -140,10 +135,7 @@ sub getInterfaceConfig    # \%iface ($if_name, $ip_version)
 	  ( $iface->{ addr } =~ /:/ ) ? '6' : ( $iface->{ addr } =~ /\./ ) ? '4' : 0;
 	$iface->{ net } =
 	  &getAddressNetwork( $iface->{ addr }, $iface->{ mask }, $iface->{ ip_v } );
-	$iface->{ dhcp } = $fileHandler->{ $if_name }->{ dhcp } // 'false'
-	  if ( $eload );
-	$iface->{ isolate } = $fileHandler->{ $if_name }->{ isolate } // 'false'
-	  if ( $eload );
+
 
 	if ( $iface->{ dev } =~ /:/ )
 	{
@@ -173,42 +165,6 @@ sub getInterfaceConfig    # \%iface ($if_name, $ip_version)
 		close $fh;
 	}
 
-	if ( $eload )
-	{
-		# complex check to avoid warnings
-		if (
-			 (
-			      !exists ( $iface->{ vini } )
-			   || !defined ( $iface->{ vini } )
-			   || $iface->{ vini } eq ''
-			 )
-			 && $iface->{ addr }
-		  )
-		{
-			require Config::Tiny;
-			my $float = Config::Tiny->read( &getGlobalConfiguration( 'floatfile' ) );
-			$iface->{ float } = $float->{ _ }->{ $iface->{ name } } // '';
-		}
-	}
-
-	state $saved_bond_slaves = 0;
-
-	if ( $eload && $iface->{ type } eq 'nic' )
-	{
-		# not die if the appliance has not a certificate
-		eval {
-			unless ( $saved_bond_slaves )
-			{
-				@TMP::bond_slaves = &eload( module => 'Skudonet::Net::Bonding',
-											func   => 'getAllBondsSlaves', );
-
-				$saved_bond_slaves = 1;
-			}
-		};
-
-		$iface->{ is_slave } =
-		  ( grep { $iface->{ name } eq $_ } @TMP::bond_slaves ) ? 'true' : 'false';
-	}
 
 	# for virtual interface, overwrite mask and gw with parent values
 	if ( $iface->{ type } eq 'vini' )
@@ -305,8 +261,7 @@ sub setInterfaceConfig    # $bool ($if_ref)
 	use Data::Dumper;
 	&zenlog( "setInterfaceConfig: " . Dumper( $if_ref ), "debug", "NETWORK" )
 	  if &debug() > 2;
-	my @if_params =
-	  ( 'status', 'name', 'addr', 'mask', 'gateway', 'mac', 'dhcp', 'isolate' );
+	my @if_params = ( 'status', 'name', 'addr', 'mask', 'gateway', 'mac' );
 
 	my $configdir       = &getGlobalConfiguration( 'configdir' );
 	my $config_filename = "$configdir/if_$$if_ref{ name }_conf";
@@ -374,7 +329,6 @@ sub cleanInterfaceConfig
 							  addr   => "",
 							  mac    => $if_ref->{ mac },
 							  gateway => "",
-							  dhcp    => "false"
 	};
 
 	$fileHandler->write( "$file" );
@@ -558,7 +512,7 @@ sub getInterfaceSystemStatus    # ($if_ref)
 	return $if_ref->{ status } if $if_ref->{ status } eq 'down';
 	return $if_ref->{ status } if !$parent_if_name;
 
-	my $params = ["name", "addr", "status"];
+	my $params        = ["name", "addr", "status"];
 	my $parent_if_ref = &getInterfaceConfigParam( $parent_if_name, $params );
 
 	# vlans do not require the parent interface to be configured
@@ -583,7 +537,7 @@ sub getInterfaceSystemStatusAll    # ()
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my $ip_bin = &getGlobalConfiguration( 'ip_bin' );
+	my $ip_bin    = &getGlobalConfiguration( 'ip_bin' );
 	my $ip_output = &logAndGet( "$ip_bin -o link", "array" );
 	my $links_ref;
 	foreach my $link ( @{ $ip_output } )
@@ -789,7 +743,7 @@ sub getSystemInterfaceList
 		push @configured_interfaces, $if_ref if $if_ref;
 	}
 
-	my $socket = IO::Socket::INET->new( Proto => 'udp' );
+	my $socket            = IO::Socket::INET->new( Proto => 'udp' );
 	my @system_interfaces = &getInterfaceList();
 
 	my $all_status = &getInterfaceSystemStatusAll();
@@ -905,24 +859,6 @@ sub getSystemInterface    # ($if_name)
 	$$if_ref{ type }   = &getInterfaceType( $$if_ref{ name } );
 	$$if_ref{ parent } = &getParentInterfaceName( $$if_ref{ name } );
 
-	state $saved_bond_slaves = 0;
-
-	if ( $eload && $$if_ref{ type } eq 'nic' )
-	{
-		# not die if the appliance has not a certificate
-		eval {
-			unless ( $saved_bond_slaves )
-			{
-				@TMP::bond_slaves = &eload( module => 'Skudonet::Net::Bonding',
-											func   => 'getAllBondsSlaves', );
-
-				$saved_bond_slaves = 1;
-			}
-		};
-
-		$$if_ref{ is_slave } =
-		  ( grep { $$if_ref{ name } eq $_ } @TMP::bond_slaves ) ? 'true' : 'false';
-	}
 
 	return $if_ref;
 }
@@ -963,28 +899,6 @@ sub getInterfaceType
 
 	return if $if_name eq '' || !defined $if_name;
 
-	# interface for cluster when is in maintenance mode
-	return 'dummy' if $if_name eq 'cl_maintenance';
-
-	# interfaces added by ip_gre module
-	if (    $if_name eq 'gre0'
-		 or $if_name eq 'gretap0'
-		 or $if_name eq 'erspan0' )
-	{
-		return 'ip_gre_fallback';
-	}
-
-	# interfaces added by ip6_gre module
-	return 'ip6_gre_fallback' if $if_name eq 'ip6gre0';
-
-	# interfaces added by ip6_tunnel module
-	#return 'ip6_tunnel_fallback' if $if_name eq 'ip6tnl0';
-	# interfaces added by ip6_vti module
-	#return 'ip6_vti_fallback' if $if_name eq 'ip_vti0';
-	# interfaces added by sit module
-	#return 'sit_fallback' if $if_name eq 'sit0';
-	# interfaces added by ipip module
-	#return 'ipip_fallback' if $if_name eq 'tunl0';
 
 	if ( !-d "/sys/class/net/$if_name" )
 	{
@@ -996,7 +910,7 @@ sub getInterfaceType
 			my ( $parent_if ) = split ( ':', $if_name );
 			my $quoted_if     = quotemeta $if_name;
 			my $ip_bin        = &getGlobalConfiguration( 'ip_bin' );
-			my @out = @{ &logAndGet( "$ip_bin addr show $parent_if", "array" ) };
+			my @out           = @{ &logAndGet( "$ip_bin addr show $parent_if", "array" ) };
 			$found =
 			  grep ( /inet .+ $quoted_if$/, @out );
 		}
@@ -1030,10 +944,6 @@ sub getInterfaceType
 		{
 			$type = 'vlan';
 		}
-		elsif ( -d "/sys/class/net/$if_name/bonding" )
-		{
-			$type = 'bond';
-		}
 
 #elsif ( -d "/sys/class/net/$if_name/wireless" || -l "/sys/class/net/$if_name/phy80211" )
 #{
@@ -1058,10 +968,6 @@ sub getInterfaceType
 	}
 	elsif ( $code == 32 )
 	{
-		if ( -d "/sys/class/net/$if_name/bonding" )
-		{
-			$type = 'bond';
-		}
 
 		#elsif ( -d "/sys/class/net/$if_name/create_child" )
 		#{
@@ -1073,10 +979,6 @@ sub getInterfaceType
 		#}
 	}
 
-	elsif ( $code == 512 )
-	{
-		$type = 'ppp';    # PPP
-	}
 
 	#elsif ( $code == 768 )
 	#{
@@ -1092,10 +994,6 @@ sub getInterfaceType
 	#{
 	#	$type = 'sit';       # sit0 device - IPv6-in-IPv4
 	#}
-	elsif ( $code == 778 )
-	{
-		$type = 'gre';    # GRE over IP
-	}
 
 	#elsif ( $code == 783 )
 	#{
@@ -1606,24 +1504,8 @@ sub getInterfaceChild
 	my $if_type     = &getInterfaceType( $if_name );
 	my $virtual_tag = &getValidFormat( 'virtual_tag' );
 
-	# show floating interfaces used by this virtual interface
-	if ( $if_type eq 'virtual' )
-	{
-		if ( $eload )
-		{
-			require Config::Tiny;
-			my $float = Config::Tiny->read( &getGlobalConfiguration( 'floatfile' ) );
-
-			foreach my $iface ( keys %{ $float->{ _ } } )
-			{
-				push @output, $iface if ( $float->{ _ }->{ $iface } eq $if_name );
-			}
-		}
-	}
-
 	# the other type of interfaces can have virtual interfaces as child
-	# vlan, bond and nic
-	else
+	if ( $if_type ne 'virtual' )
 	{
 		push @output,
 		  grep ( /^$if_name:$virtual_tag$/, &getVirtualInterfaceNameList() );
@@ -1671,30 +1553,9 @@ sub get_interface_list_struct
 	# Configured interfaces list
 	my @interfaces = @{ &getSystemInterfaceList() };    #140
 
-	# get cluster interfaces
-	my $cluster_if;
 
-	if ( $eload )
-	{
-		$cluster_if = &eload(
-							  module => 'Skudonet::Cluster',
-							  func   => 'getZClusterInterfaces',          # 100
-		);
-	}
+	my $user = &getUser();
 
-	my $rbac_mod;
-	my $rbac_if_list = [];
-	my $user         = &getUser();
-
-	if ( $eload && ( $user ne 'root' ) )
-	{
-		$rbac_mod = 1;
-		$rbac_if_list = &eload(
-								module => 'Skudonet::RBAC::Group::Core',     # 100
-								func   => 'getRBACUsersResources',
-								args   => [$user, 'interfaces'],
-		);
-	}
 
 	# to include 'has_vlan' to nics
 	my $interfaces_ref = &getInterfaceNameStruct();
@@ -1702,14 +1563,6 @@ sub get_interface_list_struct
 	my $all_status = &getInterfaceSystemStatusAll();
 	for my $if_ref ( @interfaces )
 	{
-		# Exclude cluster maintenance interface
-		next if $if_ref->{ type } eq 'dummy';
-
-		# Exclude no user's virtual interfaces
-		next
-		  if (    $rbac_mod
-			   && !grep ( /^$if_ref->{ name }$/, @{ $rbac_if_list } )
-			   && ( $if_ref->{ type } eq 'virtual' ) );
 
 		$if_ref->{ status } = $all_status->{ $if_ref->{ name } };
 
@@ -1733,20 +1586,9 @@ sub get_interface_list_struct
 			#~ ipv     => $if_ref->{ ip_v },
 		};
 
-		$if_conf->{ dhcp } = $if_ref->{ dhcp }
-		  if ( $eload and $if_ref->{ type } ne 'virtual' );
 
 		if ( $if_ref->{ type } eq 'nic' )
 		{
-			my @bond_slaves = ();
-
-			@bond_slaves = &eload(
-								   module => 'Skudonet::Net::Bonding',
-								   func   => 'getAllBondsSlaves',
-			) if ( $eload );
-
-			$if_conf->{ is_slave } =
-			  ( grep { $$if_ref{ name } eq $_ } @bond_slaves ) ? 'true' : 'false';
 
 			if (
 				exists $interfaces_ref->{ $if_ref->{ type } }->{ $if_ref->{ name } }->{ vlan } )
@@ -1756,23 +1598,11 @@ sub get_interface_list_struct
 			$if_conf->{ has_vlan } = 'false' unless $if_conf->{ has_vlan };
 		}
 
-		if ( $cluster_if && ( grep { $if_ref->{ name } eq $_ } @{ $cluster_if } ) )
-		{
-			$if_conf->{ is_cluster } = 'true';
-		}
 
 		push @output_list, $if_conf;
 	}
 
-	if ( $eload )
-	{
-		my $out = \@output_list;
-		$out = &eload(
-					   module => 'Skudonet::Alias',
-					   func   => 'addAliasInterfaceStruct',
-					   args   => [$out],
-		);
-	}
+
 	return \@output_list;
 }
 
@@ -1785,7 +1615,7 @@ sub get_nic_struct
 	my $interface;
 
 	my @nic_list = &getInterfaceTypeList( 'nic', $nic );
-	my $if_ref = $nic_list[0];
+	my $if_ref   = $nic_list[0];
 
 	$if_ref->{ status } = &getInterfaceSystemStatus( $if_ref );
 
@@ -1806,16 +1636,6 @@ sub get_nic_struct
 				   mac     => $if_ref->{ mac },
 	};
 
-	$interface->{ is_slave } = $if_ref->{ is_slave } if $eload;
-	$interface->{ dhcp }     = $if_ref->{ dhcp }     if $eload;
-	if ( $eload )
-	{
-		$interface = &eload(
-							 module => 'Skudonet::Alias',
-							 func   => 'addAliasInterfaceStruct',
-							 args   => [$interface],
-		);
-	}
 
 	return $interface;
 }
@@ -1828,13 +1648,6 @@ sub get_nic_list_struct
 
 	my $interface_ref = &getInterfaceNameStruct();
 
-	# get cluster interfaces
-	my $cluster_if;
-	if ( $eload )
-	{
-		$cluster_if = &eload( module => 'Skudonet::Cluster',
-							  func   => 'getZClusterInterfaces' );
-	}
 
 	my $all_status = &getInterfaceSystemStatusAll();
 	for my $if_ref ( &getInterfaceTypeList( 'nic' ) )
@@ -1858,18 +1671,6 @@ sub get_nic_list_struct
 						mac     => $if_ref->{ mac },
 		};
 
-		if ( $eload )
-		{
-			$if_conf = &eload(
-							   module => 'Skudonet::Alias',
-							   func   => 'addAliasInterfaceStruct',
-							   args   => [$if_conf],
-			);
-		}
-		$if_conf->{ is_slave } = $if_ref->{ is_slave } if $eload;
-		$if_conf->{ dhcp } = $if_ref->{ dhcp } // 'false' if $eload;
-		$if_conf->{ is_cluster } = 'true'
-		  if ( $cluster_if and ( grep { $if_ref->{ name } eq $_ } @{ $cluster_if } ) );
 
 		if ( exists $interface_ref->{ nic }->{ $if_ref->{ name } }->{ vlan } )
 		{
@@ -1914,15 +1715,6 @@ sub get_vlan_struct
 				   mac     => $interface->{ mac },
 	};
 
-	if ( $eload )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Alias',
-						  func   => 'addAliasInterfaceStruct',
-						  args   => [$output],
-		);
-	}
-	$output->{ dhcp } = $interface->{ dhcp } // 'false' if $eload;
 
 	return $output;
 }
@@ -1933,14 +1725,6 @@ sub get_vlan_list_struct
 			 "debug", "PROFILING" );
 
 	my @output_list;
-	my $cluster_if;
-
-	if ( $eload )
-	{
-		# get cluster interfaces
-		$cluster_if = &eload( module => 'Skudonet::Cluster',
-							  func   => 'getZClusterInterfaces', );
-	}
 
 	my $all_status = &getInterfaceSystemStatusAll();
 	for my $if_ref ( &getInterfaceTypeList( 'vlan' ) )
@@ -1965,17 +1749,6 @@ sub get_vlan_list_struct
 						parent  => $if_ref->{ parent },
 		};
 
-		if ( $eload )
-		{
-			$if_conf = &eload(
-							   module => 'Skudonet::Alias',
-							   func   => 'addAliasInterfaceStruct',
-							   args   => [$if_conf],
-			);
-		}
-		$if_conf->{ dhcp } = $if_ref->{ dhcp } // 'false' if $eload;
-		$if_conf->{ is_cluster } = 'true'
-		  if $cluster_if && ( grep { $if_ref->{ name } eq $_ } @{ $cluster_if } );
 
 		push @output_list, $if_conf;
 	}
@@ -1990,7 +1763,7 @@ sub get_virtual_struct
 	my ( $virtual ) = @_;
 
 	my @virtual_list = &getInterfaceTypeList( 'virtual', $virtual );
-	my $interface = $virtual_list[0];
+	my $interface    = $virtual_list[0];
 
 	return unless $interface;
 
@@ -2013,14 +1786,6 @@ sub get_virtual_struct
 				   mac     => $interface->{ mac },
 	};
 
-	if ( $eload )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Alias',
-						  func   => 'addAliasInterfaceStruct',
-						  args   => [$output],
-		);
-	}
 
 	return $output;
 }
@@ -2056,15 +1821,6 @@ sub get_virtual_list_struct
 		  };
 	}
 
-	if ( $eload )
-	{
-		my $out = \@output_list;
-		$out = &eload(
-					   module => 'Skudonet::Alias',
-					   func   => 'addAliasInterfaceStruct',
-					   args   => [$out],
-		);
-	}
 
 	return \@output_list;
 }
@@ -2096,13 +1852,6 @@ sub setVlan    # if_ref
 
 	my $oldIf_ref = &getInterfaceConfig( $if_ref->{ name } );
 
-	if ( $if_ref->{ dhcp } eq "true" )
-	{
-		$if_ref->{ addr }    = "";
-		$if_ref->{ net }     = "";
-		$if_ref->{ mask }    = "";
-		$if_ref->{ gateway } = "";
-	}
 
 	if ( length $if_ref->{ mac } == 0 )
 	{
@@ -2150,17 +1899,6 @@ sub setVlan    # if_ref
 		}
 	}
 
-	if ( $eload && exists $params->{ mac } )
-	{
-		return 1
-		  if (
-			   &eload(
-					   module => 'Skudonet::Net::Mac',
-					   func   => 'addMAC',
-					   args   => [$if_ref->{ name }, $if_ref->{ mac }]
-			   )
-		  );
-	}
 
 	# if the GW is changed, change it in all appending virtual interfaces
 	if ( exists $if_ref->{ gateway } and length $if_ref->{ gateway } > 0 )

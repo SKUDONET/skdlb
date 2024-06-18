@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -23,11 +24,6 @@
 use strict;
 use Skudonet::Farm::HTTP::Config;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # GET /farms/<farmname> Request info of a http|https Farm
 sub farms_name_http    # ( $farmname )
@@ -51,14 +47,6 @@ sub farms_name_http    # ( $farmname )
 				 services    => $services_ref,
 	};
 
-	if ( $eload )
-	{
-		$body->{ ipds } = &eload(
-								  module => 'Skudonet::IPDS::Core',
-								  func   => 'getIPDSfarmsRules',
-								  args   => [$farmname],
-		);
-	}
 
 	&httpResponse( { code => 200, body => $body } );
 }
@@ -85,14 +73,6 @@ sub farms_name_http_summary
 				 services    => $services_ref,
 	};
 
-	if ( $eload )
-	{
-		$body->{ ipds } = &eload(
-								  module => 'Skudonet::IPDS::Core',
-								  func   => 'getIPDSfarmsRules',
-								  args   => [$farmname],
-		);
-	}
 
 	&httpResponse( { code => 200, body => $body } );
 }

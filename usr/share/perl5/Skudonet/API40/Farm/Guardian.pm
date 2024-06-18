@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -25,11 +26,6 @@ use strict;
 use Skudonet::FarmGuardian;
 use Skudonet::Farm::Core;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 sub getZapiFG
 {
@@ -86,7 +82,7 @@ sub get_farmguardian
 		return &httpErrorResponse( code => 404, desc => $desc, msg => $msg );
 	}
 
-	my $out = &getZapiFG( $fg_name );
+	my $out  = &getZapiFG( $fg_name );
 	my $body = { description => $desc, params => $out };
 
 	return &httpResponse( { code => 200, body => $body } );
@@ -140,7 +136,7 @@ sub create_farmguardian
 		return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	if ( not exists $json_obj->{ copy_from } ) { &createFGBlank( $fg_name ); }
+	if    ( not exists $json_obj->{ copy_from } ) { &createFGBlank( $fg_name ); }
 	elsif ( &getFGExistsTemplate( $json_obj->{ copy_from } ) )
 	{
 		&createFGTemplate( $fg_name, $json_obj->{ copy_from } );
@@ -221,27 +217,18 @@ sub modify_farmguardian
 
 	if ( not $error )
 	{
-		# sync with cluster
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['fg', 'restart', $fgname],
-			);
-		}
 
 		# no error found, return successful response
 		my $msg =
 		  "Success, some parameters have been changed in farm guardian '$fgname'.";
-		my $out = &getZapiFG( $fgname );
+		my $out  = &getZapiFG( $fgname );
 		my $body = { description => $desc, params => $out, message => $msg, };
 
 		&httpResponse( { code => 200, body => $body } );
 	}
 	else
 	{
-		my $msg = "Modifying farm guardian '$fgname'.";
+		my $msg  = "Modifying farm guardian '$fgname'.";
 		my $body = { description => $desc, message => $msg, };
 
 		&httpResponse( { code => 400, body => $body } );
@@ -276,15 +263,6 @@ sub delete_farmguardian
 
 	if ( !&getFGExists( $fg_name ) )
 	{
-		# sync with cluster
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['fg', 'stop', $fg_name],
-			);
-		}
 
 		my $msg = "$fg_name has been deleted successfully.";
 		my $body = {
@@ -378,15 +356,6 @@ sub add_farmguardian_farm
 	# check result and return success or failure
 	if ( !$output )
 	{
-		# sync with cluster
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['fg_farm', 'start', $farm, $srv],
-			);
-		}
 
 		my $msg =
 		  "Success, The farm guardian '$json_obj->{ name }' was added to the '$srv_message'";
@@ -477,15 +446,6 @@ sub rem_farmguardian_farm
 	{
 		require Skudonet::Farm::Base;
 
-		# sync with cluster
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['fg_farm', 'stop', $farm, $srv],
-			);
-		}
 
 		my $msg = "Success, '$fgname' was removed from the '$srv_message'";
 		my $body = {

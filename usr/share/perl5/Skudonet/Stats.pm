@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: getMemStats
@@ -305,12 +300,6 @@ sub getNetworkStats
 	my @interfacein;
 	my @interfaceout;
 
-	my $alias;
-	$alias = &eload(
-					 module => 'Skudonet::Alias',
-					 func   => 'getAlias',
-					 args   => ['interface']
-	) if $eload;
 
 	my $i = -1;
 	while ( <$file> )
@@ -320,12 +309,12 @@ sub getNetworkStats
 		{
 			$i++;
 			my @iface = split ( ":", $_ );
-			my $if = $iface[0];
+			my $if    = $iface[0];
 			$if =~ s/\ //g;
 
 			# not show cluster maintenance interface
 			$i = $i - 1 if $if eq 'cl_maintenance';
-			next if $if eq 'cl_maintenance';
+			next        if $if eq 'cl_maintenance';
 
 			# ignore fallback device from ip_gre module
 			( $i-- && next ) if $if =~ /^gre0$|^gretap0$|^erspan0$/;
@@ -364,7 +353,6 @@ sub getNetworkStats
 				'in'        => $in,
 				'out'       => $out
 			  };
-			$outHash[-1]->{ alias } = $alias->{ $if } if $eload;
 
 		}
 	}
@@ -529,13 +517,13 @@ sub getCPU
 	$cpu_idle    = sprintf ( "%.2f", $cpu_idle );
 	$cpu_usage   = sprintf ( "%.2f", $cpu_usage );
 
-	$cpu_user =~ s/,/\./g;
-	$cpu_nice =~ s/,/\./g;
-	$cpu_sys =~ s/,/\./g;
-	$cpu_iowait =~ s/,/\./g;
+	$cpu_user    =~ s/,/\./g;
+	$cpu_nice    =~ s/,/\./g;
+	$cpu_sys     =~ s/,/\./g;
+	$cpu_iowait  =~ s/,/\./g;
 	$cpu_softirq =~ s/,/\./g;
-	$cpu_idle =~ s/,/\./g;
-	$cpu_usage =~ s/,/\./g;
+	$cpu_idle    =~ s/,/\./g;
+	$cpu_usage   =~ s/,/\./g;
 
 	@data = (
 			  ['CPUuser',    $cpu_user],
@@ -685,7 +673,7 @@ sub getDiskPartitionsInfo
 
 	my $df_bin = &getGlobalConfiguration( 'df_bin' );
 
-	my @out = @{ &logAndGet( "$df_bin -k", "array" ) };
+	my @out      = @{ &logAndGet( "$df_bin -k", "array" ) };
 	my @df_lines = grep { /^\/dev/ } @out;
 	chomp ( @df_lines );
 
@@ -730,7 +718,7 @@ sub getDiskMountPoint
 			 "debug", "PROFILING" );
 	my ( $dev ) = @_;
 
-	my $df_bin = &getGlobalConfiguration( 'df_bin' );
+	my $df_bin    = &getGlobalConfiguration( 'df_bin' );
 	my @df_system = @{ &logAndGet( "$df_bin -k", "array" ) };
 	my $mount;
 
@@ -786,7 +774,7 @@ sub getCPUTemp
 	close $file;
 
 	my @lastlines = split ( "\:", $lastline );
-	my $temp = $lastlines[1];
+	my $temp      = $lastlines[1];
 	$temp =~ s/\ //g;
 	$temp =~ s/\n//g;
 	$temp =~ s/C//g;

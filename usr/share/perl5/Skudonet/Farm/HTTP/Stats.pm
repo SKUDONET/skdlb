@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: getHTTPFarmEstConns
@@ -304,12 +299,6 @@ sub getZproxyHTTPFarmBackendsStats    # ($farm_name, $service_name)
 		}
 		my $services = $resp->{ services };
 
-		my $alias;
-		$alias = &eload(
-						 module => 'Skudonet::Alias',
-						 func   => 'getAlias',
-						 args   => ['backend']
-		) if $eload;
 		foreach my $service ( @$services )
 		{
 			next if ( defined $service_name && $service_name ne $service->{ name } );
@@ -337,7 +326,6 @@ sub getZproxyHTTPFarmBackendsStats    # ($farm_name, $service_name)
 									established => $backend_established + 0,
 									service     => $service->{ name }
 				};
-				$backendHash->{ alias } = $alias->{ $bk->{ address } } if $eload;
 				if ( $backendHash->{ "status" } eq "active" )
 				{
 					$backendHash->{ "status" } = "up";
@@ -447,10 +435,7 @@ sub getPoundHTTPFarmBackendsStats    # ($farm_name,$service_name)
 	my $serviceName;
 	my $service_re = &getValidFormat( 'service' );
 
-	unless ( $eload )
-	{
 		require Skudonet::Net::ConnStats;
-	}
 
 	# Get l7 proxy info
 	#i.e. of proxyctl:
@@ -464,12 +449,6 @@ sub getPoundHTTPFarmBackendsStats    # ($farm_name,$service_name)
 	#3. Backend 172.16.110.12:80 active (1 0.826 sec) alive (75)
 	my @proxyctl = &getHTTPFarmGlobalStatus( $farm_name );
 
-	my $alias;
-	$alias = &eload(
-					 module => 'Skudonet::Alias',
-					 func   => 'getAlias',
-					 args   => ['backend']
-	) if $eload;
 
 	my $backend_info;
 	my $fqdn_re = &getValidFormat( 'fqdn' );
@@ -505,7 +484,6 @@ sub getPoundHTTPFarmBackendsStats    # ($farm_name,$service_name)
 								pending => 0,
 								service => $serviceName,
 			};
-			$backendHash->{ alias } = $alias->{ $ip } if $eload;
 			$backend_info->{ $backendHash->{ id } }->{ ip }   = $ip;
 			$backend_info->{ $backendHash->{ id } }->{ fqdn } = $fqdn;
 			$backend_info->{ $backendHash->{ id } }->{ port } = $backendHash->{ port };

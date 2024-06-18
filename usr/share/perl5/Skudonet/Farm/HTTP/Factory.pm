@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 require Skudonet::Core;
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
@@ -91,12 +86,6 @@ sub runHTTPFarmCreate    # ( $vip, $vip_port, $farm_name, $farm_type )
 
 	#create files with personalized errors
 	my $f_err;
-	if ( $eload )
-	{
-		open $f_err, '>', "$configdir\/$farm_name\_ErrWAF.html";
-		print $f_err "The request was rejected by the server.\n";
-		close $f_err;
-	}
 	open $f_err, '>', "$configdir\/$farm_name\_Err414.html";
 	print $f_err "Request URI is too long.\n";
 	close $f_err;
@@ -116,15 +105,6 @@ sub runHTTPFarmCreate    # ( $vip, $vip_port, $farm_name, $farm_type )
 
 	&setHTTPFarmLogs( $farm_name, 'false' );
 
-	if ( $eload )
-	{
-
-		&eload(
-				module => 'Skudonet::Farm::HTTP::Ext',
-				func   => 'addHTTPFarmWafBodySize',
-				args   => [$farm_name],
-		) if ( $proxy_ng eq 'false' );
-	}
 
 	$output = &getHTTPFarmConfigIsOK( $farm_name );
 
@@ -184,17 +164,6 @@ sub runHTTPFarmCreate    # ( $vip, $vip_port, $farm_name, $farm_type )
 				}
 			}
 
-			if ( $eload )
-			{
-				if ( &getGlobalConfiguration( "floating_L7" ) eq 'true' )
-				{
-					&eload(
-							module => 'Skudonet::Farm::Config',
-							func   => 'reloadFarmsSourceAddressByFarm',
-							args   => [$farm_name],
-					);
-				}
-			}
 		}
 	}
 	else

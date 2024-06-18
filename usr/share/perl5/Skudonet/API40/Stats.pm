@@ -25,11 +25,6 @@ use strict;
 
 use Skudonet::System;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # Get all farm stats
 sub getAllFarmStats
@@ -50,7 +45,7 @@ sub getAllFarmStats
 		my $type = &getFarmType( $name );
 
 		my $status      = &getFarmVipStatus( $name );
-		my $vip         = &getFarmVip( 'vip', $name );
+		my $vip         = &getFarmVip( 'vip',  $name );
 		my $port        = &getFarmVip( 'vipp', $name );
 		my $established = 0;
 		my $pending     = 0;
@@ -69,7 +64,7 @@ sub getAllFarmStats
 			my $netstat;
 			$netstat = &getConntrack( '', $vip, '', '', '' ) if $type !~ /^https?$/;
 
-			$pending = &getFarmSYNConns( $name, $netstat );
+			$pending     = &getFarmSYNConns( $name, $netstat );
 			$established = &getFarmEstConns( $name, $netstat );
 		}
 
@@ -85,16 +80,6 @@ sub getAllFarmStats
 		  };
 	}
 
-	if ( $eload )
-	{
-		@farms = @{
-			&eload(
-					module => 'Skudonet::RBAC::Group::Core',
-					func   => 'getRBACUserSet',
-					args   => ['farms', \@farms],
-			)
-		};
-	}
 
 	return \@farms;
 }
@@ -136,7 +121,7 @@ sub farm_stats    # ( $farmname, $servicename )
 		{
 			# validate SERVICE
 			require Skudonet::Farm::Service;
-			my @services = &getFarmServices( $farmname );
+			my @services      = &getFarmServices( $farmname );
 			my $found_service = grep { $servicename eq $_ } @services;
 
 			if ( not $found_service )
@@ -198,51 +183,6 @@ sub farm_stats    # ( $farmname, $servicename )
 		&httpResponse( { code => 200, body => $body } );
 	}
 
-	if ( $type eq "gslb" && $eload )
-	{
-		my $gslb_stats;
-
-		my $gslbStatus =
-		  &eload(
-				  module => 'Skudonet::Farm::GSLB::Config',
-				  func   => 'getGSLBFarmStatus',
-				  args   => [$farmname],
-		  );
-		if ( $gslbStatus ne "down" )
-		{
-			if ( defined $servicename )
-			{
-				my @services = &eload(
-									   module => 'Skudonet::Farm::GSLB::Service',
-									   func   => 'getGSLBFarmServices',
-									   args   => [$farmname],
-				);
-
-				# check if the SERVICE exists
-				unless ( grep { $servicename eq $_ } @services )
-				{
-					my $msg = "Could not find the requested service.";
-					return &httpErrorResponse( code => 404, desc => $desc, msg => $msg );
-				}
-			}
-			$gslb_stats = &eload(
-								  module => 'Skudonet::Farm::GSLB::Stats',
-								  func   => 'getGSLBFarmBackendsStats',
-								  args   => [$farmname, $servicename],
-								  decode => 'true'
-			);
-		}
-
-		my $body = {
-					 description => $desc,
-					 backends    => $gslb_stats->{ 'backends' } // [],
-					 client      => $gslb_stats->{ 'udp' } // [],
-					 server      => $gslb_stats->{ 'tcp' } // [],
-					 extended    => $gslb_stats->{ 'stats' } // [],
-		};
-
-		&httpResponse( { code => 200, body => $body } );
-	}
 }
 
 #Get Farm Stats

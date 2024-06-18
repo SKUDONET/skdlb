@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -26,11 +27,6 @@ use Skudonet::Farm::Config;
 use Skudonet::Farm::Backend;
 use Skudonet::Farm::L4xNAT::Config;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # GET /farms/<farmname> Request info of a l4xnat Farm
 sub farms_name_l4    # ( $farmname )
@@ -60,10 +56,6 @@ sub farms_name_l4    # ( $farmname )
 		sessions     => &listL4FarmSessions( $farmname )
 	};
 
-	if ( $eload )
-	{
-		$out_p->{ logs } = $farm->{ logs };
-	}
 
 	# Backends
 	my $out_b = &getFarmServers( $farmname );
@@ -75,11 +67,6 @@ sub farms_name_l4    # ( $farmname )
 				 backends    => $out_b,
 	};
 
-	$body->{ ipds } = &eload(
-							  module => 'Skudonet::IPDS::Core',
-							  func   => 'getIPDSfarmsRules',
-							  args   => [$farmname],
-	) if ( $eload );
 
 	&httpResponse( { code => 200, body => $body } );
 }

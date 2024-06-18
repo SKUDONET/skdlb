@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -25,11 +26,6 @@ use Skudonet::Config;
 use Skudonet::Farm::Core;
 use Skudonet::Farm::Base;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 #GET /farms
 sub farms    # ()
@@ -46,7 +42,7 @@ sub farms    # ()
 		my $name   = &getFarmName( $file );
 		my $type   = &getFarmType( $name );
 		my $status = &getFarmVipStatus( $name );
-		my $vip    = &getFarmVip( 'vip', $name );
+		my $vip    = &getFarmVip( 'vip',  $name );
 		my $port   = &getFarmVip( 'vipp', $name );
 
 		push @out,
@@ -83,7 +79,7 @@ sub farms_lslb    # ()
 		my $type = &getFarmType( $name );
 		next unless $type =~ /^(?:https?|l4xnat)$/;
 		my $status = &getFarmVipStatus( $name );
-		my $vip    = &getFarmVip( 'vip', $name );
+		my $vip    = &getFarmVip( 'vip',  $name );
 		my $port   = &getFarmVip( 'vipp', $name );
 
 		push @out,
@@ -120,7 +116,7 @@ sub farms_dslb    # ()
 		my $type = &getFarmType( $name );
 		next unless $type eq 'datalink';
 		my $status = &getFarmVipStatus( $name );
-		my $vip    = &getFarmVip( 'vip', $name );
+		my $vip    = &getFarmVip( 'vip',  $name );
 		my $iface  = &getFarmVip( 'vipp', $name );
 
 		push @out,
@@ -199,14 +195,6 @@ sub farms_name    # ( $farmname )
 	{
 		require Skudonet::API31::Farm::Get::Datalink;
 		&farms_name_datalink( $farmname );
-	}
-	if ( $type eq 'gslb' && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API31::Farm::Get::GSLB',
-				func   => 'farms_name_gslb',
-				args   => [$farmname],
-		) if ( $eload );
 	}
 }
 

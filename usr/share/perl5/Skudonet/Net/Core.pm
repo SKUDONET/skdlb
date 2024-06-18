@@ -26,11 +26,6 @@ use strict;
 require Skudonet::Core;
 
 my $ip_bin = &getGlobalConfiguration( 'ip_bin' );
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: createIf
@@ -146,18 +141,6 @@ sub upIf    # ($if_ref, $writeconf)
 		$fileHandler->write( $file );
 	}
 
-	if ( !$status and $eload and $if_ref->{ dhcp } eq 'true' )
-	{
-		$status = &eload(
-						  'module' => 'Skudonet::Net::DHCP',
-						  'func'   => 'startDHCP',
-						  'args'   => [$if_ref->{ name }],
-		);
-	}
-
-	# calculate new backend masquerade IPs
-	require Skudonet::Farm::Config;
-	&reloadFarmsSourceAddress();
 
 	return $status;
 }
@@ -192,14 +175,6 @@ sub downIf    # ($if_ref, $writeconf)
 		return -1;
 	}
 
-	if ( $eload and $if_ref->{ dhcp } eq 'true' )
-	{
-		$status = &eload(
-						  'module' => 'Skudonet::Net::DHCP',
-						  'func'   => 'stopDHCP',
-						  'args'   => [$if_ref->{ name }],
-		);
-	}
 
 	my $ip_cmd;
 
@@ -216,11 +191,6 @@ sub downIf    # ($if_ref, $writeconf)
 
 		$ip_cmd = "$ip_bin addr del $$if_ref{addr}/$$if_ref{mask} dev $routed_iface";
 
-		&eload(
-				module => 'Skudonet::Net::Routing',
-				func   => 'applyRoutingDependIfaceVirt',
-				args   => ['del', $if_ref]
-		) if $eload;
 	}
 
 	&setRuleIPtoTable( $$if_ref{ name }, $$if_ref{ addr }, "del" );
@@ -240,9 +210,6 @@ sub downIf    # ($if_ref, $writeconf)
 		$fileHandler->write( $file );
 	}
 
-	# calculate new backend masquerade IPs
-	require Skudonet::Farm::Config;
-	&reloadFarmsSourceAddress();
 
 	return $status;
 }
@@ -322,7 +289,7 @@ sub stopIf    # ($if_ref)
 	else
 	{
 		my @ifphysic = split ( /:/, $if );
-		my $ip = $$if_ref{ addr };
+		my $ip       = $$if_ref{ addr };
 
 		if ( $ip =~ /\./ )
 		{
@@ -332,11 +299,6 @@ sub stopIf    # ($if_ref)
 
 			&logAndRun( "$cmd" );
 
-			&eload(
-					module => 'Skudonet::Net::Routing',
-					func   => 'applyRoutingDependIfaceVirt',
-					args   => ['del', $if_ref]
-			) if $eload;
 		}
 	}
 
@@ -367,15 +329,6 @@ sub delIf    # ($if_ref)
 
 	my $status;
 
-	# remove dhcp configuration
-	if ( exists $if_ref->{ dhcp } and $if_ref->{ dhcp } eq 'true' )
-	{
-		&eload(
-				module => 'Skudonet::Net::DHCP',
-				func   => 'disableDHCP',
-				args   => [$if_ref],
-		);
-	}
 
 	require Skudonet::Net::Interface;
 	$status = &cleanInterfaceConfig( $if_ref );
@@ -399,13 +352,10 @@ sub delIf    # ($if_ref)
 		}
 		else
 		{
-			if ( $if_ref->{ dhcp } ne 'true' )
-			{
 				# If $if is a Interface, delete that IP
 				$ip_cmd = "$ip_bin addr del $$if_ref{addr}/$$if_ref{mask} dev $$if_ref{name}";
 				$status = &logAndRun( $ip_cmd )
 				  if ( length $if_ref->{ addr } && length $if_ref->{ mask } );
-			}
 
 			# If $if is a Vlan, delete Vlan
 			if ( $$if_ref{ vlan } ne '' )
@@ -415,19 +365,11 @@ sub delIf    # ($if_ref)
 			}
 		}
 
-		#delete custom routes
-		&eload(
-				module => 'Skudonet::Net::Routing',
-				func   => 'delRoutingDependIface',
-				args   => [$$if_ref{ name }],
-		) if ( $eload );
-
 		# check if alternative stack is in use
 		my $ip_v_to_check = ( $$if_ref{ ip_v } == 4 ) ? 6 : 4;
-		my $interface = &getInterfaceConfig( $$if_ref{ name }, $ip_v_to_check );
+		my $interface     = &getInterfaceConfig( $$if_ref{ name }, $ip_v_to_check );
 
-		if ( !$interface
-			 or ( $interface->{ type } eq "bond" and !exists $interface->{ addr } ) )
+		if ( !$interface )
 		{
 			&deleteRoutesTable( $$if_ref{ name } );
 		}
@@ -437,30 +379,6 @@ sub delIf    # ($if_ref)
 	require Skudonet::RRD;
 	&delGraph( $$if_ref{ name }, "iface" );
 
-	if ( $eload )
-	{
-		# delete alias
-		&eload(
-				module => 'Skudonet::Alias',
-				func   => 'delAlias',
-				args   => ['interface', $$if_ref{ name }]
-		);
-
-		#delete from RBAC
-		&eload(
-				module => 'Skudonet::RBAC::Group::Config',
-				func   => 'delRBACResource',
-				args   => [$$if_ref{ name }, 'interfaces'],
-		);
-
-		#reload netplug
-		if ( !defined ( $$if_ref{ vini } ) or $$if_ref{ vini } eq '' )
-		{
-			&eload( module => 'Skudonet::Net::Ext',
-					func   => 'reloadNetplug', );
-		}
-
-	}
 
 	return $status;
 }
@@ -610,28 +528,6 @@ sub addIp    # ($if_ref)
 
 	my $status = &logAndRun( $ip_cmd );
 
-	#if arp_announce is enabled then send garps to network
-	eval {
-		if ( $eload )
-		{
-			my $cl_status = &eload(
-									module => 'Skudonet::Cluster',
-									func   => 'getZClusterNodeStatus',
-									args   => [],
-			);
-
-			if (    &getGlobalConfiguration( 'arp_announce' ) eq "true"
-				 && $cl_status ne "backup" )
-			{
-
-				require Skudonet::Net::Util;
-
-				#&sendGArp($$if_ref{parent},$$if_ref{addr})
-				&zenlog( "Announcing garp $if_announce and $$if_ref{addr} " );
-				&sendGArp( $if_announce, $$if_ref{ addr } );
-			}
-		}
-	};
 
 	&setRuleIPtoTable( $$if_ref{ name }, $$if_ref{ addr }, "add" );
 

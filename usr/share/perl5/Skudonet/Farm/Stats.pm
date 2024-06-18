@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: getFarmEstConns
@@ -63,16 +58,6 @@ sub getFarmEstConns    # ($farm_name,$netstat)
 	{
 		require Skudonet::Farm::L4xNAT::Stats;
 		$connections = &getL4FarmEstConns( $farm_name, $netstat );
-	}
-	elsif ( $farm_type eq "gslb" )
-	{
-		my @pid = &getFarmPid( $farm_name );
-		return $connections if ( !@pid );
-		$connections = &eload(
-							   module => 'Skudonet::Farm::GSLB::Stats',
-							   func   => 'getGSLBFarmEstConns',
-							   args   => [$farm_name, $netstat],
-		) if $eload;
 	}
 
 	return $connections;

@@ -85,14 +85,10 @@ sub getProtoTransport
 	my $profile = shift;
 
 	my $proto = [];
-	my $all = ["tcp", "udp", "sctp"];
+	my $all   = ["tcp", "udp", "sctp"];
 
 	# profiles
-	if ( $profile eq "gslb" )
-	{
-		$proto = ["tcp", "udp"];
-	}
-	elsif ( $profile eq "l4xnat" )
+	if ( $profile eq "l4xnat" )
 	{
 		$proto = ["tcp"];    # default protocol when a l4xnat farm is created
 	}
@@ -173,7 +169,7 @@ sub validatePortKernelSpace
 	return 1 if !@farm_list;
 
 	@farm_list = grep ( !/^$farmname$/, @farm_list ) if defined $farmname;
-	return 1 if !@farm_list;
+	return 1                                         if !@farm_list;
 
 	# check intervals
 	my $port_list = &getMultiporExpanded( $port );
@@ -199,7 +195,7 @@ sub validatePortKernelSpace
 
 		# check port collision
 		my $f_port_list = &getMultiporExpanded( $f_port );
-		my $col = &getArrayCollision( $f_port_list, $port_list );
+		my $col         = &getArrayCollision( $f_port_list, $port_list );
 		if ( defined $col )
 		{
 			&zenlog( "Port collision ($col) with farm '$farm'", "warning", "net" );
@@ -309,8 +305,11 @@ sub validatePortUserSpace
 	{
 		require Skudonet::Farm::Base;
 
-		my $type = &getFarmType( $farmname );
-		if ( $type =~ /http|gslb/ )
+		my $type       = &getFarmType( $farmname );
+		my $type_valid = 0;
+
+		$type_valid = 1 if ( $type =~ /http/ );
+		if ( $type_valid )
 		{
 			my $cur_vip  = &getFarmVip( 'vip',  $farmname );
 			my $cur_port = &getFarmVip( 'vipp', $farmname );
@@ -688,7 +687,7 @@ sub checkNetworkExists
 	my @interfaces;
 
 	my @system_interfaces = &getInterfaceList();
-	my $params = ["name", "addr", "mask"];
+	my $params            = ["name", "addr", "mask"];
 	foreach my $if_name ( @system_interfaces )
 	{
 		next if ( &getInterfaceType( $if_name ) !~ /^(?:nic|bond|vlan|gre)$/ );
@@ -745,7 +744,6 @@ sub checkDuplicateNetworkExists
 	require NetAddr::IP;
 
 	my @interfaces = &getInterfaceTypeList( 'nic' );
-	push @interfaces, &getInterfaceTypeList( 'bond' );
 	push @interfaces, &getInterfaceTypeList( 'vlan' );
 
 	foreach my $if_ref ( @interfaces )

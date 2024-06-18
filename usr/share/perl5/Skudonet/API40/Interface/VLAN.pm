@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 #  POST /interfaces/vlan Create a new vlan network interface
 sub new_vlan    # ( $json_obj )
@@ -53,20 +48,6 @@ sub new_vlan    # ( $json_obj )
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
 	  if ( $error_msg );
 
-	my $dhcp_flag =
-	  ( exists $json_obj->{ dhcp } and $json_obj->{ dhcp } ne "false" );
-	my $ip_mand = ( exists $json_obj->{ ip } and exists $json_obj->{ netmask } );
-	my $ip_opt = (
-				        exists $json_obj->{ ip }
-					 or exists $json_obj->{ netmask }
-					 or exists $json_obj->{ gateway }
-	);
-	unless ( ( $dhcp_flag and !$ip_opt ) or ( !$dhcp_flag and $ip_mand ) )
-	{
-		my $msg =
-		  "It is mandatory set an 'ip' and its 'netmask' or enabling the 'dhcp'. It is not allow to send 'ip', 'netmask' or 'gateway' when 'dhcp' is true.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
 
 	# Check if interface already exists
 	my $if_ref = &getInterfaceConfig( $json_obj->{ name } );
@@ -101,23 +82,6 @@ sub new_vlan    # ( $json_obj )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	# check that nic interface is no slave of a bonding
-	my $is_slave;
-
-	for my $if_ref ( &getInterfaceTypeList( 'nic' ) )
-	{
-		if ( $if_ref->{ name } eq $json_obj->{ parent } )
-		{
-			$is_slave = $if_ref->{ is_slave };
-			last;
-		}
-	}
-
-	if ( $is_slave eq 'true' )
-	{
-		my $msg = "It is not possible create a VLAN interface from a NIC slave.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
 
 	# validate VLAN TAG
 	unless ( $json_obj->{ tag } >= 1 && $json_obj->{ tag } <= 4094 )
@@ -136,11 +100,8 @@ sub new_vlan    # ( $json_obj )
 				dev    => $json_obj->{ parent },
 				status => $if_parent->{ status },
 				vlan   => $json_obj->{ tag },
-				dhcp   => $json_obj->{ dhcp } // 'false',
 				mac    => $socket->if_hwaddr( $json_obj->{ parent } ),
 	};
-	$if_ref->{ mac } = lc $json_obj->{ mac }
-	  if ( $eload && exists $json_obj->{ mac } );
 
 	if ( exists $json_obj->{ ip } )
 	{
@@ -177,7 +138,7 @@ sub new_vlan    # ( $json_obj )
 			my $gw_v = &ipversion( $if_ref->{ gateway } );
 
 			my $mask_v =
-			    ( $ip_v == 4 && &getValidFormat( 'IPv4_mask', $if_ref->{ mask } ) ) ? 4
+				( $ip_v == 4 && &getValidFormat( 'IPv4_mask', $if_ref->{ mask } ) ) ? 4
 			  : ( $ip_v == 6 && &getValidFormat( 'IPv6_mask', $if_ref->{ mask } ) ) ? 6
 			  :                                                                       '';
 
@@ -208,29 +169,11 @@ sub new_vlan    # ( $json_obj )
 	}
 
 	# configuring
-	if ( $dhcp_flag )
-	{
-		my $func = ( $json_obj->{ dhcp } eq 'true' ) ? "enableDHCP" : "disableDHCP";
-		my $err = &eload(
-						  module => 'Skudonet::Net::DHCP',
-						  func   => $func,
-						  args   => [$if_ref],
-		);
-
-		if ( $err )
-		{
-			my $msg = "The $json_obj->{ name } vlan network interface can't be configured";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
-	else
-	{
 		if ( &setVlan( $if_ref, $json_obj ) )
 		{
 			my $msg = "The $json_obj->{ name } vlan network interface can't be configured";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
-	}
 
 	my $body = {
 				description => $desc,
@@ -261,32 +204,6 @@ sub delete_interface_vlan    # ( $vlan )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	if ( $eload )
-	{
-		my $msg = &eload(
-						  module => 'Skudonet::Net::Ext',
-						  func   => 'isManagementIP',
-						  args   => [$if_ref->{ addr }],
-		);
-		if ( $msg ne "" )
-		{
-			$msg = "The interface cannot be modified. $msg";
-			return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-		my $zcl_conf = &eload( module => 'Skudonet::Cluster',
-							   func   => 'getZClusterConfig', );
-		if ( defined $zcl_conf->{ _ }->{ track_interface } )
-		{
-			my @track_interface = split ( /\s/, $zcl_conf->{ _ }->{ track_interface } );
-			if ( grep { $_ eq $if_ref->{ name } } @track_interface )
-			{
-				$msg =
-				  "The interface $if_ref->{ name } cannot be modified because it is been tracked by the cluster.
-						If you still want to modify it, remove it from the cluster track interface list.";
-				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-		}
-	}
 
 	# check if some farm is using this ip
 	require Skudonet::Farm::Base;
@@ -298,33 +215,6 @@ sub delete_interface_vlan    # ( $vlan )
 		return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	if ( $eload )
-	{
-		# check if some VPN is using this ip
-		my $vpns = &eload(
-						   module => 'Skudonet::VPN::Util',
-						   func   => 'getVPNByIp',
-						   args   => [$if_ref->{ addr }],
-		);
-		if ( @{ $vpns } )
-		{
-			my $str = join ( ', ', @{ $vpns } );
-			my $msg = "This interface is being used as Local Gateway in VPN(s): $str";
-			return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-		$vpns = &eload(
-						module => 'Skudonet::VPN::Util',
-						func   => 'getVPNByNet',
-						args   => [$if_ref->{ net }],
-		);
-		if ( @{ $vpns } )
-		{
-			my $str = join ( ', ', @{ $vpns } );
-			my $msg = "This interface is being used as Local Network in VPN(s): $str";
-			return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-
-	}
 
 	my @child = &getInterfaceChild( $vlan );
 	if ( @child )
@@ -486,32 +376,6 @@ sub actions_interface_vlan    # ( $json_obj, $vlan )
 	}
 	elsif ( $json_obj->{ action } eq "down" )
 	{
-		if ( $eload )
-		{
-			my $msg = &eload(
-							  module => 'Skudonet::Net::Ext',
-							  func   => 'isManagementIP',
-							  args   => [$if_ref->{ addr }],
-			);
-			if ( $msg ne "" )
-			{
-				$msg = "The interface cannot be stopped. $msg";
-				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-			my $zcl_conf = &eload( module => 'Skudonet::Cluster',
-								   func   => 'getZClusterConfig', );
-			if ( defined $zcl_conf->{ _ }->{ track_interface } )
-			{
-				my @track_interface = split ( /\s/, $zcl_conf->{ _ }->{ track_interface } );
-				if ( grep { $_ eq $if_ref->{ name } } @track_interface )
-				{
-					$msg =
-					  "The interface $if_ref->{ name } cannot be modified because it is been tracked by the cluster.
-							If you still want to modify it, remove it from the cluster track interface list.";
-					return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-				}
-			}
-		}
 
 		require Skudonet::Net::Core;
 		my $state = &downIf( $if_ref, 'writeconf' );
@@ -549,10 +413,6 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 	my $old_ip = $if_ref->{ addr };
 
 	my @farms;
-	my $vpns_localgw;
-	@{ $vpns_localgw } = ();
-	my $vpns_localnet;
-	@{ $vpns_localnet } = ();
 	my $warning_msg;
 
 	# Check interface errors
@@ -571,27 +431,7 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 
 	my @child = &getInterfaceChild( $vlan );
 
-	my $dhcp_status = $json_obj->{ dhcp } // $if_ref->{ dhcp };
 
-	# only allow dhcp when no other parameter was sent
-	if ( $dhcp_status eq 'true' )
-	{
-		if (    exists $json_obj->{ ip }
-			 or exists $json_obj->{ netmask }
-			 or exists $json_obj->{ gateway } )
-		{
-			my $msg =
-			  "It is not possible set 'ip', 'netmask' or 'gateway' while 'dhcp' is enabled.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
-
-	if ( !exists $json_obj->{ ip } and exists $json_obj->{ dhcp } and @child )
-	{
-		my $msg =
-		  "This interface has appending some virtual interfaces, please, set up a new 'ip' in the current networking range.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
 
 	if (    exists $json_obj->{ ip }
 		 or exists $json_obj->{ netmask }
@@ -700,49 +540,16 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 			 or ( exists $json_obj->{ dhcp } ) )
 		{
 
-			if ( $eload )
-			{
-				my $msg = &eload(
-								  module => 'Skudonet::Net::Ext',
-								  func   => 'isManagementIP',
-								  args   => [$if_ref->{ addr }],
-				);
-				if ( $msg ne "" )
-				{
-					$msg = "The interface cannot be modified. $msg";
-					return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-				}
-			}
 
 			# check if some farm is using this ip
 			require Skudonet::Farm::Base;
 			@farms = &getFarmListByVip( $if_ref->{ addr } );
-			$vpns_localgw = &eload(
-									module => 'Skudonet::VPN::Util',
-									func   => 'getVPNByIp',
-									args   => [$if_ref->{ addr }],
-			) if $eload;
 		}
 
-		# check if its a new network and a vpn using old network
-		if ( exists $json_obj->{ ip } or exists $json_obj->{ netmask } )
-		{
-			# check if network is changed
-			my $mask = $json_obj->{ netmask } // $if_ref->{ mask };
-			if (
-				   !&validateGateway( $if_ref->{ addr }, $if_ref->{ mask }, $json_obj->{ ip } )
-				 or $if_ref->{ mask } ne $mask )
-			{
-				my $net = new NetAddr::IP( $if_ref->{ addr }, $if_ref->{ mask } )->cidr();
-				$vpns_localnet = &eload(
-										 module => 'Skudonet::VPN::Util',
-										 func   => 'getVPNByNet',
-										 args   => [$net],
-				) if $eload;
-			}
-		}
 
-		if ( @farms or @{ $vpns_localgw } or @{ $vpns_localnet } )
+		my $action = 0;
+		$action = 1 if ( @farms );
+		if ( $action )
 		{
 			if (    !exists $json_obj->{ ip }
 				 and exists $json_obj->{ dhcp }
@@ -754,18 +561,6 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 				{
 					$str_objects  = " and farms";
 					$str_function = " and farm VIP";
-				}
-				if ( @{ $vpns_localgw } or @{ $vpns_localnet } )
-				{
-					$str_objects .= " and vpns";
-				}
-				if ( @{ $vpns_localgw } )
-				{
-					$str_function .= " and Local Gateway";
-				}
-				if ( @{ $vpns_localnet } )
-				{
-					$str_function .= " and Local Network";
 				}
 				$str_objects  = substr ( $str_objects,  5 );
 				$str_function = substr ( $str_function, 5 );
@@ -780,22 +575,8 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 				my $str_function;
 				if ( @farms )
 				{
-					$str_objects = " and farms";
+					$str_objects  = " and farms";
 					$str_function = " and as farm VIP in the farm(s): " . join ( ', ', @farms );
-				}
-				if ( @{ $vpns_localgw } or @{ $vpns_localnet } )
-				{
-					$str_objects .= " and vpns";
-				}
-				if ( @{ $vpns_localgw } )
-				{
-					$str_function .=
-					  " and as Local Gateway in the VPN(s): " . join ( ', ', @{ $vpns_localgw } );
-				}
-				if ( @{ $vpns_localnet } )
-				{
-					$str_function .=
-					  " and as Local Network in the VPN(s): " . join ( ', ', @{ $vpns_localnet } );
 				}
 				$str_objects  = substr ( $str_objects,  5 );
 				$str_function = substr ( $str_function, 5 );
@@ -807,21 +588,6 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 		}
 	}
 
-	if ( exists $json_obj->{ dhcp } )
-	{
-		my $func = ( $json_obj->{ dhcp } eq 'true' ) ? "enableDHCP" : "disableDHCP";
-		my $err = &eload(
-						  module => 'Skudonet::Net::DHCP',
-						  func   => $func,
-						  args   => [$if_ref],
-		);
-
-		if ( $err )
-		{
-			my $msg = "Errors found trying to enabling dhcp for the interface $vlan";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
 
 	# Delete old parameters
 	if ( $if_ref )
@@ -837,77 +603,38 @@ sub modify_interface_vlan    # ( $json_obj, $vlan )
 	}
 
 	$if_ref->{ addr } = $json_obj->{ ip } if ( exists $json_obj->{ ip } );
-	$if_ref->{ mac } = lc $json_obj->{ mac }
-	  if ( $eload && exists $json_obj->{ mac } );
 	$if_ref->{ mask }    = $json_obj->{ netmask } if exists $json_obj->{ netmask };
 	$if_ref->{ gateway } = $json_obj->{ gateway } if exists $json_obj->{ gateway };
-	$if_ref->{ ip_v } = &ipversion( $if_ref->{ addr } );
+	$if_ref->{ ip_v }    = &ipversion( $if_ref->{ addr } );
 	$if_ref->{ net } =
 	  &getAddressNetwork( $if_ref->{ addr }, $if_ref->{ mask }, $if_ref->{ ip_v } );
 
-	if ( $eload )
-	{
-		&eload(
-				module => 'Skudonet::Net::Routing',
-				func   => 'updateRoutingVirtualIfaces',
-				args   => [$if_ref->{ parent }, $old_ip],
-		);
-	}
 
 	require Skudonet::Lock;
 	my $vlan_config_file =
 	  &getGlobalConfiguration( 'configdir' ) . "/if_$if_ref->{ name }_conf";
-	my $dhcp_flag = $json_obj->{ dhcp } // $if_ref->{ dhcp };
 
-	if ( ( $dhcp_flag ne 'true' ) and !( $if_ref->{ addr } && $if_ref->{ mask } ) )
-	{
-		my $msg = "Cannot configure the interface without address or without netmask.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
-	elsif ( $dhcp_flag eq "true" )
-	{
-		&lockResource( $vlan_config_file, "l" );
-	}
+		if ( !( $if_ref->{ addr } && $if_ref->{ mask } ) )
+		{
+			my $msg = "Cannot configure the interface without address or without netmask.";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
 
 	require Skudonet::Net::Interface;
 	if ( &setVlan( $if_ref, $json_obj ) )
 	{
-		#Release lock file
-		&lockResource( $vlan_config_file, "ud" ) if ( $dhcp_flag eq "true" );
 
 		my $msg = "Errors found trying to modify interface $vlan";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	#Release lock file
-	&lockResource( $vlan_config_file, "ud" ) if ( $dhcp_flag eq "true" );
 
 	if ( @farms )
 	{
 		require Skudonet::Farm::Config;
 		&setAllFarmByVip( $json_obj->{ ip }, \@farms );
-		&reloadFarmsSourceAddress();
 	}
 
-	if ( @{ $vpns_localgw } )
-	{
-		my $error = &eload(
-							module => 'Skudonet::VPN::Config',
-							func   => 'setAllVPNLocalGateway',
-							args   => [$json_obj->{ ip }, $vpns_localgw],
-		);
-		$warning_msg .= $error->{ desc } if ( $error->{ code } );
-	}
-	if ( @{ $vpns_localnet } )
-	{
-		my $net = new NetAddr::IP( $if_ref->{ net }, $if_ref->{ mask } )->cidr();
-		my $error = &eload(
-							module => 'Skudonet::VPN::Config',
-							func   => 'setAllVPNLocalNetwork',
-							args   => [$net, $vpns_localnet],
-		);
-		$warning_msg .= $error->{ desc } if ( $error->{ code } );
-	}
 
 	my $if_out = &get_vlan_struct( $vlan );
 	my $body = {

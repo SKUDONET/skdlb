@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -21,11 +22,6 @@
 ###############################################################################
 
 use strict;
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 use Skudonet::API40::HTTP;
 
@@ -101,11 +97,6 @@ sub add_addheader    # ( $json_obj, $farmname )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -197,11 +188,6 @@ sub modify_addheader    # ( $json_obj, $farmname, $index )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -273,11 +259,6 @@ sub del_addheader
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -359,11 +340,6 @@ sub add_headremove    # ( $json_obj, $farmname )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -455,11 +431,6 @@ sub modify_headremove    # ( $json_obj, $farmname, $index )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -531,11 +502,6 @@ sub del_headremove
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -617,11 +583,6 @@ sub add_addResponseheader    # ( $json_obj, $farmname )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -713,11 +674,6 @@ sub modify_addResponseheader    # ( $json_obj, $farmname, $index )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -789,11 +745,6 @@ sub del_addResponseheader
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -913,11 +864,6 @@ sub add_replaceheader            # ( $json_obj, $farmname, $type )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -1056,11 +1002,6 @@ sub modify_replaceHeader    # ( $json_obj, $farmname, $type, $index )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -1152,11 +1093,6 @@ sub del_replaceheader
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -1242,7 +1178,7 @@ sub move_replaceheader    # ( $json_obj, $type, $regex, $farmname, $index )
 	unless ( &moveHeader( $farmname, $regex, $json_obj->{ position }, $index ) )
 	{
 		# success
-		my $msg = "Header was moved successfully.";
+		my $msg  = "Header was moved successfully.";
 		my $body = { description => $desc, params => $json_obj, message => $msg };
 
 		if ( &getFarmStatus( $farmname ) ne 'down' )
@@ -1264,11 +1200,6 @@ sub move_replaceheader    # ( $json_obj, $type, $regex, $farmname, $index )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -1350,11 +1281,6 @@ sub add_removeResponseheader    # ( $json_obj, $farmname )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -1446,11 +1372,6 @@ sub modify_removeResponseheader    # ( $json_obj, $farmname )
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}
@@ -1522,11 +1443,6 @@ sub del_removeResponseHeader
 				else
 				{
 					&runFarmReload( $farmname );
-					&eload(
-							module => 'Skudonet::Cluster',
-							func   => 'runZClusterRemoteManager',
-							args   => ['farm', 'reload', $farmname],
-					) if ( $eload );
 				}
 			}
 		}

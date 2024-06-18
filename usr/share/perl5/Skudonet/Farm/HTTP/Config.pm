@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 require Skudonet::Lock;
 
@@ -57,7 +52,7 @@ sub setFarmClientTimeout    # ($client,$farm_name)
 	my $output        = -1;
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @filefarmhttp, 'Tie::File', "$configdir/$farm_filename";
@@ -148,7 +143,7 @@ sub setHTTPFarmSessionType    # ($session,$farm_name)
 	my $output        = -1;
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	&zenlog( "Setting 'Session type $session' for $farm_name farm http",
 			 "info", "LSLB" );
@@ -248,7 +243,7 @@ sub setHTTPFarmBlacklistTime    # ($blacklist_time,$farm_name)
 	my $output        = -1;
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @filefarmhttp, 'Tie::File', "$configdir/$farm_filename";
@@ -343,7 +338,7 @@ sub setFarmHttpVerb    # ($verb,$farm_name)
 	my $output        = -1;
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @filefarmhttp, 'Tie::File', "$configdir/$farm_filename";
@@ -443,7 +438,7 @@ sub setFarmListen    # ( $farm_name, $farmlisten )
 	my $found         = "false";
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @filefarmhttp, 'Tie::File', "$configdir/$farm_filename";
@@ -595,7 +590,7 @@ sub setFarmRewriteL    # ($farm_name,$rewritelocation,$path)
 			 "info", "LSLB" );
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @filefarmhttp, 'Tie::File', "$configdir/$farm_filename";
@@ -651,7 +646,7 @@ sub getFarmRewriteL    # ($farm_name)
 	{
 		if ( $line =~ /RewriteLocation\s+(\d)\s*(path)?/ )
 		{
-			if ( $1 eq 0 ) { $output = "disabled"; last; }
+			if    ( $1 eq 0 ) { $output = "disabled"; last; }
 			elsif ( $1 eq 1 ) { $output = "enabled"; }
 			elsif ( $1 eq 2 ) { $output = "enabled-backends"; }
 
@@ -689,7 +684,7 @@ sub setFarmConnTO    # ($tout,$farm_name)
 			 "info", "LSLB" );
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @filefarmhttp, 'Tie::File', "$configdir/$farm_filename";
@@ -776,7 +771,7 @@ sub setHTTPFarmTimeout    # ($timeout,$farm_name)
 	my $output        = -1;
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @filefarmhttp, 'Tie::File', "$configdir/$farm_filename";
@@ -865,7 +860,7 @@ sub setHTTPFarmMaxClientTime    # ($track,$farm_name)
 	my $found         = "false";
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	tie my @filefarmhttp, 'Tie::File', "$configdir/$farm_filename";
 	my $array_count = @filefarmhttp;
@@ -983,7 +978,7 @@ sub setFarmErr    # ($farm_name,$content,$nerr)
 	{
 		$output = 0;
 		my @err = split ( "\n", "$content" );
-		my $fd = &openlock( "$configdir\/$farm_name\_Err$nerr.html", 'w' );
+		my $fd  = &openlock( "$configdir\/$farm_name\_Err$nerr.html", 'w' );
 
 		foreach my $line ( @err )
 		{
@@ -1031,7 +1026,7 @@ sub getFarmErr    # ($farm_name,$nerr)
 		if ( $line =~ /Err$nerr/ )
 		{
 			my @line_aux = split ( "\ ", $line );
-			my $err = $line_aux[1];
+			my $err      = $line_aux[1];
 			$err =~ s/"//g;
 
 			if ( -e $err )
@@ -1116,26 +1111,6 @@ sub setHTTPFarmConfErrFile    # ($enabled, $farm_name, $err)
 	}
 	untie @filefarmhttp;
 
-	if ( $eload )
-	{
-		if ( $enabled eq "true" )
-		{
-			if ( !-f "$configdir\/$farm_name\_ErrWAF.html" )
-			{
-				my $f_err;
-				open $f_err, '>', "$configdir\/$farm_name\_ErrWAF.html";
-				print $f_err "The request was rejected by the server.\n";
-				close $f_err;
-			}
-		}
-		else
-		{
-			if ( -f "$configdir\/$farm_name\_ErrWAF.html" )
-			{
-				unlink "$configdir\/$farm_name\_ErrWAF.html";
-			}
-		}
-	}
 }
 
 =begin nd
@@ -1200,7 +1175,7 @@ sub setHTTPFarmBootStatus    # ($farm_name, $value)
 	my $farm_filename = &getFarmFile( $farm_name );
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @configfile, 'Tie::File', "$configdir\/$farm_filename";
@@ -1444,7 +1419,7 @@ sub setHTTPFarmVirtualConf    # ($vip,$vip_port,$farm_name)
 	my $prev_config = getFarmStruct( $farm_name );
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @array, 'Tie::File', "$configdir\/$farm_filename";
@@ -1482,7 +1457,6 @@ sub setHTTPFarmVirtualConf    # ($vip,$vip_port,$farm_name)
 
 		# reload source address maquerade
 		require Skudonet::Farm::Config;
-		&reloadFarmsSourceAddressByFarm( $farm_name );
 	}
 
 	return $stat;
@@ -1633,7 +1607,7 @@ sub getHTTPFarmStruct
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $farmname = shift;
-	my $type = shift // &getFarmType( $farmname );
+	my $type     = shift // &getFarmType( $farmname );
 
 	require Skudonet::Farm::Core;
 	require Skudonet::Farm::Base;
@@ -1645,8 +1619,8 @@ sub getHTTPFarmStruct
 
 	return $farm unless $farmname;
 
-	my $vip   = &getFarmVip( "vip",  $farmname );
-	my $vport = &getFarmVip( "vipp", $farmname ) + 0;
+	my $vip    = &getFarmVip( "vip",  $farmname );
+	my $vport  = &getFarmVip( "vipp", $farmname ) + 0;
 	my $status = &getFarmVipStatus( $farmname );
 
 	my $connto          = 0 + &getFarmConnTO( $farmname );
@@ -1687,10 +1661,6 @@ sub getHTTPFarmStruct
 			  name            => $farmname
 	};
 
-	if ( $eload and $proxy_ng eq 'true' )
-	{
-		$farm->{ errorWAF } = $errWAF;
-	}
 
 	# HTTPS parameters
 	if ( $type eq "https" )
@@ -1700,18 +1670,7 @@ sub getHTTPFarmStruct
 		## Get farm certificate(s)
 		my @cnames;
 
-		if ( $eload )
-		{
-			@cnames = &eload(
-							  module => 'Skudonet::Farm::HTTP::HTTPS::Ext',
-							  func   => 'getFarmCertificatesSNI',
-							  args   => [$farmname],
-			);
-		}
-		else
-		{
 			@cnames = ( &getFarmCertificate( $farmname ) );
-		}
 
 		# Make struct array
 		my @cert_list;
@@ -1782,12 +1741,6 @@ sub getHTTPFarmStruct
 	require Skudonet::Farm::Config;
 	$farm = &get_http_farm_headers_struct( $farmname, $farm );
 
-	$farm->{ ignore_100_continue } = &getHTTPFarm100Continue( $farmname );
-	if ( $proxy_ng eq 'true' )
-	{
-		$farm->{ ignore_100_continue } =
-		  ( $farm->{ ignore_100_continue } eq "ignore" ) ? "true" : "false";
-	}
 
 	return $farm;
 }
@@ -1941,21 +1894,21 @@ sub parseL7ProxyConfig
 			}
 
 			## Backends blocks
-			my $bb;      # 'In Backend Block' flag
-			my $be_r;    # Backend hash reference
-			my @be = (); # List of backends
+			my $bb;         # 'In Backend Block' flag
+			my $be_r;       # Backend hash reference
+			my @be = ();    # List of backends
 
 			# Session block
-			my $sb;      # 'In Session Block' flag
-			my $se_r;    # Session hash reference
+			my $sb;         # 'In Session Block' flag
+			my $se_r;       # Session hash reference
 
 			for my $line ( @svc_lines )
 			{
 				# Backends blocks
 				if ( $line =~ /^\t\tBackEnd$/ ) { $bb++; $be_r = {}; next; }
-				if ( $line =~ /^\t\t\t(\w+) (.+)$/ && $bb ) { $be_r->{ $1 } = $2; next; }
+				if ( $line =~ /^\t\t\t(\w+) (.+)$/ && $bb ) { $be_r->{ $1 } = $2;    next; }
 				if ( $line =~ /^\t\t\tHTTPS$/ && $bb ) { $be_r->{ 'HTTPS' } = undef; next; }
-				if ( $line =~ /^\t\tEnd$/ && $bb )
+				if ( $line =~ /^\t\tEnd$/     && $bb )
 				{
 					$bb = 0;
 					&cleanHashValues( $be_r );
@@ -2045,7 +1998,7 @@ sub print_backends
 	for my $be ( @{ $be_list } )
 	{
 		my $single_be_str = "\t\tBackEnd\n";
-		$single_be_str .= "\t\t\tHTTPS\n"                    if exists $be->{ HTTPS };
+		$single_be_str .= "\t\t\tHTTPS\n" if exists $be->{ HTTPS };
 		$single_be_str .= "\t\t\tAddress $be->{ Address }\n";
 		$single_be_str .= "\t\t\tPort $be->{ Port }\n";
 		$single_be_str .= "\t\t\tTimeOut $be->{ TimeOut }\n" if exists $be->{ TimeOut };
@@ -2088,219 +2041,6 @@ sub print_session
 	}
 
 	return $session_str;
-}
-
-sub writeL7ProxyConfigToString
-{
-	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
-			 "debug", "PROFILING" );
-	my ( $conf ) = @_;
-
-	my $listener      = $conf->{ listeners }[0];
-	my $listener_type = uc $listener->{ type };
-
-	my $global_str =
-	  qq(######################################################################
-##GLOBAL OPTIONS
-User		"$conf->{ User }"
-Group		"$conf->{ Group }"
-Name		$conf->{ Name }
-## allow PUT and DELETE also (by default only GET, POST and HEAD)?:
-#ExtendedHTTP	0
-## Logging: (goes to syslog by default)
-##	0	no logging
-##	1	normal
-##	2	extended
-##	3	Apache-style (common log format)
-#LogFacility	local5
-LogLevel 	0
-## check timeouts:
-Timeout		$conf->{ Timeout }
-ConnTO		$conf->{ ConnTO }
-Alive		$conf->{ Alive }
-Client		$conf->{ Client }
-ThreadModel	$conf->{ ThreadModel }
-Control 	"$conf->{ Control }"
-);
-
-	if ( $listener_type eq 'HTTP' )
-	{
-		$global_str .= qq(#DHParams 	"/usr/local/skudonet/app/zproxy/etc/dh2048.pem"
-#ECDHCurve	"prime256v1"
-);
-	}
-	else
-	{
-		$global_str .= qq(DHParams 	"$conf->{ DHParams }"
-ECDHCurve	"$conf->{ ECDHCurve }"
-);
-	}
-
-	## Services
-	my $services_print = '';
-
-	for my $svc ( @{ $conf->{ listeners }[0]{ services } } )
-	{
-		my @item_list = qw(
-		  DynScale
-		  BackendCookie
-		  HeadRequire
-		  Url
-		  Redirect
-		  StrictTransportSecurity
-		  Session
-		  BackEnd
-		);
-
-		my $single_service_print = qq(\tService "$svc->{ name }"\n);
-
-		my $https_be = 'False';
-		$https_be = 'True'
-		  if defined $svc->{ backends }[0] && exists $svc->{ backends }[0]{ HTTPS };
-
-		$single_service_print .= qq(\t\t##$https_be##HTTPS-backend##\n);
-
-		for my $i ( @item_list )
-		{
-			#
-			my $exists = exists $svc->{ $i };
-
-			my $prefix = $exists ? ''           : '#';
-			my $value  = $exists ? $svc->{ $i } : $svc_defaults->{ $i };
-
-			my $i_str;
-
-			if ( $i eq 'Session' )
-			{
-				$i_str = &print_session( $svc->{ 'Session' } );
-			}
-			elsif ( $i eq 'BackEnd' )
-			{
-				$i_str =
-				  exists $svc->{ 'backends' } ? &print_backends( $svc->{ 'backends' } ) : '';
-			}
-			elsif ( $i eq 'BackendCookie' )
-			{
-				if ( exists $svc->{ 'BackendCookie' }
-					 && ref $svc->{ 'BackendCookie' } eq 'HASH' )
-				{
-					my $ckie   = $svc->{ 'BackendCookie' };
-					my $values = qq("$ckie->{name}" "$ckie->{domain}" "$ckie->{path}" $ckie->{age});
-					$i_str = qq(\t\tBackendCookie $values\n);
-				}
-				else
-				{
-					$i_str = '';
-				}
-			}
-			else
-			{
-				$i_str = "\t\t${prefix}${i} $value\n";
-			}
-
-			$single_service_print .= $i_str;
-		}
-
-		$single_service_print .= "\tEnd\n";
-		$services_print .= $single_service_print;
-	}
-
-	chomp $services_print;
-
-	## Listener
-	my $listener_str = qq(
-#HTTP(S) LISTENERS
-Listen${listener_type}
-);
-
-	$listener_str .= qq(\tErrWAF "$listener->{ ErrWAF }") if ( &eload );
-	$listener_str .= qq(
-	ErrWAF "$listener->{ ErrWAF }"
-	Err414 "$listener->{ Err414 }"
-	Err500 "$listener->{ Err500 }"
-	Err501 "$listener->{ Err501 }"
-	Err503 "$listener->{ Err503 }"
-	Address $listener->{ Address }
-	Port $listener->{ Port }
-	xHTTP $listener->{ xHTTP }
-	RewriteLocation $listener->{ RewriteLocation }
-);
-
-	# Include AddHeader params
-	if ( exists $listener->{ AddHeader }
-		 && ref $listener->{ AddHeader } eq 'ARRAY' )
-	{
-		for my $header ( @{ $listener->{ AddHeader } } )
-		{
-			$listener_str .= qq(\tAddHeader "$header"\n);
-		}
-	}
-
-	# Include HeadRemove params
-	if ( exists $listener->{ HeadRemove }
-		 && ref $listener->{ HeadRemove } eq 'ARRAY' )
-	{
-		for my $header ( @{ $listener->{ HeadRemove } } )
-		{
-			$listener_str .= qq(\tHeadRemove "$header"\n);
-		}
-	}
-
-	# Include https params
-	if ( $listener_type eq 'HTTPS' )
-	{
-		$listener_str .= "\n";
-		$listener_str .= qq(\tCert "$_"\n) for @{ $listener->{ Cert } };
-		$listener_str .= qq(\tCiphers "$listener->{ Ciphers }"\n);
-		$listener_str .= qq(\tDisable "$_"\n) for @{ $listener->{ Disable } };
-		$listener_str .=
-		  qq(\tSSLHonorCipherOrder "$listener->{ SSLHonorCipherOrder }"\n);
-	}
-	else
-	{
-		$listener_str .= qq(
-	#Cert "/usr/local/skudonet/config/skdcert.pem"
-	#Ciphers "ALL"
-	#Disable SSLv3
-	#SSLHonorCipherOrder 1
-);
-	}
-
-	# Include services and bottom of the configuration
-	$listener_str .= qq(\t#ZWACL-INI
-
-$services_print
-	#ZWACL-END
-
-
-	#Service "$conf->{ Name }"
-		##False##HTTPS-backend##
-		#DynScale 1
-		#BackendCookie "ZENSESSIONID" "domainname.com" "/" 0
-		#HeadRequire "Host: "
-		#Url ""
-		#Redirect ""
-		#StrictTransportSecurity 21600000
-		#Session
-			#Type nothing
-			#TTL 120
-			#ID "sessionname"
-		#End
-		#BackEnd
-
-		#End
-	#End
-
-
-End
-);
-
-	## Global configuration
-	#~ my $out_str = "$global_str\n";
-	#~ $out_str .= "$listener_str\n";
-
-	#~ return $out_str;
-	return "$global_str\n$listener_str";
 }
 
 sub cleanHashValues
@@ -2346,7 +2086,7 @@ sub setFarmProxyNGConf    # ($proxy_mode,$farm_name)
 	my $stat          = 0;
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @array, 'Tie::File', "$configdir\/$farm_filename";
@@ -2360,8 +2100,8 @@ sub setFarmProxyNGConf    # ($proxy_mode,$farm_name)
 	{
 		$sw = 1 if ( $array[$i] =~ /^\s+Service/ );
 		$bw = 1 if ( $array[$i] =~ /^\s+BackEnd/ && $sw == 1 );
-		$sw = 0 if ( $array[$i] =~ /^\tEnd/ && $sw == 1 && $bw == 0 );
-		$bw = 0 if ( $array[$i] =~ /^\t\tEnd/ && $sw == 1 && $bw == 1 );
+		$sw = 0 if ( $array[$i] =~ /^\tEnd/      && $sw == 1 && $bw == 0 );
+		$bw = 0 if ( $array[$i] =~ /^\t\tEnd/    && $sw == 1 && $bw == 1 );
 
 		if ( $proxy_mode eq "false" )
 		{
@@ -2485,18 +2225,7 @@ sub setFarmProxyNGConf    # ($proxy_mode,$farm_name)
 	untie @array;
 
 	&migrateHTTPFarmLogs( $farm_name, $proxy_mode );
-	if ( $eload )
-	{
-		my $func =
-		  ( $proxy_mode eq 'false' )
-		  ? 'addHTTPFarmWafBodySize'
-		  : 'delHTTPFarmWafBodySize';
-		&eload(
-				module => 'Skudonet::Farm::HTTP::Ext',
-				func   => $func,
-				args   => [$farm_name],
-		);
-	}
+
 
 	require Skudonet::Farm::HTTP::Sessions;
 	my $farm_sessions_filename = &getSessionsFileName( $farm_name );
@@ -2513,7 +2242,6 @@ sub setFarmProxyNGConf    # ($proxy_mode,$farm_name)
 		}
 
 		require Skudonet::Farm::Config;
-		&reloadFarmsSourceAddressByFarm( $farm_name );
 
 	}
 	else
@@ -2526,11 +2254,6 @@ sub setFarmProxyNGConf    # ($proxy_mode,$farm_name)
 			unlink "$farm_sessions_filename";
 		}
 
-		&eload(
-				module => 'Skudonet::Net::Floating',
-				func   => 'removeL7FloatingSourceAddr',
-				args   => [$farm_name],
-		) if ( $eload );
 	}
 
 	if ( &getHTTPFarmConfigIsOK( $farm_name ) )
@@ -2578,7 +2301,7 @@ sub doL7FarmRules
 	require Skudonet::Farm::HTTP::Config;
 	my $farm_ref;
 	$farm_ref->{ name } = $farm_name;
-	$farm_ref->{ vip } = &getHTTPFarmVip( "vip", $farm_name );
+	$farm_ref->{ vip }  = &getHTTPFarmVip( "vip", $farm_name );
 
 	require Skudonet::Farm::Backend;
 	require Skudonet::Farm::HTTP::Backend;
@@ -3628,7 +3351,7 @@ sub get_http_farm_headers_struct
 	my $rep_res_head_index  = 0;
 	foreach my $line ( <$fileconf> )
 	{
-		if ( $line =~ /^[#\s]*Service \"/ ) { last; }
+		if    ( $line =~ /^[#\s]*Service \"/ ) { last; }
 		elsif ( $line =~ /^[#\s]*AddHeader\s+"(.+)"/ )
 		{
 			push @{ $farm_st->{ addheader } },
@@ -3681,10 +3404,6 @@ sub get_http_farm_headers_struct
 				"replace" => $4
 			  }
 			  if $1 eq "Response";
-		}
-		elsif ( $line =~ /Ignore100Continue (\d).*/ )
-		{
-			$farm_st->{ ignore_100_continue } = ( $1 eq '0' ) ? 'false' : 'true';
 		}
 		elsif ( $line =~ /LogLevel\s+(\d).*/ )
 		{
@@ -3790,7 +3509,7 @@ sub getHTTPFarmLogs    # ($farm_name)
 			 "debug", "PROFILING" );
 
 	my $farm_name = shift;
-	my $proxy_ng = shift // &getGlobalConfiguration( 'proxy_ng' );
+	my $proxy_ng  = shift // &getGlobalConfiguration( 'proxy_ng' );
 
 	my $output = 'false';
 
@@ -3799,7 +3518,7 @@ sub getHTTPFarmLogs    # ($farm_name)
 
 	foreach my $line ( <$fileconf> )
 	{
-		if ( $line =~ /^[#\s]*Service \"/ ) { last; }
+		if    ( $line =~ /^[#\s]*Service \"/ ) { last; }
 		elsif ( $line =~ /LogLevel\s+(\d).*/ )
 		{
 			my $lvl = $1 + 0;
@@ -3838,7 +3557,7 @@ sub migrateHTTPFarmLogs
 
 	# invert the log
 	my $read_log = ( $proxy_mode eq 'true' ) ? 'false' : 'true';
-	my $log = &getHTTPFarmLogs( $farm_name, $read_log );
+	my $log      = &getHTTPFarmLogs( $farm_name, $read_log );
 	&setHTTPFarmLogs( $farm_name, $log, $proxy_mode );
 }
 
@@ -3922,7 +3641,7 @@ sub getHTTPFarm100Continue    # ($farm_name)
 
 	foreach my $line ( <$fileconf> )
 	{
-		if ( $line =~ /^[#\s]*Service \"/ ) { last; }
+		if    ( $line =~ /^[#\s]*Service \"/ ) { last; }
 		elsif ( $line =~ /Ignore100Continue (\d).*/ )
 		{
 			if ( $1 eq '1' )

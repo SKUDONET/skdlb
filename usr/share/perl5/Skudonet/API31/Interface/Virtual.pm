@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # POST /addvini/<interface> Create a new virtual network interface
 sub new_vini    # ( $json_obj )
@@ -151,11 +146,6 @@ sub new_vini    # ( $json_obj )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['interface', 'start', $if_ref->{ name }],
-	) if ( $eload );
 
 	my $body = {
 				 description => $desc,
@@ -216,17 +206,6 @@ sub delete_interface_virtual    # ( $virtual )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['interface', 'stop', $if_ref->{ name }],
-	) if ( $eload );
-
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['interface', 'delete', $if_ref->{ name }],
-	) if ( $eload );
 
 	my $message = "The virtual interface $virtual has been deleted.";
 	my $body = {
@@ -391,11 +370,6 @@ sub actions_interface_virtual    # ( $json_obj, $virtual )
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['interface', 'start', $if_ref->{ name }],
-		) if ( $eload );
 	}
 	elsif ( $json_obj->{ action } eq "down" )
 	{
@@ -409,11 +383,6 @@ sub actions_interface_virtual    # ( $json_obj, $virtual )
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['interface', 'stop', $if_ref->{ name }],
-		) if ( $eload );
 	}
 	else
 	{
@@ -507,11 +476,6 @@ sub modify_interface_virtual    # ( $json_obj, $virtual )
 	my $state = $if_ref->{ 'status' };
 	&downIf( $if_ref ) if $state eq 'up';
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['interface', 'stop', $if_ref->{ name }],
-	) if ( $eload );
 
 	eval {
 		# Set the new params
@@ -535,11 +499,6 @@ sub modify_interface_virtual    # ( $json_obj, $virtual )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['interface', 'start', $if_ref->{ name }],
-	) if ( $eload );
 
 	my $body = {
 				 description => $desc,

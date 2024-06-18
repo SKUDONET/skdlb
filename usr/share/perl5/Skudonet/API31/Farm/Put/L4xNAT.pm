@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -24,11 +25,6 @@ use strict;
 use Skudonet::Farm::Base;
 use Skudonet::Farm::L4xNAT::Config;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # PUT /farms/<farmname> Modify a l4xnat Farm
 sub modify_l4xnat_farm    # ( $json_obj, $farmname )
@@ -54,29 +50,6 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 	my $vip   = &getFarmVip( "vip",  $farmname );
 	my $vport = &getFarmVip( "vipp", $farmname );
 
-	my $reload_ipds = 0;
-	if (    exists $json_obj->{ vport }
-		 || exists $json_obj->{ vip }
-		 || exists $json_obj->{ newfarmname } )
-	{
-
-		if ( $eload )
-		{
-			$reload_ipds = 1;
-
-			&eload(
-					module => 'Skudonet::IPDS::Base',
-					func   => 'runIPDSStopByFarm',
-					args   => [$farmname],
-			);
-
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['ipds', 'stop', $farmname],
-			);
-		}
-	}
 
 	####### Functions
 
@@ -339,31 +312,6 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 	&zenlog( "Success, some parameters have been changed in farm $farmname.",
 			 "info", "LSLB" );
 
-	if ( &getL4FarmParam( 'status', $farmname ) eq 'up' )
-	{
-
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['farm', 'restart', $farmname],
-		) if ( $eload );
-
-		if ( $reload_ipds && $eload )
-		{
-
-			&eload(
-					module => 'Skudonet::IPDS::Base',
-					func   => 'runIPDSStartByFarm',
-					args   => [$farmname],
-			);
-
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['ipds', 'start', $farmname],
-			);
-		}
-	}
 
 	my $body = {
 				 description => $desc,

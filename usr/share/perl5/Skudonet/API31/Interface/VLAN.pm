@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 #  POST /addvlan/<interface> Create a new vlan network interface
 sub new_vlan    # ( $json_obj )
@@ -289,12 +284,6 @@ sub get_vlan_list    # ()
 	# get cluster interface
 	my $cluster_if;
 
-	if ( $eload )
-	{
-		my $zcl_conf = &eload( module => 'Skudonet::Cluster',
-							   func   => 'getZClusterConfig', );
-		$cluster_if = $zcl_conf->{ _ }->{ interface };
-	}
 
 	for my $if_ref ( &getInterfaceTypeList( 'vlan' ) )
 	{

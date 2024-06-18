@@ -121,10 +121,10 @@ sub get_system_info
 	my $applicance    = &getApplianceVersion();
 	my $user          = &getUser();
 	my @zapi_versions = &listZapiVersions();
-	
+
 	my $edition;
 		$edition = "community";
-	my $platform      = &getGlobalConfiguration( 'cloud_provider' );
+	my $platform = &getGlobalConfiguration( 'cloud_provider' );
 
 	my $params = {
 				   'system_date'             => $date,

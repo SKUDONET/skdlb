@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
@@ -286,11 +281,6 @@ sub getFarmCipherSet    # ($farm_name)
 	elsif ( $cipher_list eq &getGlobalConfiguration( 'cipher_pci' ) )
 	{
 		$output = "cipherpci";
-	}
-	elsif (    $eload
-			&& $cipher_list eq &getGlobalConfiguration( 'cipher_ssloffloading' ) )
-	{
-		$output = "cipherssloffloading";
 	}
 	else
 	{

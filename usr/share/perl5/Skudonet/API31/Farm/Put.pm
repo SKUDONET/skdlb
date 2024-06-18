@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -23,12 +24,11 @@
 use strict;
 use Skudonet::Farm::Core;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } ) { $eload = 1; }
 
-sub modify_farm # ( $json_obj, $farmname )
+sub modify_farm    # ( $json_obj, $farmname )
 {
-	&zenlog(__FILE__ . ":" . __LINE__ . ":" . (caller(0))[3] . "( @_ )", "debug", "PROFILING" );
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $json_obj = shift;
 	my $farmname = shift;
 
@@ -61,14 +61,6 @@ sub modify_farm # ( $json_obj, $farmname )
 		&modify_datalink_farm( $json_obj, $farmname );
 	}
 
-	if ( $type eq "gslb" && $eload)
-	{
-		&eload(
-			module => 'Skudonet::API31::Farm::Put::GSLB',
-			func   => 'modify_gslb_farm',
-			args   => [$json_obj, $farmname],
-		);
-	}
 }
 
 1;

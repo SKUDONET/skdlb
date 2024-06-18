@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -25,11 +26,6 @@ use Skudonet::Farm::Base;
 use Skudonet::Farm::Config;
 use Skudonet::Farm::Action;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # PUT /farms/<farmname> Modify a http|https Farm
 sub modify_http_farm    # ( $json_obj, $farmname )
@@ -56,33 +52,10 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 	}
 
 	# Get current vip & vport
-	my $vip   = &getFarmVip( "vip",  $farmname );
-	my $vport = &getFarmVip( "vipp", $farmname );
+	my $vip         = &getFarmVip( "vip",  $farmname );
+	my $vport       = &getFarmVip( "vipp", $farmname );
 	my $changedname = "false";
-	my $reload_ipds = 0;
 
-	if (    exists $json_obj->{ vport }
-		 || exists $json_obj->{ vip }
-		 || exists $json_obj->{ newfarmname } )
-	{
-
-		if ( $eload )
-		{
-			$reload_ipds = 1;
-
-			&eload(
-					module => 'Skudonet::IPDS::Base',
-					func   => 'runIPDSStopByFarm',
-					args   => [$farmname],
-			);
-
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['ipds', 'stop', $farmname],
-			);
-		}
-	}
 
 	######## Functions
 
@@ -247,38 +220,6 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		$restart_flag = "true";
 	}
 
-	if ( $eload )
-	{
-		# Enable or disable ignore 100 continue header
-		if ( exists ( $json_obj->{ ignore_100_continue } ) )
-		{
-			if ( $json_obj->{ ignore_100_continue } !~ /^(?:true|false)$/ )
-			{
-				my $msg = "Invalid ignore_100_continue value.";
-				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-
-			require Skudonet::Farm::HTTP::Config;
-			my $action = 0;
-			$action = 1 if ( $json_obj->{ ignore_100_continue } =~ /^true$/ );
-
-			my $newaction = &getHTTPFarm100Continue( $farmname );
-			$newaction = ( $newaction eq "pass" ) ? 0 : 1;
-
-			if ( $newaction != $action )
-			{
-				my $status = &setHTTPFarm100Continue( $farmname, $action );
-
-				if ( $status == -1 )
-				{
-					my $msg = "Some errors happened trying to modify the certname.";
-					&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-				}
-
-				$restart_flag = "true";
-			}
-		}
-	}
 
 	# Modify HTTP Verbs Accepted
 	if ( exists ( $json_obj->{ httpverb } ) )
@@ -411,24 +352,8 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 			elsif ( $json_obj->{ ciphers } eq "highsecurity" ) { $ciphers = "cipherpci"; }
 			elsif ( $json_obj->{ ciphers } eq "ssloffloading" )
 			{
-				if ( $eload )
-				{
-					my $ssloff = &eload( module => 'Skudonet::Farm::HTTP::HTTPS::Ext',
-										 func   => 'getFarmCipherSSLOffLoadingSupport', );
-
-					unless ( $ssloff )
-					{
-						my $msg = "The CPU does not support SSL offloading.";
-						&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-					}
-
-					$ciphers = "cipherssloffloading";
-				}
-				else
-				{
 					my $msg = "SSL offloading cipher profile not available.";
 					&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-				}
 			}
 
 			my $status = &setFarmCipherList( $farmname, $ciphers );
@@ -468,18 +393,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		if ( exists ( $json_obj->{ certname } ) )
 		{
 			my $status;
-			if ( $eload )
-			{
-				$status = &eload(
-								  module => 'Skudonet::Farm::HTTP::HTTPS::Ext',
-								  func   => 'setFarmCertificateSNI',
-								  args   => [$json_obj->{ certname }, $farmname],
-				);
-			}
-			else
-			{
 				$status = &setFarmCertificate( $json_obj->{ certname }, $farmname );
-			}
 
 			if ( $status == -1 )
 			{
@@ -620,18 +534,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		my @certlist;
 		my @cnames;
 
-		if ( $eload )
-		{
-			@cnames = &eload(
-							  module => 'Skudonet::Farm::HTTP::HTTPS::Ext',
-							  func   => 'getFarmCertificatesSNI',
-							  args   => [$farmname],
-			);
-		}
-		else
-		{
 			@cnames = ( &getFarmCertificate( $farmname ) );
-		}
 
 		my $elem = scalar @cnames;
 
@@ -672,24 +575,6 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		  ( &getHTTPFarmDisableSSL( $farmname, "TLSv1_2" ) ) ? "true" : "false";
 	}
 
-	if ( $reload_ipds )
-	{
-
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::IPDS::Base',
-					func   => 'runIPDSStartByFarm',
-					args   => [$farmname],
-			);
-
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['ipds', 'start', $farmname],
-			);
-		}
-	}
 
 	my $body = {
 				 description => $desc,
@@ -706,11 +591,6 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		else
 		{
 			&runFarmReload( $farmname );
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'reload', $farmname],
-			) if ( $eload );
 		}
 	}
 

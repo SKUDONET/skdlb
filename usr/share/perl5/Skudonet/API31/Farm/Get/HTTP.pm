@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -23,11 +24,6 @@
 use strict;
 use Skudonet::Farm::HTTP::Config;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 sub get_farm_struct
 {
@@ -61,18 +57,7 @@ sub get_farm_struct
 	{
 		require Skudonet::Farm::HTTP::HTTPS;
 
-		if ( $eload )
-		{
-			@cnames = &eload(
-							  module => 'Skudonet::Farm::HTTP::HTTPS::Ext',
-							  func   => 'getFarmCertificatesSNI',
-							  args   => [$farmname],
-			);
-		}
-		else
-		{
 			@cnames = ( &getFarmCertificate( $farmname ) );
-		}
 
 		for ( my $i = 0 ; $i < scalar @cnames ; $i++ )
 		{
@@ -102,7 +87,7 @@ sub get_farm_struct
 		}
 	}
 
-	my $vip = &getFarmVip( "vip", $farmname );
+	my $vip   = &getFarmVip( "vip", $farmname );
 	my $vport = 0 + &getFarmVip( "vipp", $farmname );
 
 	my $err414 = &getFarmErr( $farmname, "414" );
@@ -129,10 +114,6 @@ sub get_farm_struct
 						  error503        => $err503
 	};
 
-	#translate 100 continue parameter
-	my $ignore_100_continue = &getHTTPFarm100Continue( $farmname );
-	$output_params->{ ignore_100_continue } =
-	  ( $ignore_100_continue eq "pass" ) ? "false" : "true";
 
 	if ( $type eq "https" )
 	{
@@ -205,19 +186,6 @@ sub farms_name_http    # ( $farmname )
 				 services    => \@out_s,
 	};
 
-	if ( $eload )
-	{
-
-		$body->{ ipds } = &eload(
-								  module => 'Skudonet::IPDS::Core',
-								  func   => 'getIPDSfarmsRules',
-								  args   => [$farmname],
-		);
-		for my $blacklist ( @{ $body->{ ipds }->{ blacklists } } )
-		{
-			delete $blacklist->{ id };
-		}
-	}
 
 	&httpResponse( { code => 200, body => $body } );
 }
@@ -248,18 +216,6 @@ sub farms_name_http_summary
 				 services    => \@out_s,
 	};
 
-	if ( $eload )
-	{
-		$body->{ ipds } = &eload(
-								  module => 'Skudonet::IPDS::Core',
-								  func   => 'getIPDSfarmsRules',
-								  args   => [$farmname],
-		);
-		for my $blacklist ( @{ $body->{ ipds }->{ blacklists } } )
-		{
-			delete $blacklist->{ id };
-		}
-	}
 
 	&httpResponse( { code => 200, body => $body } );
 }
@@ -313,7 +269,7 @@ sub getZapiHTTPServiceStruct
 	if ( !$fgscript )  { $fgscript  = ""; }
 
 	$fgscript =~ s/\n//g;
-	$fguse =~ s/\n//g;
+	$fguse    =~ s/\n//g;
 
 	my $backends = &getHTTPFarmBackends( $farmname, $service_name );
 
@@ -338,14 +294,6 @@ sub getZapiHTTPServiceStruct
 					 fgscript     => $fgscript,
 	};
 
-	if ( $eload )
-	{
-		&eload(
-				module => 'Skudonet::Farm::HTTP::Service::Ext',
-				func   => 'add_service_cookie_insertion',
-				args   => [$farmname, $service_ref],
-		);
-	}
 
 	return $service_ref;
 }

@@ -25,11 +25,6 @@ use strict;
 
 use Skudonet::RRD;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 #GET the list of graphs availables in the load balancer
 sub list_possible_graphs    #()
@@ -40,16 +35,6 @@ sub list_possible_graphs    #()
 
 	my @farms = grep ( s/-farm$//, &getGraphs2Show( "Farm" ) );
 
-	if ( $eload )
-	{
-		@farms = @{
-			&eload(
-					module => 'Skudonet::RBAC::Group::Core',
-					func   => 'getRBACResourcesFromList',
-					args   => ['farms', \@farms],
-			)
-		};
-	}
 
 	my @net = grep ( s/iface$//, &getGraphs2Show( "Network" ) );
 	my @sys = ( "cpu", "load", "ram", "swap" );
@@ -67,18 +52,6 @@ sub list_possible_graphs    #()
 	@mount_points = sort @mount_points;
 	push @sys, { disks => \@mount_points };
 
-	my @vpns;
-	if ( $eload )
-	{
-		@vpns = grep ( s/-vpn$//, &getGraphs2Show( "VPN" ) );
-		@vpns = @{
-			&eload(
-					module => 'Skudonet::RBAC::Group::Core',
-					func   => 'getRBACResourcesFromList',
-					args   => ['vpns', \@vpns],
-			)
-		};
-	}
 	my $body = {
 		description =>
 		  "These are the possible graphs, you'll be able to access to the daily, weekly, monthly or yearly graph",
@@ -86,12 +59,7 @@ sub list_possible_graphs    #()
 		interfaces => \@net,
 		farms      => \@farms
 	};
-	$body->{ "vpns" } = \@vpns if $eload;
 
-	if ( $eload )
-	{
-		$body->{ ipds } = \@farms;
-	}
 
 	&httpResponse( { code => 200, body => $body } );
 }
@@ -353,15 +321,6 @@ sub list_farm_graphs    #()
 			 "debug", "PROFILING" );
 	my @farms = grep ( s/-farm$//, &getGraphs2Show( "Farm" ) );
 
-	if ( $eload )
-	{
-		my $ref_farm = &eload(
-							   module => 'Skudonet::RBAC::Group::Core',
-							   func   => 'getRBACResourcesFromList',
-							   args   => ['farms', \@farms]
-		);
-		@farms = @{ $ref_farm };
-	}
 
 	my $body = {
 		description =>
@@ -586,7 +545,7 @@ sub get_disk_graphs_freq    #()
 	}
 
 	my $dev_id = $parts->{ $part_key }->{ rrd_id };
-	my $graph = &printGraph( $dev_id, $frequency );
+	my $graph  = &printGraph( $dev_id, $frequency );
 	my $body = {
 				 description => $desc,
 				 graph       => $graph->{ img },

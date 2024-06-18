@@ -23,12 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
-
 # GET /interfaces Get params of the interfaces
 sub get_interfaces    # ()
 {
@@ -39,17 +33,7 @@ sub get_interfaces    # ()
 	my $desc = "List interfaces";
 	my $if_list_ref;
 
-	if ( $eload )
-	{
-		$if_list_ref = &eload(
-							   module => 'Skudonet::Net::Interface',
-							   func   => 'get_interface_list_struct',    # 100
-		);
-	}
-	else
-	{
-		$if_list_ref = &get_interface_list_struct();
-	}
+	$if_list_ref = &get_interface_list_struct();
 
 	my $body = {
 				 description => $desc,

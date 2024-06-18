@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: setFarmBlacklistTime
@@ -137,33 +132,6 @@ sub setFarmSessionType    # ($session,$farm_name)
 		$output = &setL4FarmParam( 'persist', $session, $farm_name );
 	}
 
-	#if persistence is enabled
-	require Skudonet::Farm::Config;
-	if ( &getPersistence( $farm_name ) == 0 )
-	{
-		#register farm in ssyncd
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Ssyncd',
-					func   => 'setSsyncdFarmUp',
-					args   => [$farm_name],
-			);
-		}
-
-	}
-	else
-	{
-		#unregister farm in ssyncd
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Ssyncd',
-					func   => 'setSsyncdFarmDown',
-					args   => [$farm_name],
-			);
-		}
-	}
 	return $output;
 }
 
@@ -467,14 +435,6 @@ sub setFarmVirtualConf    # ($vip,$vip_port,$farm_name)
 			$stat = &setL4FarmParam( 'vipp', $vip_port, $farm_name );
 		}
 	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$stat = &eload(
-						module => 'Skudonet::Farm::GSLB::Config',
-						func   => 'setGSLBFarmVirtualConf',
-						args   => [$vip, $vip_port, $farm_name],
-		);
-	}
 
 	return $stat;
 }
@@ -578,14 +538,6 @@ sub getFarmVS    # ($farm_name, $service, $tag)
 		require Skudonet::Farm::HTTP::Service;
 		$output = &getHTTPFarmVS( $farm_name, $service, $tag );
 	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Farm::GSLB::Service',
-						  func   => 'getGSLBFarmVS',
-						  args   => [$farm_name, $service, $tag],
-		);
-	}
 
 	return $output;
 }
@@ -619,14 +571,6 @@ sub setFarmVS    # ($farm_name,$service,$tag,$string)
 		require Skudonet::Farm::HTTP::Service;
 		$output = &setHTTPFarmVS( $farm_name, $service, $tag, $string );
 	}
-	elsif ( $farm_type eq "gslb" )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Farm::GSLB::Service',
-						  func   => 'setGSLBFarmVS',
-						  args   => [$farm_name, $service, $tag, $string],
-		) if $eload;
-	}
 
 	return $output;
 }
@@ -648,7 +592,7 @@ sub getFarmStruct
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	require Skudonet::Farm::Core;
-	my $farm;    # declare output hash
+	my $farm;                                   # declare output hash
 	my $farmName = shift;                       # input: farm name
 	my $farmType = &getFarmType( $farmName );
 	return undef if ( $farmType eq 1 );
@@ -662,14 +606,6 @@ sub getFarmStruct
 	{
 		require Skudonet::Farm::L4xNAT::Config;
 		$farm = &getL4FarmStruct( $farmName );
-	}
-	elsif ( $farmType =~ /gslb/ )
-	{
-		$farm = &eload(
-						module => 'Skudonet::Farm::GSLB::Config',
-						func   => 'getGSLBFarmStruct',
-						args   => [$farmName],
-		);
 	}
 
 	# elsif ( $farmType =~ /datalink/ )
@@ -699,7 +635,7 @@ sub getFarmPlainInfo    # ($farm_name)
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $farm_name = shift;
-	my $file = shift // undef;
+	my $file      = shift // undef;
 	my @content;
 
 	my $configdir = &getGlobalConfiguration( 'configdir' );
@@ -722,353 +658,6 @@ sub getFarmPlainInfo    # ($farm_name)
 	return \@content;
 }
 
-=begin nd
-Function: reloadFarmsSourceAddress
-
-        Reload source address rules of farms
-
-Parameters:
-        none
-
-Returns:
-        none
-
-
-FIXME:
-		one source address per farm, not for backend
-=cut
-
-sub reloadFarmsSourceAddress
-{
-	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
-			 "debug", "PROFILING" );
-
-	require Skudonet::Farm::Core;
-
-	for my $farm_name ( &getFarmNameList() )
-	{
-		&reloadFarmsSourceAddressByFarm( $farm_name );
-	}
-}
-
-=begin nd
-Function: reloadL7FarmsSourceAddress
-
-        Reload source address rules of HTTP/HTTPS farms
-
-Parameters:
-        none
-
-Returns:
-        none
-
-=cut
-
-sub reloadL7FarmsSourceAddress
-{
-	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
-			 "debug", "PROFILING" );
-
-	require Skudonet::Farm::Core;
-
-	my @farms = &getFarmsByType( 'http' );
-	push @farms, &getFarmsByType( 'https' );
-
-	for my $farm_name ( @farms )
-	{
-		&reloadFarmsSourceAddressByFarm( $farm_name );
-	}
-}
-
-=begin nd
-Function: reloadFarmsSourceAddressbyFarm
-
-        Reload source address rules of a certain farm (l4 in NAT mode and HTTP)
-		HTTP:
-			Add backend only if use a different sourceaddr
-
-Parameters:
-        farm_name - name of the farm to apply the source address
-
-Returns:
-        none
-
-FIXME:
-		one source address per farm, not for backend
-=cut
-
-sub reloadFarmsSourceAddressByFarm
-{
-	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
-			 "debug", "PROFILING" );
-
-	require Skudonet::Farm::Core;
-	require Skudonet::Farm::Base;
-
-	my $farm_name = shift;
-	return if &getFarmStatus( $farm_name ) ne 'up';
-
-	my $farm_type = &getFarmType( $farm_name );
-	if ( $farm_type eq 'l4xnat' )
-	{
-		my $farm_ref = &getL4FarmStruct( $farm_name );
-		return if $farm_ref->{ nattype } ne 'nat';
-
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Net::Floating',
-					func   => 'setFloatingSourceAddr',
-					args   => [$farm_ref, undef],
-			);
-
-			# reload the backend source address
-			foreach my $bk ( @{ $farm_ref->{ servers } } )
-			{
-				&eload(
-						module => 'Skudonet::Net::Floating',
-						func   => 'setFloatingSourceAddr',
-						args   => [$farm_ref, $bk],
-				);
-			}
-		}
-	}
-	elsif ( $farm_type eq 'http' || $farm_type eq 'https' )
-	{
-		if ( $eload && &getGlobalConfiguration( "proxy_ng" ) eq 'true' )
-		{
-			return if &getGlobalConfiguration( 'floating_L7' ) ne 'true';
-
-			my $farm_ref;
-			$farm_ref->{ name }  = $farm_name;
-			$farm_ref->{ vip }   = &getHTTPFarmVip( "vip", $farm_name );
-			$farm_ref->{ vport } = &getHTTPFarmVip( "vipp", $farm_name );
-			my $farm_floating_ref = &checkLocalFarmSourceAddress( $farm_name );
-
-			if (     not defined $farm_floating_ref->{ farm }
-				 and not defined $farm_floating_ref->{ backends } )
-			{
-				# no floating needed
-				&eload(
-						module => 'Skudonet::Net::Floating',
-						func   => 'removeL7FloatingSourceAddr',
-						args   => [$farm_name],
-				);
-			}
-			else
-			{
-				if ( defined $farm_floating_ref->{ farm } )
-				{
-					# farm needs floating
-					$farm_ref->{ float } = $farm_floating_ref->{ farm }->{ out }->{ floating_ip };
-					&eload(
-							module => 'Skudonet::Net::Floating',
-							func   => 'setL7FloatingSourceAddr',
-							args   => [$farm_ref, undef, $farm_floating_ref],
-					);
-				}
-				if ( defined $farm_floating_ref->{ backends } )
-				{
-					foreach my $backend_floating_ref ( @{ $farm_floating_ref->{ backends } } )
-					{
-						my $bk_ref->{ tag } = $backend_floating_ref->{ in }->{ mark };
-
-						if ( $backend_floating_ref->{ out }->{ floating_ip } )
-						{
-							# backend needs floating
-							$bk_ref->{ ip }    = $backend_floating_ref->{ in }->{ ip };
-							$bk_ref->{ float } = $backend_floating_ref->{ out }->{ floating_ip };
-							&eload(
-									module => 'Skudonet::Net::Floating',
-									func   => 'setL7FloatingSourceAddr',
-									args   => [$farm_ref, $bk_ref, $farm_floating_ref],
-							);
-						}
-						else
-						{
-							# backend does not need floating
-							&eload(
-									module => 'Skudonet::Net::Floating',
-									func   => 'removeL7FloatingSourceAddr',
-									args   => [$farm_name, $bk_ref],
-							);
-						}
-					}
-				}
-			}
-		}
-	}
-	return;
-}
-
-=begin nd
-Function: checkLocalFarmSourceAddress
-
-        Check if an HTTP farm should exist as a local farm in nftlb in order to do snat in any of its backends.
-		The function will return 1 in case the farm's vip contains floating ip or any of the farm's backends 
-		are on a network with floating ip or is on an unknown network or custom routes.
-Parameters:
-        farm_name - name of the farm to check
-	floating_ref - Hash ref with floating system information
-
-Returns:
-        Scalar - Integer : 0 if sourceaddress is not needed.
-			   1 if farm must be configured for snat.
-        		   2 if some backend must be configured for snat.
-        		   3 if farm and some backend must be configured for snat.
-			   -1 if error.
-
-=cut
-
-sub checkLocalFarmSourceAddress
-{
-	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
-			 "debug", "PROFILING" );
-
-	my ( $farm_name, $floating_ref ) = @_;
-
-	my $farm_srcaddr_ref;
-
-	require Skudonet::Farm::Core;
-	require Skudonet::Farm::Base;
-
-	my $farm_type = &getFarmType( $farm_name );
-
-	if ( $farm_type eq 'http' || $farm_type eq 'https' )
-	{
-		my $floating = 0;
-		if ( $eload )
-		{
-			$floating = 1 if ( &getGlobalConfiguration( 'floating_L7' ) eq 'true' );
-		}
-		return $farm_srcaddr_ref if not $floating;
-
-		# check system floating
-		my $floating_config = &eload( module => 'Skudonet::Net::Floating',
-									  func   => 'getFloatingConfig', );
-		return $farm_srcaddr_ref if not $floating_config;
-
-		# check farm vip has floating
-
-		require Skudonet::Farm::HTTP::Config;
-		my $farm_vip = &getHTTPFarmVip( "vip", $farm_name );
-
-		my $floating_system_ref;
-		if ( $floating_ref )
-		{
-			$floating_system_ref = $floating_ref;
-		}
-		else
-		{
-			$floating_system_ref = &eload( module => 'Skudonet::Net::Floating',
-										   func   => 'get_floating_struct', );
-		}
-
-		require Skudonet::Net::Interface;
-		my $if_system_status = &getInterfaceSystemStatusAll();
-
-		my $farm_floating = &eload(
-						 module => 'Skudonet::Net::Floating',
-						 func   => 'getFloatingSourceAddr',
-						 args => [$farm_vip, undef, $floating_system_ref, $if_system_status]
-		);
-
-		# if iface with floating, needs snat
-		if ( $farm_floating->{ out }->{ floating_ip } )
-		{
-			$farm_srcaddr_ref->{ farm } = $farm_floating;
-		}
-
-		# check backends for every service
-		require Skudonet::Farm::HTTP::Service;
-		my @services = &getHTTPFarmServices( $farm_name );
-
-		require Skudonet::Farm::HTTP::Backend;
-		my $ip_floating_ref;
-		my $bk_floating;
-		my $exists_floating_backend = 0;
-		foreach my $serv_name ( @services )
-		{
-			my $backends_ref = &getHTTPFarmBackends( $farm_name, $serv_name, "false" );
-			foreach my $bk ( @{ $backends_ref } )
-			{
-				if ( not $ip_floating_ref->{ $bk->{ ip } } )
-				{
-					# get sourceaddress
-					my $mark = sprintf ( "0x%x", $bk->{ tag } );
-					$bk_floating = &eload(
-								   module => 'Skudonet::Net::Floating',
-								   func   => 'getFloatingSourceAddr',
-								   args => [$bk->{ ip }, $mark, $floating_system_ref, $if_system_status]
-					);
-
-					$ip_floating_ref->{ $bk->{ ip } } = $bk_floating;
-				}
-				else
-				{
-					%{ $bk_floating->{ in } }  = %{ $ip_floating_ref->{ $bk->{ ip } }->{ in } };
-					%{ $bk_floating->{ out } } = %{ $ip_floating_ref->{ $bk->{ ip } }->{ out } };
-				}
-				$bk_floating->{ in }->{ mark } = $bk->{ tag };
-
-				# check if backend uses floating
-				if ( $bk_floating->{ out }->{ floating_ip } )
-				{
-					$exists_floating_backend = 1;
-				}
-				push @{ $farm_srcaddr_ref->{ backends } }, $bk_floating;
-				$bk_floating = undef;
-			}
-		}
-		delete $farm_srcaddr_ref->{ backends } if not $exists_floating_backend;
-	}
-	return $farm_srcaddr_ref;
-}
-
-=begin nd
-Function: reloadBackendsSourceAddressByIface
-
-        Reload source address rules of a certain farm (l4 in NAT mode and HTTP) by Iface
-
-Parameters:
-        iface_name - Interface which the the route is appplied in
-
-Returns:
-        none
-
-=cut
-
-sub reloadBackendsSourceAddressByIface
-{
-	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
-			 "debug", "PROFILING" );
-
-	require Skudonet::Farm::Core;
-	require Skudonet::Farm::Base;
-
-	foreach my $farm_name ( &getFarmNameList() )
-	{
-		my $farm_type = &getFarmType( $farm_name );
-		next if &getFarmStatus( $farm_name ) ne 'up';
-		if ( $farm_type eq 'http' || $farm_type eq 'https' )
-		{
-			next if ( &getGlobalConfiguration( "proxy_ng" ) ne 'true' );
-			my $floating = 0;
-			if ( $eload )
-			{
-				$floating = 1 if ( &getGlobalConfiguration( 'floating_L7' ) eq 'true' );
-			}
-			next if !$floating;
-			&reloadFarmsSourceAddressByFarm( $farm_name );
-		}
-		elsif ( $farm_type eq 'l4xnat' )
-		{
-			my $farm_ref = &getL4FarmStruct( $farm_name );
-			next if $farm_ref->{ nattype } ne 'nat';
-			&reloadFarmsSourceAddressByFarm( $farm_name );
-		}
-	}
-}
 
 =begin nd
 Function: getPersistence
@@ -1091,16 +680,6 @@ sub getPersistence
 	my $farm_ref;
 	my $nodestatus = "";
 	return 1 if $farm_type !~ /l4xnat|http/;
-	if ( $eload )
-	{
-		$nodestatus = &eload(
-							  module => 'Skudonet::Cluster',
-							  func   => 'getZClusterNodeStatus',
-							  args   => [],
-		);
-	}
-
-	return 1 if ( $nodestatus ne "master" );
 	if ( $farm_type eq 'l4xnat' )
 	{
 		require Skudonet::Farm::L4xNAT::Config;

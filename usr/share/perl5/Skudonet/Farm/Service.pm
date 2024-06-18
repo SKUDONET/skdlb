@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
@@ -59,14 +54,6 @@ sub getFarmServices    # ($farm_name)
 		@output = &getHTTPFarmServices( $farm_name );
 	}
 
-	if ( $farm_type eq "gslb" )
-	{
-		@output = &eload(
-						  module => 'Skudonet::Farm::GSLB::Service',
-						  func   => 'getGSLBFarmServices',
-						  args   => [$farm_name],
-		) if $eload;
-	}
 
 	return @output;
 }

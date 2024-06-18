@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -22,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $CSR_KEY_SIZE = 2048;
 
@@ -165,13 +161,13 @@ sub create_csr
 		$json_obj->{ name } =~ /^$/
 
 		#~ || $json_obj->{ issuer } =~ /^$/
-		|| $json_obj->{ fqdn } =~ /^$/
-		|| $json_obj->{ division } =~ /^$/
+		|| $json_obj->{ fqdn }         =~ /^$/
+		|| $json_obj->{ division }     =~ /^$/
 		|| $json_obj->{ organization } =~ /^$/
-		|| $json_obj->{ locality } =~ /^$/
-		|| $json_obj->{ state } =~ /^$/
-		|| $json_obj->{ country } =~ /^$/
-		|| $json_obj->{ mail } =~ /^$/
+		|| $json_obj->{ locality }     =~ /^$/
+		|| $json_obj->{ state }        =~ /^$/
+		|| $json_obj->{ country }      =~ /^$/
+		|| $json_obj->{ mail }         =~ /^$/
 
 		#~ || $json_obj->{ key } =~ /^$/
 	  )
@@ -282,13 +278,6 @@ sub ciphers_available    # ( $json_obj, $farmname )
 				{ 'ciphers' => "customsecurity", "description" => "Custom security" }
 	);
 
-	push (
-		   @out,
-		   &eload(
-				   module => 'Skudonet::Farm::HTTP::HTTPS::Ext',
-				   func   => 'getExtraCipherProfiles',
-		   )
-	) if ( $eload );
 
 	my $body = {
 				 description => $desc,

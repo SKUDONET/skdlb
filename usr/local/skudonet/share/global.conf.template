@@ -334,10 +334,7 @@ $reboot_bin="/usr/sbin/reboot";
 #Where is arpsend
 $arpsend_bin="/usr/sbin/arpsend";
 #Where is dhclient
-$aws_dhcp_bin="/sbin/dhclient";#update
-$default_dhcp_bin="/usr/sbin/dhclient";#update
 #This variable is modified from postinst
-$dhcp_bin="/usr/sbin/dhclient";
 #Where is netcat
 $aws_netcat_bin="/bin/nc.openbsd";#update
 $default_netcat_bin="/usr/bin/nc.openbsd";#update

@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ##############################################################################
 #
 #    Skudonet Software License
@@ -22,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # GET /certificates/letsencryptz
 sub get_le_certificates    # ()
@@ -46,22 +42,6 @@ sub get_le_certificates    # ()
 		{
 			push @out, &getLetsencryptCertificateInfo( $cert->{ name } );
 		}
-	}
-	if ( $eload )
-	{
-		my $wildcards = &eload( module => 'Skudonet::LetsencryptZ::Wildcard',
-								func   => 'getLetsencryptWildcardCertificates' );
-
-		foreach my $cert ( @{ $wildcards } )
-		{
-			push @out,
-			  &eload(
-					  module => 'Skudonet::LetsencryptZ::Wildcard',
-					  func   => 'getLetsencryptWildcardCertificateInfo',
-					  args   => [$cert->{ name }]
-			  );
-		}
-
 	}
 
 	my $body = {
@@ -275,21 +255,6 @@ sub delete_le_certificate    # ( $cert_filename )
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	if ( $eload )
-	{
-		# check the certificate is being used by ZAPI Webserver
-		my $status = &eload(
-							 module => 'Skudonet::System::HTTP',
-							 func   => 'getHttpsCertUsed',
-							 args   => ['$cert_name']
-		);
-		if ( $status == 0 )
-		{
-			my $msg =
-			  "Let's Encrypt Certificate $le_cert_name can not be deleted because it is in use by HTTPS server";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
 
 	# revoke LE cert
 	my $error = &runLetsencryptDestroy( $le_cert_name );
@@ -473,15 +438,6 @@ sub actions_le_certificate    # ( $le_cert_name )
 			}
 		}
 
-		# restart on backup node
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'restart_farms', @farms_restarted],
-			) if @farms_restarted;
-		}
 	}
 
 	my $info_msg;

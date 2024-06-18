@@ -25,11 +25,6 @@ use strict;
 
 use Skudonet::Farm::Backend::Maintenance;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: getFarmServerIds
@@ -82,29 +77,6 @@ sub getFarmServerIds
 		close $fh;
 		@servers = 0 .. $#servers if ( @servers );
 	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		my $backendsvs = &eload(
-								 module => 'Skudonet::Farm::GSLB::Service',
-								 func   => 'getGSLBFarmVS',
-								 args   => [$farm_name, $service, "backends"],
-		);
-		my @be = split ( "\n", $backendsvs );
-		my $id;
-		foreach my $b ( @be )
-		{
-			$b =~ s/^\s+//;
-			next if ( $b =~ /^$/ );
-
-			# ID and IP
-			my @subbe = split ( " => ", $b );
-			$id = $subbe[0];
-			$id =~ s/^primary$/1/;
-			$id =~ s/^secondary$/2/;
-			$id + 0;
-			push @servers, $id;
-		}
-	}
 
 	return \@servers;
 }
@@ -149,14 +121,6 @@ sub getFarmServers    # ($farm_name, $service)
 	{
 		require Skudonet::Farm::Datalink::Backend;
 		$servers = &getDatalinkFarmBackends( $farm_name );
-	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$servers = &eload(
-						   module => 'Skudonet::Farm::GSLB::Backend',
-						   func   => 'getGSLBFarmBackends',
-						   args   => [$farm_name, $service],
-		);
 	}
 
 	return $servers;
@@ -317,14 +281,6 @@ sub runFarmServerDelete    # ($ids,$farm_name,$service)
 	{
 		require Skudonet::Farm::HTTP::Backend;
 		$output = &runHTTPFarmServerDelete( $ids, $farm_name, $service );
-	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Farm::GSLB::Backend',
-						  func   => 'runGSLBFarmServerDelete',
-						  args   => [$ids, $farm_name, $service],
-		);
 	}
 
 	return $output;

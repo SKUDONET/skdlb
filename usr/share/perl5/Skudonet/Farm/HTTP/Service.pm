@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
@@ -106,7 +101,7 @@ sub setFarmHTTPNewService    # ($farm_name,$service)
 		$newservice[$#newservice] =~ s/#//g;
 
 		my $lock_file = &getLockFile( $farm_name );
-		my $lock_fh = &openlock( $lock_file, 'w' );
+		my $lock_fh   = &openlock( $lock_file, 'w' );
 
 		my @fileconf;
 		if ( !fgrep { /^\s*Service "$service"/ } "$configdir/$farm_name\_proxy.cfg" )
@@ -223,7 +218,7 @@ sub setFarmHTTPNewServiceFirst    # ($farm_name,$service)
 		$newservice[$#newservice] =~ s/#//g;
 
 		my $lock_file = &getLockFile( $farm_name );
-		my $lock_fh = &openlock( $lock_file, 'w' );
+		my $lock_fh   = &openlock( $lock_file, 'w' );
 
 		my @fileconf;
 		if ( !fgrep { /^\s*Service "$service"/ } "$configdir/$farm_name\_proxy.cfg" )
@@ -301,16 +296,16 @@ sub delHTTPFarmService    # ($farm_name,$service)
 	my $farm_ref      = getFarmStruct( $farm_name );
 
 	# Counter the Service's backends
-	my $sindex = &getFarmVSI( $farm_name, $service );
+	my $sindex     = &getFarmVSI( $farm_name, $service );
 	my $backendsvs = &getHTTPFarmVS( $farm_name, $service, "backends" );
-	my @be = split ( "\n", $backendsvs );
-	my $counter = @be;
+	my @be         = split ( "\n", $backendsvs );
+	my $counter    = @be;
 
 	# Stop FG service
 	&delFGFarm( $farm_name, $service );
 
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	tie my @fileconf, 'Tie::File', "$configdir/$farm_filename";
 
@@ -334,18 +329,6 @@ sub delHTTPFarmService    # ($farm_name,$service)
 				&delMarks( "", $mark );
 				&setBackendRule( "del", $farm_ref, $mark )
 				  if ( &getGlobalConfiguration( 'mark_routing_L7' ) eq 'true' );
-				if ( $eload )
-				{
-					if ( &getGlobalConfiguration( 'floating_L7' ) eq 'true' )
-					{
-						# Delete backend if exists in nftlb
-						&eload(
-								module => 'Skudonet::Net::Floating',
-								func   => 'removeL7FloatingSourceAddr',
-								args   => [$farm_ref->{ name }, { tag => $1 }],
-						);
-					}
-				}
 			}
 			splice @fileconf, $i, 1,;
 			$i--;
@@ -359,13 +342,6 @@ sub delHTTPFarmService    # ($farm_name,$service)
 		}
 	}
 
-	if ( $eload )
-	{
-		if ( &getGlobalConfiguration( 'floating_L7' ) eq 'true' )
-		{
-			&reloadFarmsSourceAddressByFarm( $farm_name );
-		}
-	}
 
 	untie @fileconf;
 	close $lock_fh;
@@ -661,7 +637,7 @@ sub getHTTPServiceStruct
 
 	# http services
 	my $services = &getHTTPFarmVS( $farmname, "", "" );
-	my @serv = split ( ' ', $services );
+	my @serv     = split ( ' ', $services );
 
 	# return error if service is not found
 	return unless grep ( { $service_name eq $_ } @serv );
@@ -692,14 +668,6 @@ sub getHTTPServiceStruct
 	{
 		$be->{ 'status' } = 'up' if $be->{ 'status' } eq 'undefined';
 	}
-	if ( $eload )
-	{
-		my $backends = &eload(
-							   module => 'Skudonet::Alias',
-							   func   => 'addAliasBackendsStruct',
-							   args   => [$backends],
-		);
-	}
 
 	my $service_ref = {
 						id           => $service_name,
@@ -725,58 +693,6 @@ sub getHTTPServiceStruct
 	# add fg
 	$service_ref->{ farmguardian } = &getFGFarm( $farmname, $service_name );
 
-	if ( $eload )
-	{
-		if ( $proxy_ng eq 'true' )
-		{
-			my $addRequestHeader =
-			  &getHTTPFarmVS( $farmname, $service_name, "addRequestHeader" );
-			my $addResponseHeader =
-			  &getHTTPFarmVS( $farmname, $service_name, "addResponseHeader" );
-			my $removeRequestHeader =
-			  &getHTTPFarmVS( $farmname, $service_name, "removeRequestHeader" );
-			my $removeResponseHeader =
-			  &getHTTPFarmVS( $farmname, $service_name, "removeResponseHeader" );
-			my $replaceRequestHeader =
-			  &getHTTPFarmVS( $farmname, $service_name, "replaceRequestHeader" );
-			my $replaceResponseHeader =
-			  &getHTTPFarmVS( $farmname, $service_name, "replaceResponseHeader" );
-			my $rewriteUrl = &getHTTPFarmVS( $farmname, $service_name, "rewriteUrl" );
-
-			$service_ref->{ replacerequestheader }  = $replaceRequestHeader;
-			$service_ref->{ replaceresponseheader } = $replaceResponseHeader;
-			$service_ref->{ rewriteurl }            = $rewriteUrl;
-			$service_ref->{ addrequestheader }      = $addRequestHeader;
-			$service_ref->{ addresponseheader }     = $addResponseHeader;
-			$service_ref->{ removerequestheader }   = $removeRequestHeader;
-			$service_ref->{ removeresponseheader }  = $removeResponseHeader;
-		}
-
-		$service_ref = &eload(
-							   module => 'Skudonet::Farm::HTTP::Service::Ext',
-							   func   => 'add_service_cookie_insertion',
-							   args   => [$farmname, $service_ref],
-		);
-
-		$service_ref->{ redirect_code } = &eload(
-											  module => 'Skudonet::Farm::HTTP::Service::Ext',
-											  func   => 'getHTTPServiceRedirectCode',
-											  args   => [$farmname, $service_name],
-		);
-		$service_ref->{ sts_status } = &eload(
-											  module => 'Skudonet::Farm::HTTP::Service::Ext',
-											  func   => 'getHTTPServiceSTSStatus',
-											  args   => [$farmname, $service_name],
-		);
-
-		$service_ref->{ sts_timeout } = int (
-										  &eload(
-												  module => 'Skudonet::Farm::HTTP::Service::Ext',
-												  func   => 'getHTTPServiceSTSTimeout',
-												  args   => [$farmname, $service_name],
-										  )
-		);
-	}
 
 	return $service_ref;
 }
@@ -874,7 +790,7 @@ sub getHTTPFarmVS    # ($farm_name,$service,$tag)
 	foreach my $line ( <$fileconf> )
 	{
 		if ( $line =~ /^\tService \"$service\"/ ) { $sw = 1; }
-		if ( $line =~ /^\tEnd\s*$/ ) { $sw = 0; }
+		if ( $line =~ /^\tEnd\s*$/ )              { $sw = 0; }
 
 		# returns all services for this farm
 		if ( $tag eq "" && $service eq "" )
@@ -1210,7 +1126,7 @@ sub getHTTPFarmVS    # ($farm_name,$service,$tag)
 					}
 					else
 					{
-						if ( $2 eq 0 ) { $output = "disabled"; last; }
+						if    ( $2 eq 0 ) { $output = "disabled"; last; }
 						elsif ( $2 eq 1 ) { $output = "enabled"; }
 						elsif ( $2 eq 2 ) { $output = "enabled-backends"; }
 
@@ -1234,33 +1150,25 @@ sub getHTTPFarmVS    # ($farm_name,$service,$tag)
 		#AddRequestHeader tag
 		if ( $tag eq "addRequestHeader" )
 		{
-			if ( $proxy_mode eq "true" )
+			if (    $line =~ /^\t\t(#?)AddHeader\s+"(.+)"/
+				 && $sw == 1 )
 			{
-				if (    $line =~ /^\t\t(#?)AddHeader\s+"(.+)"/
-					 && $sw == 1 )
+				if ( $1 eq "#" )
 				{
-					if ( $1 eq "#" )
-					{
-						next;
-					}
-					else
-					{
-						push @{ $output },
-						  {
-							"id"     => $directive_index++,
-							"header" => $2
-						  };
-						next;
-					}
+					next;
 				}
-				elsif ( $sw == 1 && $line =~ /\t#BackEnd/ )
+				else
 				{
-					last;
+					push @{ $output },
+					  {
+						"id"     => $directive_index++,
+						"header" => $2
+					  };
+					next;
 				}
 			}
-			else
+			elsif ( $sw == 1 && $line =~ /\t#BackEnd/ )
 			{
-				$output = undef;
 				last;
 			}
 		}
@@ -1268,33 +1176,25 @@ sub getHTTPFarmVS    # ($farm_name,$service,$tag)
 		#AddResponseHeader tag
 		if ( $tag eq "addResponseHeader" )
 		{
-			if ( $proxy_mode eq "true" )
+			if (    $line =~ /^\t\t(#?)AddResponseHeader\s+"(.+)"/
+				 && $sw == 1 )
 			{
-				if (    $line =~ /^\t\t(#?)AddResponseHeader\s+"(.+)"/
-					 && $sw == 1 )
+				if ( $1 eq "#" )
 				{
-					if ( $1 eq "#" )
-					{
-						next;
-					}
-					else
-					{
-						push @{ $output },
-						  {
-							"id"     => $directive_index++,
-							"header" => $2
-						  };
-						next;
-					}
+					next;
 				}
-				elsif ( $sw == 1 && $line =~ /\t#BackEnd/ )
+				else
 				{
-					last;
+					push @{ $output },
+					  {
+						"id"     => $directive_index++,
+						"header" => $2
+					  };
+					next;
 				}
 			}
-			else
+			elsif ( $sw == 1 && $line =~ /\t#BackEnd/ )
 			{
-				$output = undef;
 				last;
 			}
 		}
@@ -1302,33 +1202,25 @@ sub getHTTPFarmVS    # ($farm_name,$service,$tag)
 		#RemoveRequestHeader tag
 		if ( $tag eq "removeRequestHeader" )
 		{
-			if ( $proxy_mode eq "true" )
+			if (    $line =~ /^\t\t(#?)HeadRemove\s+"(.+)"/
+				 && $sw == 1 )
 			{
-				if (    $line =~ /^\t\t(#?)HeadRemove\s+"(.+)"/
-					 && $sw == 1 )
+				if ( $1 eq "#" )
 				{
-					if ( $1 eq "#" )
-					{
-						next;
-					}
-					else
-					{
-						push @{ $output },
-						  {
-							"id"      => $directive_index++,
-							"pattern" => $2
-						  };
-						next;
-					}
+					next;
 				}
-				elsif ( $sw == 1 && $line =~ /\t#BackEnd/ )
+				else
 				{
-					last;
+					push @{ $output },
+					  {
+						"id"      => $directive_index++,
+						"pattern" => $2
+					  };
+					next;
 				}
 			}
-			else
+			elsif ( $sw == 1 && $line =~ /\t#BackEnd/ )
 			{
-				$output = undef;
 				last;
 			}
 		}
@@ -1336,33 +1228,25 @@ sub getHTTPFarmVS    # ($farm_name,$service,$tag)
 		#RemoveResponseHeader tag
 		if ( $tag eq "removeResponseHeader" )
 		{
-			if ( $proxy_mode eq "true" )
+			if (    $line =~ /^\t\t(#?)RemoveResponseHeader\s+"(.+)"/
+				 && $sw == 1 )
 			{
-				if (    $line =~ /^\t\t(#?)RemoveResponseHeader\s+"(.+)"/
-					 && $sw == 1 )
+				if ( $1 eq "#" )
 				{
-					if ( $1 eq "#" )
-					{
-						next;
-					}
-					else
-					{
-						push @{ $output },
-						  {
-							"id"      => $directive_index++,
-							"pattern" => $2
-						  };
-						next;
-					}
+					next;
 				}
-				elsif ( $sw == 1 && $line =~ /\t#BackEnd/ )
+				else
 				{
-					last;
+					push @{ $output },
+					  {
+						"id"      => $directive_index++,
+						"pattern" => $2
+					  };
+					next;
 				}
 			}
-			else
+			elsif ( $sw == 1 && $line =~ /\t#BackEnd/ )
 			{
-				$output = undef;
 				last;
 			}
 		}
@@ -1513,7 +1397,7 @@ sub setHTTPFarmVS    # ($farm_name,$service,$tag,$string)
 
 	require Skudonet::Lock;
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	if ( $tag eq 'rewriteLocation' )
 	{
@@ -1531,7 +1415,7 @@ sub setHTTPFarmVS    # ($farm_name,$service,$tag,$string)
 	{
 		$j++;
 		if ( $line =~ /\tService \"$service\"/ ) { $sw = 1; }
-		if ( $line =~ /^\tEnd$/ && $sw == 1 ) { last; }
+		if ( $line =~ /^\tEnd$/ && $sw == 1 )    { last; }
 		next if $sw == 0;
 
 		#vs tag
@@ -1602,7 +1486,7 @@ sub setHTTPFarmVS    # ($farm_name,$service,$tag,$string)
 		{
 			if ( $line =~ /^\t\tRedirect(?:Append)? (.*)/ )
 			{
-				my $rest = $1;
+				my $rest   = $1;
 				my $policy = ( $string eq 'append' ) ? 'RedirectAppend' : 'Redirect';
 
 				$line = "\t\t${policy} $rest";
@@ -1695,7 +1579,7 @@ sub setHTTPFarmVS    # ($farm_name,$service,$tag,$string)
 				}
 				if ( $line =~ /^\t\t\t#?Type\s+(.*)\s*/ )
 				{
-					$line = "\t\t\tType $string";
+					$line           = "\t\t\tType $string";
 					$clean_sessions = 1 if ( $1 ne $string );
 				}
 				if ( $line =~ /^\t\t\t#?TTL/ )
@@ -1870,23 +1754,6 @@ sub get_http_service_struct
 	# Add FarmGuardian
 	$service_ref->{ farmguardian } = &getFGFarm( $farmname, $service_name );
 
-	# Add STS
-	if ( $eload )
-	{
-		$service_ref->{ sts_status } = &eload(
-											  module => 'Skudonet::Farm::HTTP::Service::Ext',
-											  func   => 'getHTTPServiceSTSStatus',
-											  args   => [$farmname, $service_name],
-		);
-
-		$service_ref->{ sts_timeout } = int (
-										  &eload(
-												  module => 'Skudonet::Farm::HTTP::Service::Ext',
-												  func   => 'getHTTPServiceSTSTimeout',
-												  args   => [$farmname, $service_name],
-										  )
-		);
-	}
 
 	return $service_ref;
 }
@@ -1908,15 +1775,6 @@ sub get_http_all_services_struct
 		push @services_list, $service_ref;
 	}
 
-	if ( $eload )
-	{
-		my $out_b = &eload(
-							module => 'Skudonet::Alias',
-							func   => 'addAliasBackendsStruct',
-							args   => [\@services_list],
-		);
-		@services_list = @{ $out_b };
-	}
 
 	return \@services_list;
 }

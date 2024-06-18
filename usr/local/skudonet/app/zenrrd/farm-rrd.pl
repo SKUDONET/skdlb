@@ -28,11 +28,6 @@ use Skudonet::Farm::Base;
 use Skudonet::Farm::Stats;
 use Skudonet::Net::ConnStats;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $rrdap_dir = &getGlobalConfiguration( 'rrdap_dir' );
 my $rrd_dir   = &getGlobalConfiguration( 'rrd_dir' );
@@ -54,28 +49,13 @@ foreach my $farmfile ( &getFarmList() )
 	my $synconns;
 	my $globalconns;
 
-	if ( $ftype eq 'gslb' )
-	{
-		my $stats;
-		$stats = &eload(
-						 module => 'Skudonet::Farm::GSLB::Stats',
-						 func   => 'getGSLBFarmStats',
-						 args   => [$farm],
-		) if $eload;
-
-		$synconns    = $stats->{ syn };
-		$globalconns = $stats->{ est };
-	}
-	else
-	{
 		my $vip = &getFarmVip( "vip", $farm );
 
 		my $netstat;
 		$netstat = &getConntrack( "", $vip, "", "", "" ) if ( $ftype eq 'l4xnat' );
 
-		$synconns = &getFarmSYNConns( $farm, $netstat );    # SYN_RECV connections
-		$globalconns = &getFarmEstConns( $farm, $netstat ); # ESTABLISHED connections
-	}
+		$synconns    = &getFarmSYNConns( $farm, $netstat );    # SYN_RECV connections
+		$globalconns = &getFarmEstConns( $farm, $netstat );    # ESTABLISHED connections
 
 	if ( $globalconns eq '' || $synconns eq '' )
 	{

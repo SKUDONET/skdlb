@@ -29,12 +29,6 @@ use Skudonet::Nft;
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
-my $eload;
-
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: setL4FarmServer
@@ -135,7 +129,8 @@ sub setL4FarmServer
 
 	}
 
-	if (   defined $weight
+	if (
+		   defined $weight
 		&& $weight ne ""
 		&& ( !defined $exists || ( defined $exists && $exists->{ weight } ne $weight ) )
 	  )
@@ -146,7 +141,7 @@ sub setL4FarmServer
 	}
 
 	if (
-		    defined $priority
+			defined $priority
 		 && $priority ne ""
 		 && ( !defined $exists
 			  || ( defined $exists && $exists->{ priority } ne $priority ) )
@@ -158,7 +153,7 @@ sub setL4FarmServer
 	}
 
 	if (
-		    defined $max_conns
+			defined $max_conns
 		 && $max_conns ne ""
 		 && ( !defined $exists
 			  || ( defined $exists && $exists->{ max_conns } ne $max_conns ) )
@@ -182,21 +177,11 @@ sub setL4FarmServer
 		   farm   => $farm_name,
 		   file   => "$configdir/$farm_filename",
 		   method => "PUT",
-		   body =>
+		   body   =>
 			 qq({"farms" : [ { "name" : "$farm_name", "backends" : [ { "name" : "bck$ids"$json } ] } ] })
 		}
 	);
 
-	# take care of floating interfaces without masquerading
-	if ( $json =~ /ip-addr/ && $eload )
-	{
-		my $farm_ref = &getL4FarmStruct( $farm_name );
-		&eload(
-				module => 'Skudonet::Net::Floating',
-				func   => 'setFloatingSourceAddr',
-				args   => [$farm_ref, { ip => $ip, id => $ids, tag => $mark }],
-		);
-	}
 
 	return $output;
 }
@@ -339,7 +324,7 @@ sub setL4FarmBackendsSessionsRemove
 	{
 
 		$data = 1 if ( $line =~ /elements = / );
-		next if ( !$data );
+		next      if ( !$data );
 
 		#default table ip
 		my ( $key, $time, $value ) =
@@ -459,7 +444,7 @@ sub setL4FarmBackendStatus
 			   farm   => $farm_name,
 			   file   => "$configdir/$farm_filename",
 			   method => "PUT",
-			   body =>
+			   body   =>
 				 qq({"farms" : [ { "name" : "$farm_name", "backends" : [ { "name" : "bck$backend", "state" : "$status" } ] } ] })
 			}
 		  );
@@ -604,7 +589,7 @@ sub _getL4FarmParseServers
 
 		if ( $stage == 3 && $line =~ /\"name\"/ )
 		{
-			my @l = split /"/, $line;
+			my @l     = split /"/, $line;
 			my $index = $l[3];
 			$index =~ s/bck//;
 			$server->{ id }        = $index + 0;
@@ -675,8 +660,8 @@ sub _getL4FarmParseServers
 			$server->{ status } = $l[3];
 			$server->{ status } = "undefined" if ( $server->{ status } eq "config_error" );
 			$server->{ status } = "maintenance" if ( $server->{ status } eq "off" );
-			$server->{ status } = "fgDOWN" if ( $server->{ status } eq "down" );
-			$server->{ status } = "up" if ( $server->{ status } eq "available" );
+			$server->{ status } = "fgDOWN"      if ( $server->{ status } eq "down" );
+			$server->{ status } = "up"          if ( $server->{ status } eq "available" );
 		}
 	}
 

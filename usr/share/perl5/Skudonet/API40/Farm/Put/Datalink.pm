@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -25,11 +26,6 @@ use Skudonet::Net::Util;
 use Skudonet::Farm::Base;
 use Skudonet::Farm::Datalink::Config;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 sub modify_datalink_farm    # ( $json_obj, $farmname )
 {
@@ -130,11 +126,6 @@ sub modify_datalink_farm    # ( $json_obj, $farmname )
 		&runFarmStop( $farmname, "true" );
 		&runFarmStart( $farmname, "true" );
 
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['farm', 'restart', $farmname],
-		) if ( $eload );
 	}
 
 	# no error found, return successful response

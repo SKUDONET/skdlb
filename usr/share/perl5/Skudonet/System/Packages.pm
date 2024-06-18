@@ -26,11 +26,6 @@ require Skudonet::Log;
 use Skudonet::SystemInfo;
 use File::Grep qw( fgrep );
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: setSystemPackagesRepo
@@ -49,12 +44,6 @@ sub setSystemPackagesRepo
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 
-	if ( $eload )
-	{
-		return
-		  &eload( module => 'Skudonet::Apt',
-				  func   => 'setAPTRepo', );
-	}
 
 	# Variables
 	my $host         = &getGlobalConfiguration( 'repo_url_skudonet' );
@@ -138,18 +127,9 @@ sub getSystemPackagesUpdatesList
 	my $date   = "";
 	my $status = "unknown";
 	my $install_msg;
-	if ( $eload )
-	{
-		my $install_msg =
-		  "To upgrade the system, please, execute in a shell the following command:
-			'checkupgrades -i'";
-	}
-	else
-	{
-		my $install_msg =
+		$install_msg =
 		  "To upgrade the system, please, execute in a shell the following command:
 			'checkupdates -i'";
-	}
 
 	my $fh = &openlock( $package_list, '<' );
 	if ( $fh )

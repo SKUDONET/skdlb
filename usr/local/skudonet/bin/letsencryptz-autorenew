@@ -41,11 +41,6 @@ use Skudonet::LetsencryptZ;
 
 $SIG{ ALRM } = sub { die "timeout" };
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 #local variables
 my $cert_name;
@@ -271,7 +266,7 @@ if ( defined $restart )
 					"Stopping ( retry $retry/$max_retry ) farm '$farm' using certificate '$cert_name'.",
 					"info", "Letsencryptz-renewal"
 				);
-				$error = &runFarmStop( $farm, "" );
+				$error       = &runFarmStop( $farm, "" );
 				$farm_status = &getHTTPFarmStatus( $farm );
 				$retry++;
 				usleep 500;
@@ -294,7 +289,7 @@ if ( defined $restart )
 					"Starting ( retry $retry/$max_retry ) farm '$farm' using certificate '$cert_name'.",
 					"info", "Letsencryptz-renewal"
 				);
-				$error = &runFarmStart( $farm, "" );
+				$error       = &runFarmStart( $farm, "" );
 				$farm_status = &getHTTPFarmStatus( $farm );
 				$retry++;
 				usleep 500;
@@ -313,17 +308,6 @@ if ( defined $restart )
 		}
 	}
 
-	if ( $eload )
-	{
-		if ( @farms_restarted )
-		{
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'restart_farms', @farms_restarted],
-			);
-		}
-	}
 
 	my $info_msg;
 	if ( @farms_restarted )

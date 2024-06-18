@@ -23,8 +23,6 @@
 
 use strict;
 
-my $eload;
-$eload = 1 if ( eval { require Skudonet::ELoad; } );
 
 =begin nd
 Function: getZAPI
@@ -153,14 +151,6 @@ sub setZAPI    #($name,$value)
 	#Set ZAPI KEY
 	if ( $name eq "key" )
 	{
-		if ( $eload )
-		{
-			$value = &eload(
-							 module => 'Skudonet::Code',
-							 func   => 'setCryptString',
-							 args   => [$value],
-			);
-		}
 
 		require Tie::File;
 		tie my @contents, 'Tie::File', "$globalcfg";
@@ -226,20 +216,6 @@ sub validZapiKey    # ()
 			&setUser( 'root' );
 			$validKey = 1;
 		}
-		elsif ( $eload )
-		{
-			# get a RBAC user
-			my $user = &eload(
-							   module => 'Skudonet::RBAC::User::Core',
-							   func   => 'validateRBACUserZapi',
-							   args   => [$ENV{ $key }],
-			);
-			if ( $user )
-			{
-				&setUser( $user );
-				$validKey = 1;
-			}
-		}
 	}
 
 	return $validKey;
@@ -248,7 +224,7 @@ sub validZapiKey    # ()
 sub listZapiVersions
 {
 	my $version_st = &getGlobalConfiguration( "zapi_versions" );
-	my @versions = split ( ' ', $version_st );
+	my @versions   = split ( ' ', $version_st );
 
 	return sort @versions;
 }

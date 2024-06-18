@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -23,11 +24,6 @@
 use strict;
 use Skudonet::Farm::Datalink::Backend;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 sub farms_name_datalink    # ( $farmname )
 {
@@ -36,7 +32,7 @@ sub farms_name_datalink    # ( $farmname )
 	my $farmname = shift;
 
 	require Skudonet::Farm::Config;
-	my $vip = &getFarmVip( "vip", $farmname );
+	my $vip    = &getFarmVip( "vip", $farmname );
 	my $status = &getFarmVipStatus( $farmname );
 
 	my $out_p = {
@@ -54,20 +50,6 @@ sub farms_name_datalink    # ( $farmname )
 				 backends    => $out_b,
 	};
 
-	if ( $eload )
-	{
-		$body->{ ipds } = &eload(
-								  module => 'Skudonet::IPDS::Core',
-								  func   => 'getIPDSfarmsRules',
-								  args   => [$farmname],
-		);
-		delete $body->{ ipds }->{ rbl };
-		delete $body->{ ipds }->{ dos };
-		for my $blacklist ( @{ $body->{ ipds }->{ blacklists } } )
-		{
-			delete $blacklist->{ id };
-		}
-	}
 
 	&httpResponse( { code => 200, body => $body } );
 }

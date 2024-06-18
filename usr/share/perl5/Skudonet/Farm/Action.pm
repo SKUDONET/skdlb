@@ -24,11 +24,6 @@
 use strict;
 use Skudonet::Config;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
@@ -105,14 +100,6 @@ sub _runFarmStart    # ($farm_name, $writeconf)
 		require Skudonet::Farm::L4xNAT::Action;
 		$status = &startL4Farm( $farm_name, $writeconf );
 	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$status = &eload(
-						  module => 'Skudonet::Farm::GSLB::Action',
-						  func   => '_runGSLBFarmStart',
-						  args   => [$farm_name, $writeconf],
-		);
-	}
 
 	&setFarmNoRestart( $farm_name );
 
@@ -149,24 +136,6 @@ sub runFarmStart    # ($farm_name, $writeconf)
 	require Skudonet::FarmGuardian;
 	&runFarmGuardianStart( $farm_name, "" );
 
-	if ( $eload )
-	{
-		&eload(
-				module => 'Skudonet::IPDS::Base',
-				func   => 'runIPDSStartByFarm',
-				args   => [$farm_name],
-		);
-
-		require Skudonet::Farm::Config;
-		if ( &getPersistence( $farm_name ) == 0 )
-		{
-			&eload(
-					module => 'Skudonet::Ssyncd',
-					func   => 'setSsyncdFarmUp',
-					args   => [$farm_name],
-			);
-		}
-	}
 	return $status;
 }
 
@@ -193,21 +162,6 @@ sub runFarmStop    # ($farm_name, $writeconf)
 			 "debug", "PROFILING" );
 	my ( $farm_name, $writeconf ) = @_;
 
-	if ( $eload )
-	{
-		# stop ipds rules
-		&eload(
-				module => 'Skudonet::IPDS::Base',
-				func   => 'runIPDSStopByFarm',
-				args   => [$farm_name],
-		);
-		&eload(
-				module => 'Skudonet::Ssyncd',
-				func   => 'setSsyncdFarmDown',
-				args   => [$farm_name],
-		);
-
-	}
 
 	require Skudonet::FarmGuardian;
 	&runFGFarmStop( $farm_name );
@@ -268,14 +222,6 @@ sub _runFarmStop    # ($farm_name, $writeconf)
 		require Skudonet::Farm::L4xNAT::Action;
 		$status = &stopL4Farm( $farm_name, $writeconf );
 	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$status = &eload(
-						  module => 'Skudonet::Farm::GSLB::Action',
-						  func   => '_runGSLBFarmStop',
-						  args   => [$farm_name, $writeconf],
-		);
-	}
 
 	&setFarmNoRestart( $farm_name );
 
@@ -309,22 +255,6 @@ sub runFarmDelete    # ($farm_name)
 	# global variables
 	my $configdir = &getGlobalConfiguration( 'configdir' );
 
-	if ( $eload )
-	{
-		#delete IPDS rules
-		&eload(
-				module => 'Skudonet::IPDS::Base',
-				func   => 'runIPDSDeleteByFarm',
-				args   => [$farm_name],
-		);
-
-		#delete from RBAC
-		&eload(
-				module => 'Skudonet::RBAC::Group::Config',
-				func   => 'delRBACResource',
-				args   => [$farm_name, 'farms'],
-		);
-	}
 
 	# stop and unlink farmguardian
 	require Skudonet::FarmGuardian;
@@ -335,55 +265,44 @@ sub runFarmDelete    # ($farm_name)
 
 	&zenlog( "running 'Delete' for $farm_name", "info", "FARMS" );
 
-	if ( $farm_type eq "gslb" )
+	if ( $farm_type eq "http" || $farm_type eq "https" )
 	{
-		require File::Path;
-		File::Path->import( 'rmtree' );
+		unlink glob ( "$configdir/$farm_name\_*\.html" );
 
-		$status = 0
-		  if rmtree( ["$configdir/$farm_name\_gslb.cfg"] );
+		# For HTTPS farms only
+		my $dhfile = "$configdir\/$farm_name\_dh2048.pem";
+		unlink ( "$dhfile" ) if -e "$dhfile";
+		&delMarks( $farm_name, "" );
+
+		# Check if local farm exists and delete it
+		require Skudonet::Nft;
+		my $output = &httpNlbRequest(
+									  {
+										method => "GET",
+										uri    => "/farms/" . $farm_name,
+										check  => 1,
+									  }
+		);
+		$output = &httpNlbRequest(
+								   {
+									 farm   => $farm_name,
+									 method => "DELETE",
+									 uri    => "/farms/" . $farm_name,
+								   }
+		) if ( !$output );
 	}
-	else
+	elsif ( $farm_type eq "datalink" )
 	{
-		if ( $farm_type eq "http" || $farm_type eq "https" )
-		{
-			unlink glob ( "$configdir/$farm_name\_*\.html" );
-
-			# For HTTPS farms only
-			my $dhfile = "$configdir\/$farm_name\_dh2048.pem";
-			unlink ( "$dhfile" ) if -e "$dhfile";
-			&delMarks( $farm_name, "" );
-
-			# Check if local farm exists and delete it
-			require Skudonet::Nft;
-			my $output = &httpNlbRequest(
-										  {
-											method => "GET",
-											uri    => "/farms/" . $farm_name,
-											check  => 1,
-										  }
-			);
-			$output = &httpNlbRequest(
-									   {
-										 farm   => $farm_name,
-										 method => "DELETE",
-										 uri    => "/farms/" . $farm_name,
-									   }
-			) if ( !$output );
-		}
-		elsif ( $farm_type eq "datalink" )
-		{
-			# delete cron task to check backends
-			require Tie::File;
-			tie my @filelines, 'Tie::File', "/etc/cron.d/skudonet";
-			@filelines = grep !/\# \_\_$farm_name\_\_/, @filelines;
-			untie @filelines;
-		}
-		elsif ( $farm_type eq "l4xnat" )
-		{
-			require Skudonet::Farm::L4xNAT::Factory;
-			&runL4FarmDelete( $farm_name );
-		}
+		# delete cron task to check backends
+		require Tie::File;
+		tie my @filelines, 'Tie::File', "/etc/cron.d/skudonet";
+		@filelines = grep !/\# \_\_$farm_name\_\_/, @filelines;
+		untie @filelines;
+	}
+	elsif ( $farm_type eq "l4xnat" )
+	{
+		require Skudonet::Farm::L4xNAT::Factory;
+		&runL4FarmDelete( $farm_name );
 	}
 
 	unlink glob ( "$configdir/$farm_name\_*\.cfg" );
@@ -638,14 +557,6 @@ sub setNewFarmName    # ($farm_name,$new_farm_name)
 		require Skudonet::Farm::L4xNAT::Action;
 		$output = &setL4NewFarmName( $farm_name, $new_farm_name );
 	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Farm::GSLB::Action',
-						  func   => 'copyGSLBFarm',
-						  args   => [$farm_name, $new_farm_name, 'del'],
-		);
-	}
 
 	# farmguardian renaming
 	if ( $output == 0 and $farm_status eq 'up' )
@@ -660,23 +571,6 @@ sub setNewFarmName    # ($farm_name,$new_farm_name)
 	rename ( "$rrdap_dir/$rrd_dir/$farm_name-farm.rrd",
 			 "$rrdap_dir/$rrd_dir/$new_farm_name-farm.rrd" );
 
-	# delete old graphs
-	unlink ( "img/graphs/bar$farm_name.png" );
-
-	if ( $eload )
-	{
-		&eload(
-				module => 'Skudonet::IPDS::Base',
-				func   => 'runIPDSRenameByFarm',
-				args   => [$farm_name, $new_farm_name],
-		);
-
-		&eload(
-				module => 'Skudonet::RBAC::Group::Config',
-				func   => 'setRBACRenameByFarm',
-				args   => [$farm_name, $new_farm_name],
-		);
-	}
 
 	# FIXME: farmguardian files
 	# FIXME: logfiles
@@ -722,14 +616,6 @@ sub copyFarm    # ($farm_name,$new_farm_name)
 	{
 		require Skudonet::Farm::L4xNAT::Action;
 		$output = &copyL4Farm( $farm_name, $new_farm_name );
-	}
-	elsif ( $farm_type eq "gslb" && $eload )
-	{
-		$output = &eload(
-						  module => 'Skudonet::Farm::GSLB::Action',
-						  func   => 'copyGSLBFarm',
-						  args   => [$farm_name, $new_farm_name],
-		);
 	}
 
 	return $output;

@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # 	GET /system/users
 sub get_system_user
@@ -54,17 +49,6 @@ sub get_system_user
 					 { code => 200, body => { description => $desc, params => $params } } );
 	}
 
-	elsif ( $eload )
-	{
-		my $params = &eload( module => 'Skudonet::API40::RBAC::User',
-							 func   => 'get_system_user_rbac', );
-
-		if ( $params )
-		{
-			&httpResponse(
-						 { code => 200, body => { description => $desc, params => $params } } );
-		}
-	}
 
 	else
 	{
@@ -108,19 +92,6 @@ sub set_system_user
 			my $msg = "The new password must be different to the current password.";
 			return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
-		if ( $eload )
-		{
-			my $local_user = &eload(
-									 module => 'Skudonet::RBAC::User::Core',
-									 func   => 'getRBACUserLocal',
-									 args   => [$user],
-			);
-			if ( !$local_user )
-			{
-				my $msg = "The $user User is not valid to change password.";
-				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-		}
 
 		if ( !&checkValidUser( $user, $json_obj->{ 'password' } ) )
 		{
@@ -157,19 +128,6 @@ sub set_system_user
 		# modify zapikey. change this parameter before than zapi permissions
 		if ( exists $json_obj->{ 'zapikey' } )
 		{
-			if ( $eload )
-			{
-				my $zapi_user = &eload(
-										module => 'Skudonet::RBAC::User::Core',
-										func   => 'getRBACUserbyZapikey',
-										args   => [$json_obj->{ 'zapikey' }],
-				);
-				if ( $zapi_user and $zapi_user ne $user )
-				{
-					my $msg = "The zapikey is not valid.";
-					return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-				}
-			}
 			&setZAPI( 'key', $json_obj->{ 'zapikey' } );
 		}
 
@@ -194,22 +152,13 @@ sub set_system_user
 		}
 	}
 
-	elsif ( $eload )
-	{
-		$error = &eload(
-						 module => 'Skudonet::API40::RBAC::User',
-						 func   => 'set_system_user_rbac',
-						 args   => [$json_obj],
-		);
-	}
-
 	else
 	{
 		my $msg = "The user is not found";
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
 	}
 
-	my $msg = "Settings was changed successfully.";
+	my $msg  = "Settings was changed successfully.";
 	my $body = { description => $desc, message => $msg };
 
 	&httpResponse( { code => 200, body => $body } );

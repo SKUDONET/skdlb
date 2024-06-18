@@ -29,12 +29,6 @@ use Skudonet::Farm::L4xNAT::Action;
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
-
 =begin nd
 Function: runL4FarmCreate
 
@@ -87,7 +81,7 @@ sub runL4FarmCreate
 		   farm   => $farm_name,
 		   file   => "$farm_filename",
 		   method => "POST",
-		   body =>
+		   body   =>
 			 qq({"farms" : [ { "name" : "$farm_name", "virtual-addr" : "$vip", "virtual-ports" : "$vip_port", "protocol" : "$proto", "mode" : "snat", "scheduler" : "weight", "state" : "$status", "family" : "$vip_family" } ] })
 		}
 	);

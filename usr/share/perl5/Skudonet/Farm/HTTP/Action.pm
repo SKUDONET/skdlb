@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
@@ -62,7 +57,7 @@ sub _runHTTPFarmStart    # ($farm_name, $writeconf)
 
 	require Skudonet::Lock;
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	close $lock_fh;
 
@@ -70,20 +65,6 @@ sub _runHTTPFarmStart    # ($farm_name, $writeconf)
 	return -1 if ( &getHTTPFarmConfigIsOK( $farm_name ) );
 
 	my $args = '';
-	if ( $eload )
-	{
-		my $ssyncd_enabled = &getGlobalConfiguration( 'ssyncd_enabled' );
-		if ( $ssyncd_enabled eq 'true' )
-		{
-			if ( &getPersistence( $farm_name ) == 0 )
-			{
-				if ( &eload( module => 'Skudonet::Cluster', func => 'getZClusterStatus' ) )
-				{
-					$args = '-s';
-				}
-			}
-		}
-	}
 
 	my $cmd =
 	  "$proxy $args -f $configdir\/$farm_filename -p $piddir\/$farm_name\_proxy.pid";
@@ -139,19 +120,6 @@ sub _runHTTPFarmStart    # ($farm_name, $writeconf)
 			}
 		}
 
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Farm::HTTP::Sessions::Ext',
-					func   => 'reloadL7FarmSessions',
-					args   => [$farm_name],
-			);
-
-			if ( &getGlobalConfiguration( "floating_L7" ) eq 'true' )
-			{
-				&reloadFarmsSourceAddressByFarm( $farm_name );
-			}
-		}
 	}
 
 	return $status;
@@ -416,7 +384,7 @@ sub sendL7ZproxyCmd
 	require Skudonet::Farm::HTTP::Config;
 
 	my $method = defined $self->{ method } ? "-X $self->{ method } " : "";
-	my $url = "http://localhost/$self->{ uri }";
+	my $url    = "http://localhost/$self->{ uri }";
 	my $body =
 	  defined $self->{ body } ? "--data-ascii '" . $self->{ body } . "' " : "";
 

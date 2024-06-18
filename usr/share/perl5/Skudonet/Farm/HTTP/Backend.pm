@@ -29,11 +29,6 @@ require Skudonet::Farm::Config;
 my $configdir = &getGlobalConfiguration( 'configdir' );
 my $proxy_ng  = &getGlobalConfiguration( 'proxy_ng' );
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: setHTTPFarmServer
@@ -83,7 +78,7 @@ sub setHTTPFarmServer # ($ids,$rip,$port,$weight,$timeout,$farm_name,$service,$p
 
 	require Skudonet::Lock;
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @contents, 'Tie::File', "$configdir\/$farm_filename";
@@ -167,7 +162,7 @@ sub setHTTPFarmServer # ($ids,$rip,$port,$weight,$timeout,$farm_name,$service,$p
 						splice @contents, $i + 3, 0, "\t\t\tTimeOut $timeout";
 					}
 					if (
-						    $p_m eq 0
+							$p_m eq 0
 						 && $priority !~ /^$/
 						 && (    $contents[$i + 3] =~ /End/
 							  || $contents[$i + 4] =~ /End/ )
@@ -294,7 +289,7 @@ sub setHTTPNGFarmServer # ($ids,$rip,$port,$weight,$timeout,$farm_name,$service,
 
 	require Skudonet::Lock;
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @contents, 'Tie::File', "$configdir\/$farm_filename";
@@ -375,44 +370,6 @@ sub setHTTPNGFarmServer # ($ids,$rip,$port,$weight,$timeout,$farm_name,$service,
 					}
 					last;
 				}
-			}
-		}
-		if ( $rip ne "" && $dec_mark && $eload )
-		{
-			if ( &getGlobalConfiguration( 'floating_L7' ) eq 'true' )
-			{
-				my $mark = sprintf ( "0x%x", $dec_mark );
-				my $back_srcaddr = &eload(
-										   module => 'Skudonet::Net::Floating',
-										   func   => 'getFloatingSourceAddr',
-										   args   => [$rip, $mark],
-				);
-
-				if ( $back_srcaddr->{ out }->{ floating_ip } )
-				{
-					my $farm_ref->{ name } = $farm_name;
-					$farm_ref->{ vip }   = &getFarmVip( 'vip',  $farm_name );
-					$farm_ref->{ vport } = &getFarmVip( 'vipp', $farm_name );
-					&eload(
-							module => 'Skudonet::Net::Floating',
-							func   => 'setL7FloatingSourceAddr',
-							args   => [$farm_ref, { ip => $rip, tag => $dec_mark, id => $ids }],
-					);
-				}
-				else
-				{
-					&eload(
-							module => 'Skudonet::Net::Floating',
-							func   => 'removeL7FloatingSourceAddr',
-							args   => [$farm_name, { tag => $dec_mark }],
-					);
-				}
-				my $exist = &checkLocalFarmSourceAddress( $farm_name );
-				&eload(
-						module => 'Skudonet::Net::Floating',
-						func   => 'removeL7FloatingSourceAddr',
-						args   => [$farm_name],
-				) if ( !$exist );
 			}
 		}
 	}
@@ -503,21 +460,6 @@ sub setHTTPNGFarmServer # ($ids,$rip,$port,$weight,$timeout,$farm_name,$service,
 				splice @contents, $index, 0, "\t\tEnd";
 				$be_section++;    # Backend Added
 
-				if ( $eload )
-				{
-					# take care of floating interfaces without masquerading
-					if ( &getGlobalConfiguration( 'floating_L7' ) eq 'true' )
-					{
-						$farm_ref->{ vip } = &getFarmVip( 'vip', $farm_name )
-						  if not defined $farm_ref->{ vip };
-						$farm_ref->{ vport } = &getFarmVip( 'vipp', $farm_name );
-						&eload(
-								module => 'Skudonet::Net::Floating',
-								func   => 'setL7FloatingSourceAddr',
-								args   => [$farm_ref, { ip => $rip, tag => $dec_mark, id => $ids }],
-						);
-					}
-				}
 			}
 
 			# if backend added then go out of form
@@ -568,7 +510,7 @@ sub runHTTPFarmServerDelete    # ($ids,$farm_name,$service)
 
 	require Skudonet::Lock;
 	my $lock_file = &getLockFile( $farm_name );
-	my $lock_fh = &openlock( $lock_file, 'w' );
+	my $lock_fh   = &openlock( $lock_file, 'w' );
 
 	require Tie::File;
 	tie my @contents, 'Tie::File', "$configdir\/$farm_filename";
@@ -614,26 +556,6 @@ sub runHTTPFarmServerDelete    # ($ids,$farm_name,$service)
 		require Skudonet::Farm::HTTP::Sessions;
 		&deleteConfL7FarmAllSession( $farm_name, $service, $ids );
 
-		if ( $eload )
-		{
-			if ( ( &getGlobalConfiguration( 'floating_L7' ) eq 'true' )
-				 and $dec_mark )
-			{
-				&eload(
-						module => 'Skudonet::Net::Floating',
-						func   => 'removeL7FloatingSourceAddr',
-						args   => [$farm_name, { tag => $dec_mark }],
-				);
-
-				my $exist = &checkLocalFarmSourceAddress( $farm_name );
-
-				&eload(
-						module => 'Skudonet::Net::Floating',
-						func   => 'removeL7FloatingSourceAddr',
-						args   => [$farm_name],
-				) if ( !$exist );
-			}
-		}
 	}
 
 	if ( $output != -1 )
@@ -815,11 +737,10 @@ sub getHTTPFarmBackendStatusCtl    # ($farm_name, $sessions)
 	{
 		$sessions_option = "";
 	}
-	return
-	  @{
+	return @{
 		&logAndGet( "$proxyctl $sessions_option -c /tmp/$farm_name\_proxy.socket",
 					"array" )
-	  };
+	};
 }
 
 =begin nd
@@ -860,7 +781,7 @@ sub getHTTPFarmBackends    # ($farm_name,$service,$param_status)
 	foreach my $subl ( @be )
 	{
 		my @subbe = split ( ' ', $subl );
-		my $id = $subbe[1] + 0;
+		my $id    = $subbe[1] + 0;
 
 		my $ip   = $subbe[3];
 		my $port = $subbe[5] + 0;
@@ -960,8 +881,8 @@ sub getHTTPFarmBackendsStatus    # ($farm_name,@content)
 	require Skudonet::Farm::HTTP::Service;
 
 	my $backendsvs = &getHTTPFarmVS( $farm_name, $service, "backends" );
-	my @be = split ( "\n", $backendsvs );
-	my $id = 0;
+	my @be         = split ( "\n", $backendsvs );
+	my $id         = 0;
 
 	# @be is used to get size of backend array
 	for ( @be )
@@ -1231,7 +1152,7 @@ sub getHTTPFarmBackendsClientsList    # ($farm_name,@content)
 		if ( $_ =~ / Session / )
 		{
 			my @sess = split ( "\ ", $_ );
-			my $id = $sess[0];
+			my $id   = $sess[0];
 			$id =~ s/\.//g;
 			$line = $s . "\t" . $id . "\t" . $sess[2] . "\t" . $sess[4];
 			push ( @client_list, $line );
@@ -1371,7 +1292,7 @@ sub runRemoveHTTPBackendStatus    # ($farm_name,$backend,$service)
 
 	require Tie::File;
 
-	my $i = -1;
+	my $i          = -1;
 	my $serv_index = &getFarmVSI( $farm_name, $service );
 
 	tie my @contents, 'Tie::File', "$configdir\/$farm_name\_status.cfg";
@@ -1528,7 +1449,7 @@ sub getHTTPFarmBackendAvailableID
 
 	# get an ID for the new backend
 	my $backendsvs = &getHTTPFarmVS( $farmname, $service, "backends" );
-	my @be = split ( "\n", $backendsvs );
+	my @be         = split ( "\n", $backendsvs );
 	my $id;
 
 	foreach my $subl ( @be )

@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -26,11 +27,6 @@ use Skudonet::Farm::L4xNAT::Config;
 use Skudonet::Net::Interface;
 use Skudonet::Farm::Config;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # PUT /farms/<farmname> Modify a l4xnat Farm
 sub modify_l4xnat_farm    # ( $json_obj, $farmname )
@@ -90,8 +86,8 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 	}
 
 	# Get current vip & vport & proto
-	my $vip   = $json_obj->{ vip }   // &getFarmVip( 'vip',  $farmname );
-	my $vport = $json_obj->{ vport } // &getFarmVip( 'vipp', $farmname );
+	my $vip   = $json_obj->{ vip }      // &getFarmVip( 'vip',  $farmname );
+	my $vport = $json_obj->{ vport }    // &getFarmVip( 'vipp', $farmname );
 	my $proto = $json_obj->{ protocol } // &getL4FarmParam( 'proto', $farmname );
 
 	# Extend parameter checks
@@ -182,35 +178,6 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 		}
 	}
 
-	my $reload_ipds = 0;
-	if (    exists $json_obj->{ vport }
-		 || exists $json_obj->{ vip }
-		 || exists $json_obj->{ newfarmname } )
-	{
-
-		if ( $eload )
-		{
-			$reload_ipds = 1;
-
-			&eload(
-					module => 'Skudonet::IPDS::Base',
-					func   => 'runIPDSStopByFarm',
-					args   => [$farmname],
-			);
-
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['ipds', 'stop', $farmname],
-			);
-
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'stop', $farmname],
-			);
-		}
-	}
 
 	####### Functions
 
@@ -334,37 +301,6 @@ sub modify_l4xnat_farm    # ( $json_obj, $farmname )
 	&zenlog( "Success, some parameters have been changed in farm $farmname.",
 			 "info", "LSLB" );
 
-	if ( &getL4FarmParam( 'status', $farmname ) eq 'up' and $eload )
-	{
-		if ( $reload_ipds )
-		{
-			&eload(
-					module => 'Skudonet::IPDS::Base',
-					func   => 'runIPDSStartByFarm',
-					args   => [$farmname],
-			);
-
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'start', $farmname],
-			);
-
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['ipds', 'start', $farmname],
-			);
-		}
-		else
-		{
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'restart', $farmname],
-			);
-		}
-	}
 
 	my $body = {
 				 description => $desc,

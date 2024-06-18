@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: getLetsencryptConfigPath
@@ -326,14 +321,7 @@ sub setLetsencryptFarmService
 	my $service_ref = &getHTTPFarmServices( $farm_name, $le_service );
 	if ( not $service_ref )
 	{
-		if ( $eload )
-		{
-			$error = &setFarmHTTPNewService( $farm_name, $le_service );
-		}
-		else
-		{
 			$error = &setFarmHTTPNewServiceFirst( $farm_name, $le_service );
-		}
 		if ( $error )
 		{
 			&zenlog( "Error creating the service $le_service", "Error", "LetsEncryptZ" );
@@ -349,29 +337,6 @@ sub setLetsencryptFarmService
 				 "warning", "LetsEncryptZ" );
 	}
 
-	if ( $eload )
-	{
-		#Move the service to position 0
-		if ( not $service_ref or $service_ref->{ $le_service } )
-		{
-			$error = &eload(
-							 module => 'Skudonet::Farm::HTTP::Service::Ext',
-							 func   => 'setHTTPFarmMoveService',
-							 args   => [$farm_name, $le_service, 0],
-			);
-			if ( $error )
-			{
-				&zenlog( "Error moving the service $le_service", "Error", "LetsEncryptZ" );
-				return 4;
-			}
-		}
-		else
-		{
-			&zenlog(
-				  "The Service $le_service in Farm $farm_name is already in the first position",
-				  "warning", "LetsEncryptZ" );
-		}
-	}
 
 	# create local Web Server Backend
 	require Skudonet::Farm::HTTP::Backend;
@@ -822,10 +787,10 @@ sub runLetsencryptObtain    # ( $farm_name, $vip, $domains_list, $test, $force)
 	return 2 if $status;
 
 	# run le_binary command
-	my $test_opt = "--test-cert" if ( $test eq "true" );
-	my $force_opt = "--force-renewal --break-my-certs" if ( $force eq "true" );
+	my $test_opt     = "--test-cert"                      if ( $test eq "true" );
+	my $force_opt    = "--force-renewal --break-my-certs" if ( $force eq "true" );
 	my $certname_opt = "--cert-name " . @{ $domains_list }[0];
-	my $domains_opt = "-d " . join ( ',', @{ $domains_list } );
+	my $domains_opt  = "-d " . join ( ',', @{ $domains_list } );
 	my $fullchain_opt =
 	  "--fullchain-path " . &getGlobalConfiguration( 'le_fullchain_path' );
 	my $method_opt;
@@ -1012,7 +977,7 @@ sub runLetsencryptRenew  # ( $le_cert_name, $farm_name, $vip, $force, $lock_fh )
 	# run le_binary command
 	my $test_opt = "--test-cert"
 	  unless ( &checkLetsencryptStaging( $le_cert_name ) );
-	my $force_opt = "--force-renewal --break-my-certs" if ( $force eq "true" );
+	my $force_opt    = "--force-renewal --break-my-certs" if ( $force eq "true" );
 	my $certname_opt = "--cert-name " . $le_cert_name;
 	my $fullchain_opt =
 	  "--fullchain-path " . &getGlobalConfiguration( 'le_fullchain_path' );
@@ -1154,7 +1119,7 @@ sub setLetsencryptCron   # ( $le_cert_name, $farm_name, $nic, $force, $restart )
 
 	$command .= " --farm $farm_name" if $farm_name;
 	$command .= " --vip $vip"        if $vip;
-	$command .= " --force"           if ( defined $force and ( $force eq "true" ) );
+	$command .= " --force"   if ( defined $force   and ( $force eq "true" ) );
 	$command .= " --restart" if ( defined $restart and ( $restart eq "true" ) );
 
 	push @le_cron_list, "$frequency $command";

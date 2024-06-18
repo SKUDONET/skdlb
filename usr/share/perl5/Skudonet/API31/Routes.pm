@@ -118,9 +118,9 @@ if ( $q->path_info =~ qr{^/farms/$farm_re/services} )
 {
 	require Skudonet::API31::Farm::Service;
 
-	POST qr{^/farms/($farm_re)/services$}                 => \&new_farm_service;
-	GET qr{^/farms/($farm_re)/services/($service_re)$}    => \&farm_services;
-	PUT qr{^/farms/($farm_re)/services/($service_re)$}    => \&modify_services;
+	POST qr{^/farms/($farm_re)/services$} => \&new_farm_service;
+	GET qr{^/farms/($farm_re)/services/($service_re)$} => \&farm_services;
+	PUT qr{^/farms/($farm_re)/services/($service_re)$} => \&modify_services;
 	DELETE qr{^/farms/($farm_re)/services/($service_re)$} => \&delete_service;
 }
 
@@ -171,17 +171,16 @@ if ( $q->path_info =~ qr{^/farms} )
 
 # Network Interfaces
 my $nic_re  = &getValidFormat( 'nic_interface' );
-my $bond_re = &getValidFormat( 'bond_interface' );
 my $vlan_re = &getValidFormat( 'vlan_interface' );
 
 if ( $q->path_info =~ qr{^/interfaces/nic} )
 {
 	require Skudonet::API31::Interface::NIC;
 
-	GET qr{^/interfaces/nic$}                    => \&get_nic_list;
-	GET qr{^/interfaces/nic/($nic_re)$}          => \&get_nic;
-	PUT qr{^/interfaces/nic/($nic_re)$}          => \&modify_interface_nic;
-	DELETE qr{^/interfaces/nic/($nic_re)$}       => \&delete_interface_nic;
+	GET qr{^/interfaces/nic$}           => \&get_nic_list;
+	GET qr{^/interfaces/nic/($nic_re)$} => \&get_nic;
+	PUT qr{^/interfaces/nic/($nic_re)$} => \&modify_interface_nic;
+	DELETE qr{^/interfaces/nic/($nic_re)$} => \&delete_interface_nic;
 	POST qr{^/interfaces/nic/($nic_re)/actions$} => \&actions_interface_nic;
 }
 
@@ -189,11 +188,11 @@ if ( $q->path_info =~ qr{^/interfaces/vlan} )
 {
 	require Skudonet::API31::Interface::VLAN;
 
-	GET qr{^/interfaces/vlan$}                     => \&get_vlan_list;
-	POST qr{^/interfaces/vlan$}                    => \&new_vlan;
-	GET qr{^/interfaces/vlan/($vlan_re)$}          => \&get_vlan;
-	PUT qr{^/interfaces/vlan/($vlan_re)$}          => \&modify_interface_vlan;
-	DELETE qr{^/interfaces/vlan/($vlan_re)$}       => \&delete_interface_vlan;
+	GET qr{^/interfaces/vlan$} => \&get_vlan_list;
+	POST qr{^/interfaces/vlan$} => \&new_vlan;
+	GET qr{^/interfaces/vlan/($vlan_re)$} => \&get_vlan;
+	PUT qr{^/interfaces/vlan/($vlan_re)$} => \&modify_interface_vlan;
+	DELETE qr{^/interfaces/vlan/($vlan_re)$} => \&delete_interface_vlan;
 	POST qr{^/interfaces/vlan/($vlan_re)/actions$} => \&actions_interface_vlan;
 }
 
@@ -201,13 +200,13 @@ if ( $q->path_info =~ qr{^/interfaces/virtual} )
 {
 	require Skudonet::API31::Interface::Virtual;
 
-	GET qr{^/interfaces/virtual$}  => \&get_virtual_list;
+	GET qr{^/interfaces/virtual$} => \&get_virtual_list;
 	POST qr{^/interfaces/virtual$} => \&new_vini;
 
 	my $virtual_re = &getValidFormat( 'virt_interface' );
 
-	GET qr{^/interfaces/virtual/($virtual_re)$}    => \&get_virtual;
-	PUT qr{^/interfaces/virtual/($virtual_re)$}    => \&modify_interface_virtual;
+	GET qr{^/interfaces/virtual/($virtual_re)$} => \&get_virtual;
+	PUT qr{^/interfaces/virtual/($virtual_re)$} => \&modify_interface_virtual;
 	DELETE qr{^/interfaces/virtual/($virtual_re)$} => \&delete_interface_virtual;
 	POST qr{^/interfaces/virtual/($virtual_re)/actions$} =>
 	  \&actions_interface_virtual;
@@ -217,8 +216,8 @@ if ( $q->path_info =~ qr{^/interfaces/gateway} )
 {
 	require Skudonet::API31::Interface::Gateway;
 
-	GET qr{^/interfaces/gateway$}    => \&get_gateway;
-	PUT qr{^/interfaces/gateway$}    => \&modify_gateway;
+	GET qr{^/interfaces/gateway$} => \&get_gateway;
+	PUT qr{^/interfaces/gateway$} => \&modify_gateway;
 	DELETE qr{^/interfaces/gateway$} => \&delete_gateway;
 }
 
@@ -313,7 +312,7 @@ if ( $q->path_info =~ qr{^/system/dns} )
 {
 	require Skudonet::API31::System::Service::DNS;
 
-	GET qr{^/system/dns$}  => \&get_dns;
+	GET qr{^/system/dns$} => \&get_dns;
 	POST qr{^/system/dns$} => \&set_dns;
 }
 
@@ -321,7 +320,7 @@ if ( $q->path_info =~ qr{^/system/snmp} )
 {
 	require Skudonet::API31::System::Service::SNMP;
 
-	GET qr{^/system/snmp$}  => \&get_snmp;
+	GET qr{^/system/snmp$} => \&get_snmp;
 	POST qr{^/system/snmp$} => \&set_snmp;
 }
 
@@ -329,7 +328,7 @@ if ( $q->path_info =~ qr{^/system/ntp} )
 {
 	require Skudonet::API31::System::Service::NTP;
 
-	GET qr{^/system/ntp$}  => \&get_ntp;
+	GET qr{^/system/ntp$} => \&get_ntp;
 	POST qr{^/system/ntp$} => \&set_ntp;
 }
 
@@ -339,8 +338,8 @@ if ( $q->path_info =~ qr{^/system/users} )
 
 	my $user_re = &getValidFormat( 'user' );
 
-	GET qr{^/system/users$}             => \&get_all_users;    #  GET users
-	GET qr{^/system/users/($user_re)$}  => \&get_user;         #  GET user settings
+	GET qr{^/system/users$}            => \&get_all_users;     #  GET users
+	GET qr{^/system/users/($user_re)$} => \&get_user;          #  GET user settings
 	POST qr{^/system/users/zapi$}       => \&set_user_zapi;    #  POST zapi user
 	POST qr{^/system/users/($user_re)$} => \&set_user;         #  POST other user
 }
@@ -362,7 +361,7 @@ if ( $q->path_info =~ qr{^/system/backup} )
 {
 	require Skudonet::API31::System::Backup;
 
-	GET qr{^/system/backup$}  => \&get_backup;       #  GET list backups
+	GET qr{^/system/backup$} => \&get_backup;        #  GET list backups
 	POST qr{^/system/backup$} => \&create_backup;    #  POST create backups
 
 	my $backup_re = &getValidFormat( 'backup' );

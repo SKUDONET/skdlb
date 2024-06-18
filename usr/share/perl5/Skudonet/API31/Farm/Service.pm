@@ -24,11 +24,6 @@
 use strict;
 use Skudonet::Farm::Core;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # POST
 sub new_farm_service    # ( $json_obj, $farmname )
@@ -58,20 +53,11 @@ sub new_farm_service    # ( $json_obj, $farmname )
 
 	my $type = &getFarmType( $farmname );
 
-	# validate farm profile
-	if ( $type eq "gslb" && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API31::Farm::GSLB',
-				func   => 'new_gslb_farm_service',
-				args   => [$json_obj, $farmname]
-		);
-	}
-	elsif ( $type !~ /^https?$/ )
-	{
-		my $msg = "The farm profile $type does not support services.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
+		if ( $type !~ /^https?$/ )
+		{
+			my $msg = "The farm profile $type does not support services.";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
 
 	# HTTP profile
 	require Skudonet::Farm::Base;
@@ -139,11 +125,6 @@ sub new_farm_service    # ( $json_obj, $farmname )
 		else
 		{
 			&runFarmReload( $farmname );
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'reload', $farmname],
-			) if ( $eload );
 		}
 	}
 
@@ -242,7 +223,7 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 	}
 
 	# validate SERVICE
-	my @services = &getFarmServices( $farmname );
+	my @services      = &getFarmServices( $farmname );
 	my $found_service = grep { $service eq $_ } @services;
 
 	if ( not $found_service )
@@ -251,20 +232,11 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
 	}
 
-	# check if the farm profile gslb is supported
-	if ( $type eq "gslb" && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API31::Farm::GSLB',
-				func   => 'modify_gslb_service',
-				args   => [$json_obj, $farmname, $service]
-		);
-	}
-	elsif ( $type !~ /^https?$/ )
-	{
-		my $msg = "Farm profile not supported";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
+		if ( $type !~ /^https?$/ )
+		{
+			my $msg = "Farm profile not supported";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
 
 	if ( exists $json_obj->{ vhost } )
 	{
@@ -376,25 +348,8 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 	# Cookie insertion
 	if ( scalar grep ( /^cookie/, keys %{ $json_obj } ) )
 	{
-		if ( $eload )
-		{
-			my $msg = &eload(
-							  module   => 'Skudonet::API31::Farm::Service::Ext',
-							  func     => 'modify_service_cookie_insertion',
-							  args     => [$farmname, $service, $json_obj],
-							  just_ret => 1,
-			);
-
-			if ( defined $msg && length $msg )
-			{
-				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-		}
-		else
-		{
 			my $msg = "Cookie insertion feature not available.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
 	}
 
 	if ( exists $json_obj->{ httpsb } )
@@ -420,12 +375,6 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 
 	# no error found, return succesful response
 	$output_params = &getHTTPServiceStruct( $farmname, $service );
-	if ( $eload )
-	{
-		delete ( $output_params->{ sts_status } );
-		delete ( $output_params->{ sts_timeout } );
-		delete ( $output_params->{ redirect_code } );
-	}
 	delete ( $output_params->{ replacerequestheader } );
 	delete ( $output_params->{ replaceresponseheader } );
 	delete ( $output_params->{ rewritelocation } );
@@ -466,11 +415,6 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 		else
 		{
 			&runFarmReload( $farmname );
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'reload', $farmname],
-			) if ( $eload );
 		}
 	}
 
@@ -498,19 +442,11 @@ sub delete_service    # ( $farmname, $service )
 	# check the farm type is supported
 	my $type = &getFarmType( $farmname );
 
-	if ( $type eq "gslb" && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API31::Farm::GSLB',
-				func   => 'delete_gslb_service',
-				args   => [$farmname, $service]
-		);
-	}
-	elsif ( $type !~ /^https?$/ )
-	{
-		my $msg = "The farm profile $type does not support services.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
+		if ( $type !~ /^https?$/ )
+		{
+			my $msg = "The farm profile $type does not support services.";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
 
 	require Skudonet::Farm::Base;
 	require Skudonet::Farm::HTTP::Service;
@@ -573,11 +509,6 @@ sub delete_service    # ( $farmname, $service )
 		else
 		{
 			&runFarmReload( $farmname );
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'reload', $farmname],
-			) if ( $eload );
 		}
 	}
 

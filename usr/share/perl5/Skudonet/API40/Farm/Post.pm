@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -25,11 +26,6 @@ use Skudonet::Net::Util;
 use Skudonet::Farm::Core;
 use Skudonet::Farm::Factory;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 sub new_farm    # ( $json_obj )
 {
@@ -170,14 +166,6 @@ sub new_farm    # ( $json_obj )
 			message => "The farm $json_obj->{ farmname } has been created successfully."
 	};
 
-	if ( $eload )
-	{
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['farm', 'start', $json_obj->{ farmname }],
-		);
-	}
 
 	&httpResponse( { code => 201, body => $body } );
 }

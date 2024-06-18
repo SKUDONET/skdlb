@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -23,11 +24,6 @@
 use strict;
 use Skudonet::Farm::Core;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # PUT /farms/<farmname>/actions Set an action in a Farm
 sub farm_actions    # ( $json_obj, $farmname )
@@ -188,11 +184,6 @@ sub farm_actions    # ( $json_obj, $farmname )
 
 	&zenlog( "Success, $msg", "info", "FARMS" );
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['farm', $json_obj->{ action }, $farmname],
-	) if ( $eload );
 
 	my $body = {
 				 description => "Set a new action in $farmname",
@@ -259,7 +250,7 @@ sub service_backend_maintenance # ( $json_obj, $farmname, $service, $backend_id 
 
 	# validate BACKEND
 	my $be_aref = &getHTTPFarmBackends( $farmname, $service );
-	my $be = $be_aref->[$backend_id - 1];
+	my $be      = $be_aref->[$backend_id - 1];
 
 	if ( !$be )
 	{
@@ -327,11 +318,6 @@ sub service_backend_maintenance # ( $json_obj, $farmname, $service, $backend_id 
 				 },
 	};
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['farm', 'restart', $farmname],
-	) if ( $eload && &getFarmStatus( $farmname ) eq 'up' );
 
 	&httpResponse( { code => 200, body => $body } );
 }
@@ -370,7 +356,7 @@ sub backend_maintenance    # ( $json_obj, $farmname, $backend_id )
 	require Skudonet::Farm::L4xNAT::Backend;
 
 	my $backends = &getL4FarmServers( $farmname );
-	my $exists = &getFarmServer( $backends, $backend_id );
+	my $exists   = &getFarmServer( $backends, $backend_id );
 
 	if ( !$exists )
 	{
@@ -430,11 +416,6 @@ sub backend_maintenance    # ( $json_obj, $farmname, $backend_id )
 				 },
 	};
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['farm', 'restart', $farmname],
-	) if ( $eload && &getFarmStatus( $farmname ) eq 'up' );
 
 	&httpResponse( { code => 200, body => $body } );
 }

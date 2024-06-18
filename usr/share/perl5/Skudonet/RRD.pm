@@ -26,11 +26,6 @@ use RRDs;
 use MIME::Base64;
 use Skudonet::Config;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $basedir   = &getGlobalConfiguration( 'basedir' );
 my $rrdap_dir = &getGlobalConfiguration( 'rrdap_dir' );
@@ -167,7 +162,7 @@ sub printImgFile    #($file)
 	if ( open my $png, '<', $file )
 	{
 		my $raw_string = do { local $/ = undef; <$png>; };
-		my $encoded = encode_base64( $raw_string );
+		my $encoded    = encode_base64( $raw_string );
 
 		close $png;
 
@@ -219,17 +214,6 @@ sub delGraph    #($name, type)
 				 "info", "MONITOR" );
 		unlink glob ( "$rrdap_dir/$rrd_dir/$name-farm.rrd" );
 
-		&eload(
-				module => 'Skudonet::IPDS::Stats',
-				func   => 'delIPDSRRDFile',
-				args   => [$name],
-		) if $eload;
-	}
-	if ( $type =~ /vpn/ )
-	{
-		&zenlog( "Delete graph file: $rrdap_dir/$rrd_dir/$name-vpn.rrd",
-				 "info", "MONITOR" );
-		unlink glob ( "$rrdap_dir/$rrd_dir/$name-vpn.rrd" );
 	}
 }
 
@@ -290,14 +274,6 @@ sub printGraph    #($type,$time)
 	elsif ( $type =~ /-farm$/ )
 	{
 		&genFarmGraph( $type, $graph, $time, $end );
-	}
-	elsif ( $eload and $type =~ /ipds$/ )
-	{
-		&eload(
-				module => 'Skudonet::IPDS::Stats',
-				func   => 'genIPDSGraph',
-				args   => [$type, $graph, $time, $end],
-		);
 	}
 	elsif ( $type =~ /^dev-*/ )
 	{
@@ -813,73 +789,6 @@ sub genFarmGraph    #($type,$graph,$time)
 }
 
 =begin nd
-Function: genVPNGraph
-
-	Generate VPN usage graph image file for a period of time.
-
-Parameters:
-	type - Database name without extension.
-	graph - Path to file to be generated.
-	time - Period of time shown in the graph.
-
-Returns:
-	none - .
-
-See Also:
-	<printGraph>
-
-	<genCpuGraph>, <genDiskGraph>, <genLoadGraph>, <genMemGraph>, <genMemSwGraph>, <genFarmGraph>, <genLoadGraph>
-=cut
-
-sub genVPNGraph    #($type,$graph,$time)
-{
-	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
-			 "debug", "PROFILING" );
-	my ( $type, $graph, $time ) = @_;
-
-	my $db_vpn   = "$type.rrd";
-	my $vpn_name = $type;
-	$vpn_name =~ s/-vpn$//g;
-
-	if ( -e "$rrdap_dir/$rrd_dir/$db_vpn" )
-	{
-		RRDs::graph(
-					 "$graph",
-					 "--imgformat=$imagetype",
-					 "--start=-1$time",
-					 "--height=$height",
-					 "--width=$width",
-					 "--lazy",
-					 "-l 0",
-					 "--alt-autoscale-max",
-					 "--title=TRAFFIC ON $vpn_name",
-					 "--vertical-label=BANDWIDTH",
-					 "DEF:in=$rrdap_dir/$rrd_dir/$db_vpn:in:AVERAGE",
-					 "DEF:out=$rrdap_dir/$rrd_dir/$db_vpn:out:AVERAGE",
-					 "CDEF:in_bytes=in,1024,*",
-					 "CDEF:out_bytes=out,1024,*",
-					 "CDEF:out_bytes_neg=out_bytes,-1,*",
-					 "AREA:in_bytes#46b971:In ",
-					 "LINE1:in_bytes#000000",
-					 "GPRINT:in_bytes:LAST:Last\\:%5.1lf %sByte/sec",
-					 "GPRINT:in_bytes:MIN:Min\\:%5.1lf %sByte/sec",
-					 "GPRINT:in_bytes:AVERAGE:Avg\\:%5.1lf %sByte/sec",
-					 "GPRINT:in_bytes:MAX:Max\\:%5.1lf %sByte/sec\\n",
-					 "AREA:out_bytes_neg#595959:Out",
-					 "LINE1:out_bytes_neg#000000",
-					 "GPRINT:out_bytes:LAST:Last\\:%5.1lf %sByte/sec",
-					 "GPRINT:out_bytes:MIN:Min\\:%5.1lf %sByte/sec",
-					 "GPRINT:out_bytes:AVERAGE:Avg\\:%5.1lf %sByte/sec",
-					 "GPRINT:out_bytes:MAX:Max\\:%5.1lf %sByte/sec\\n",
-					 "HRULE:0#000000"
-		);
-
-		my $rrdError = RRDs::error;
-		print "$0: unable to generate $graph: $rrdError\n" if ( $rrdError );
-	}
-}
-
-=begin nd
 Function: getGraphs2Show
 
 	Get list of graph names by type or all of them.
@@ -922,13 +831,6 @@ sub getGraphs2Show    #($graphtype)
 	{
 		opendir ( DIR, "$rrdap_dir/$rrd_dir" );
 		@list = grep ( /farm.rrd$/, readdir ( DIR ) );
-		closedir ( DIR );
-		for ( @list ) { s/.rrd$//g };    # remove filenames .rrd trailing
-	}
-	elsif ( $graphtype eq 'VPN' )
-	{
-		opendir ( DIR, "$rrdap_dir/$rrd_dir" );
-		@list = grep ( /vpn.rrd$/, readdir ( DIR ) );
 		closedir ( DIR );
 		for ( @list ) { s/.rrd$//g };    # remove filenames .rrd trailing
 	}

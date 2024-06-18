@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -25,11 +26,6 @@ use Skudonet::FarmGuardian;
 use Skudonet::Farm::Config;
 use Skudonet::Farm::L4xNAT::Backend;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # GET /farms/<farmname> Request info of a l4xnat Farm
 sub farms_name_l4    # ( $farmname )
@@ -48,7 +44,7 @@ sub farms_name_l4    # ( $farmname )
 	my $vip   = &getL4FarmParam( "vip",  $farmname );
 	my $vport = &getL4FarmParam( "vipp", $farmname );
 
-	my @ttl = &getFarmMaxClientTime( $farmname, "" );
+	my @ttl         = &getFarmMaxClientTime( $farmname, "" );
 	my $timetolimit = $ttl[0] + 0;
 
 	# Farmguardian
@@ -69,10 +65,10 @@ sub farms_name_l4    # ( $farmname )
 			   status      => $status,
 			   vip         => $vip,
 			   vport       => $vport,
-			   algorithm   => &getL4FarmParam( 'alg', $farmname ),
-			   nattype     => &getL4FarmParam( 'mode', $farmname ),
+			   algorithm   => &getL4FarmParam( 'alg',     $farmname ),
+			   nattype     => &getL4FarmParam( 'mode',    $farmname ),
 			   persistence => &getL4FarmParam( 'persist', $farmname ),
-			   protocol    => &getL4FarmParam( 'proto', $farmname ),
+			   protocol    => &getL4FarmParam( 'proto',   $farmname ),
 			   ttl         => $timetolimit,
 			   fgenabled   => $fguse,
 			   fgtimecheck => $fgtimecheck + 0,
@@ -91,18 +87,6 @@ sub farms_name_l4    # ( $farmname )
 				 backends    => $out_b,
 	};
 
-	if ( $eload )
-	{
-		$body->{ ipds } = &eload(
-								  module => 'Skudonet::IPDS::Core',
-								  func   => 'getIPDSfarmsRules',
-								  args   => [$farmname],
-		);
-		for my $blacklist ( @{ $body->{ ipds }->{ blacklists } } )
-		{
-			delete $blacklist->{ id };
-		}
-	}
 
 	&httpResponse( { code => 200, body => $body } );
 }

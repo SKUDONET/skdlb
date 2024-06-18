@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -25,11 +26,6 @@ use Skudonet::Farm::Core;
 use Skudonet::Farm::Base;
 use Skudonet::Farm::Action;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # DELETE /farms/FARMNAME
 sub delete_farm    # ( $farmname )
@@ -54,11 +50,6 @@ sub delete_farm    # ( $farmname )
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 		}
 
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['farm', 'stop', $farmname],
-		) if ( $eload );
 	}
 
 	my $error = &runFarmDelete( $farmname );
@@ -71,11 +62,6 @@ sub delete_farm    # ( $farmname )
 
 	&zenlog( "Success, the farm $farmname has been deleted.", "info", "FARMS" );
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['farm', 'delete', $farmname],
-	) if ( $eload );
 
 	my $msg = "The Farm $farmname has been deleted.";
 	my $body = {

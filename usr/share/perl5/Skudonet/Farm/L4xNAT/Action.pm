@@ -27,12 +27,6 @@ use warnings;
 use Skudonet::Config;
 use Skudonet::Nft;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
-
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
 =begin nd
@@ -77,7 +71,6 @@ sub startL4Farm    # ($farm_name)
 
 	&doL4FarmRules( "start", $farm_name );
 
-	&reloadFarmsSourceAddressByFarm( $farm_name );
 
 	# Enable IP forwarding
 	require Skudonet::Net::Util;

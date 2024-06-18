@@ -31,11 +31,6 @@ my $fg_conf   = "$configdir/farmguardian.conf";
 my $fg_template =
   &getGlobalConfiguration( "templatedir" ) . "/farmguardian.template";
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: getFGStatusFile
@@ -309,7 +304,7 @@ sub getFGFarm
 
 	my $fg;
 	my $farm_tag = ( $srv ) ? "${farm}_$srv" : "$farm";
-	my $fg_list = &getTiny( $fg_conf );
+	my $fg_list  = &getTiny( $fg_conf );
 
 	foreach my $fg_name ( keys %{ $fg_list } )
 	{
@@ -483,14 +478,6 @@ sub setFGObject
 	$out = &setTinyObj( $fg_conf, $fg_name, $key, $value );
 	$out = &runFGStart( $fg_name ) if $restart;
 
-	if ( $eload )
-	{
-		$out += &eload(
-						module => 'Skudonet::Farm::GSLB::FarmGuardian',
-						func   => 'updateGSLBFg',
-						args   => [$fg_name],
-		);
-	}
 
 	return $out;
 }
@@ -528,7 +515,7 @@ sub setFGFarmRename
 		if ( $fh->{ $fg }->{ farms } =~ /(?:^| )${farm}_?([\w-]+)?(?:$| )/ )
 		{
 			$srv          = $1;
-			$farm_tag     = ( $srv ) ? "${farm}_$srv" : $farm;
+			$farm_tag     = ( $srv ) ? "${farm}_$srv"     : $farm;
 			$new_farm_tag = ( $srv ) ? "${new_farm}_$srv" : $new_farm;
 
 			$out = &setTinyObj( $fg_conf, $fg, 'farms', $farm_tag,     'del' );
@@ -583,18 +570,10 @@ sub linkFGFarm
 	$out = &setTinyObj( $fg_conf, $fg_name, 'farms', $farm_tag, 'add' );
 	return $out if $out;
 
-	if ( &getFarmType( $farm ) eq 'gslb' and $eload )
-	{
-		$out = &eload(
-					   module => 'Skudonet::Farm::GSLB::FarmGuardian',
-					   func   => 'linkGSLBFg',
-					   args   => [$fg_name, $farm, $srv],
-		);
-	}
-	elsif ( &getFarmStatus( $farm ) eq 'up' )
-	{
-		$out = &runFGFarmStart( $farm, $srv );
-	}
+		if ( &getFarmStatus( $farm ) eq 'up' )
+		{
+			$out = &runFGFarmStart( $farm, $srv );
+		}
 
 	return $out;
 }
@@ -633,18 +612,7 @@ sub unlinkFGFarm
 	$out = &setTinyObj( $fg_conf, $fg_name, 'farms', $farm_tag, 'del' );
 	return $out if $out;
 
-	if ( ( $type eq 'gslb' ) and $eload )
-	{
-		$out = &eload(
-					   module => 'Skudonet::Farm::GSLB::FarmGuardian',
-					   func   => 'unlinkGSLBFg',
-					   args   => [$farm, $srv],
-		);
-	}
-	else
-	{
 		$out = &runFGFarmStop( $farm, $srv );
-	}
 
 	return $out;
 }
@@ -673,10 +641,12 @@ sub delFGFarm
 	require Skudonet::Farm::Service;
 
 	my $fg;
-	my $err = &runFGFarmStop( $farm, $service );
-	my $type = &getFarmType( $farm );
+	my $err     = &runFGFarmStop( $farm, $service );
+	my $type    = &getFarmType( $farm );
+	my $del_srv = 0;
 
-	if ( $type =~ /http/ or $type eq 'gslb' )
+	$del_srv = 1 if ( $type =~ /http/ );
+	if ( $del_srv )
 	{
 		if ( not $service )
 		{
@@ -1054,17 +1024,6 @@ sub runFGFarmStart
 		#~ &runFGFarmStop( $farm, $svice );
 	}
 
-	# check if the node is master
-	if ( $eload )
-	{
-		my $node = "";
-		$node = &eload(
-						module => 'Skudonet::Cluster',
-						func   => 'getZClusterNodeStatus',
-						args   => [],
-		);
-		return 0 unless ( !$node or $node eq 'master' );
-	}
 
 	&zenlog( "Start fg for farm $farm, $svice", "debug2", "FG" );
 
@@ -1074,7 +1033,7 @@ sub runFGFarmStart
 
 		# Iterate over every farm service
 		my $services = &getFarmVS( $farm, "", "" );
-		my @servs = split ( " ", $services );
+		my @servs    = split ( " ", $services );
 
 		foreach my $service ( @servs )
 		{
@@ -1132,10 +1091,10 @@ sub runFGFarmStart
 			&zenlog( $msg, "error", "fg" );
 		}
 	}
-	elsif ( $ftype ne 'gslb' )
+	else
 	{
-		# WARNING: farm types not supported by farmguardian return 0.
-		$status = 1;
+			# WARNING: farm types not supported by farmguardian return 0.
+			$status = 1;
 	}
 
 	return $status;
@@ -1279,7 +1238,7 @@ sub setOldFarmguardian
 	# if exists, update it
 	if ( &getFGExistsConfig( $name ) )
 	{
-		$set = &getFGObject( $name );
+		$set               = &getFGObject( $name );
 		$set->{ command }  = $obj->{ command }  if exists $obj->{ command };
 		$set->{ log }      = $obj->{ log }      if exists $obj->{ log };
 		$set->{ interval } = $obj->{ interval } if exists $obj->{ interval };
@@ -1523,7 +1482,7 @@ sub getFarmGuardianConf    # ($fname,$svice)
 	my $fg = &getFGFarm( $fname, $svice );
 	if ( not $fg )
 	{
-		$fg = $old if &getFGExists( $old );
+		$fg    = $old if &getFGExists( $old );
 		$usefg = "false";
 	}
 

@@ -24,11 +24,6 @@
 use strict;
 use Skudonet::Farm::Core;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # POST
 sub new_farm_service    # ( $json_obj, $farmname )
@@ -59,19 +54,11 @@ sub new_farm_service    # ( $json_obj, $farmname )
 	my $type = &getFarmType( $farmname );
 
 	# validate farm profile
-	if ( $type eq "gslb" )
-	{
-		&eload(
-				module => 'Skudonet::API40::Farm::GSLB',
-				func   => 'new_gslb_farm_service',
-				args   => [$json_obj, $farmname]
-		);
-	}
-	elsif ( $type !~ /^https?$/ )
-	{
-		my $msg = "The farm profile $type does not support services actions.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
+		if ( $type !~ /^https?$/ )
+		{
+			my $msg = "The farm profile $type does not support services actions.";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
 
 	my $params = &getZAPIModel( "farm_http_service-create.json" );
 
@@ -118,7 +105,7 @@ sub new_farm_service    # ( $json_obj, $farmname )
 	my $body = {
 		   description => $desc,
 		   params      => { id => $json_obj->{ id } },
-		   message =>
+		   message     =>
 			 "A new service has been created in farm $farmname with id $json_obj->{id}."
 	};
 
@@ -141,11 +128,6 @@ sub new_farm_service    # ( $json_obj, $farmname )
 			else
 			{
 				&runFarmReload( $farmname );
-				&eload(
-						module => 'Skudonet::Cluster',
-						func   => 'runZClusterRemoteManager',
-						args   => ['farm', 'reload', $farmname],
-				) if ( $eload );
 			}
 		}
 	}
@@ -203,10 +185,6 @@ sub farm_services
 		delete ( $service->{ replaceresponseheader } );
 		delete ( $service->{ rewritelocation } );
 		delete ( $service->{ rewriteurl } );
-		delete ( $service->{ addrequestheader } );
-		delete ( $service->{ addresponseheader } );
-		delete ( $service->{ removerequestheader } );
-		delete ( $service->{ removeresponseheader } );
 		delete ( $service->{ pinnedconnection } );
 		delete ( $service->{ routingpolicy } );
 	}
@@ -257,7 +235,7 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 	}
 
 	# validate SERVICE
-	my @services = &getFarmServices( $farmname );
+	my @services      = &getFarmServices( $farmname );
 	my $found_service = grep { $service eq $_ } @services;
 
 	if ( not $found_service )
@@ -266,15 +244,6 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
 	}
 
-	# check if the farm profile gslb is supported
-	if ( $type eq "gslb" )
-	{
-		&eload(
-				module => 'Skudonet::API40::Farm::GSLB',
-				func   => 'modify_gslb_service',
-				args   => [$json_obj, $farmname, $service]
-		);
-	}
 
 	my $params = &getZAPIModel( "farm_http_service-modify.json" );
 
@@ -343,12 +312,6 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 
 	if ( exists $json_obj->{ persistence } )
 	{
-		my $old_persistence;
-		if ( $eload )
-		{
-			require Skudonet::Farm::Config;
-			$old_persistence = &getPersistence( $farmname );
-		}
 		my $session = $json_obj->{ persistence };
 		$session = 'nothing' if $session eq "";
 
@@ -357,26 +320,6 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 		{
 			my $msg = "It's not possible to change the persistence parameter.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-		if ( $eload )
-		{
-			my $new_persistence = &getPersistence( $farmname );
-			if ( ( $new_persistence == 1 ) and ( $old_persistence == 0 ) )
-			{
-				&eload(
-						module => 'Skudonet::Ssyncd',
-						func   => 'setSsyncdFarmDown',
-						args   => [$farmname],
-				);
-			}
-			elsif ( ( $new_persistence == 0 ) and ( $old_persistence == 1 ) )
-			{
-				&eload(
-						module => 'Skudonet::Ssyncd',
-						func   => 'setSsyncdFarmUp',
-						args   => [$farmname],
-				);
-			}
 		}
 	}
 
@@ -407,25 +350,8 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 	# Cookie insertion
 	if ( scalar grep ( /^cookie/, keys %{ $json_obj } ) )
 	{
-		if ( $eload )
-		{
-			my $msg = &eload(
-							  module   => 'Skudonet::API40::Farm::Service::Ext',
-							  func     => 'modify_service_cookie_insertion',
-							  args     => [$farmname, $service, $json_obj],
-							  just_ret => 1,
-			);
-
-			if ( defined $msg && length $msg )
-			{
-				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-		}
-		else
-		{
 			my $msg = "Cookie insertion feature not available.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
 	}
 
 	if ( exists $json_obj->{ httpsb } )
@@ -448,25 +374,8 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 	# Redirect code
 	if ( exists $json_obj->{ redirect_code } )
 	{
-		if ( $eload )
-		{
-			my $err = &eload(
-							  module => 'Skudonet::Farm::HTTP::Service::Ext',
-							  func   => 'setHTTPServiceRedirectCode',
-							  args   => [$farmname, $service, $json_obj->{ redirect_code }],
-			);
-
-			if ( $err )
-			{
-				my $msg = "Error modifying redirect code.";
-				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-		}
-		else
-		{
 			my $msg = "Redirect code feature not available.";
 			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
 	}
 
 	if ( exists $json_obj->{ pinnedconnection } )
@@ -511,53 +420,6 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 		}
 	}
 
-	if ( $eload )
-	{
-		# sts options
-		if ( exists $json_obj->{ sts_status } )
-		{
-			# status
-			if ( $type ne 'https' )
-			{
-				my $msg = "The farms have to be HTTPS to modify STS";
-				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-
-			}
-			my $err = &eload(
-							  module => 'Skudonet::Farm::HTTP::Service::Ext',
-							  func   => 'setHTTPServiceSTSStatus',
-							  args   => [$farmname, $service, $json_obj->{ sts_status }],
-			);
-
-			if ( $err )
-			{
-				my $msg = "Error modifying STS status.";
-				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-
-		}
-
-		if ( exists $json_obj->{ sts_timeout } )
-		{
-			if ( $type ne 'https' )
-			{
-				my $msg = "The farms have to be HTTPS to modify STS";
-				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-
-			my $err = &eload(
-							  module => 'Skudonet::Farm::HTTP::Service::Ext',
-							  func   => 'setHTTPServiceSTSTimeout',
-							  args   => [$farmname, $service, $json_obj->{ sts_timeout }],
-			);
-
-			if ( $err )
-			{
-				my $msg = "Error modifying STS status.";
-				return &httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-			}
-		}
-	}
 
 	# no error found, return succesful response
 	require Skudonet::API40::Farm::Get::HTTP;
@@ -569,10 +431,6 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 		delete ( $output_params->{ replaceResponseHeader } );
 		delete ( $output_params->{ rewriteLocation } );
 		delete ( $output_params->{ rewriteUrl } );
-		delete ( $output_params->{ addRequestHeader } );
-		delete ( $output_params->{ addResponseHeader } );
-		delete ( $output_params->{ removeRequestHeader } );
-		delete ( $output_params->{ removeResponseHeader } );
 	}
 
 	&zenlog(
@@ -607,11 +465,6 @@ sub modify_services    # ( $json_obj, $farmname, $service )
 			else
 			{
 				&runFarmReload( $farmname );
-				&eload(
-						module => 'Skudonet::Cluster',
-						func   => 'runZClusterRemoteManager',
-						args   => ['farm', 'reload', $farmname],
-				) if ( $eload );
 			}
 		}
 	}
@@ -640,19 +493,11 @@ sub delete_service    # ( $farmname, $service )
 	# check the farm type is supported
 	my $type = &getFarmType( $farmname );
 
-	if ( $type eq "gslb" && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API40::Farm::GSLB',
-				func   => 'delete_gslb_service',
-				args   => [$farmname, $service]
-		);
-	}
-	elsif ( $type !~ /^https?$/ )
-	{
-		my $msg = "The farm profile $type does not support services actions.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
+		if ( $type !~ /^https?$/ )
+		{
+			my $msg = "The farm profile $type does not support services actions.";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
 
 	require Skudonet::Farm::Base;
 	require Skudonet::Farm::HTTP::Service;
@@ -723,11 +568,6 @@ sub delete_service    # ( $farmname, $service )
 			else
 			{
 				&runFarmReload( $farmname );
-				&eload(
-						module => 'Skudonet::Cluster',
-						func   => 'runZClusterRemoteManager',
-						args   => ['farm', 'reload', $farmname],
-				) if ( $eload );
 			}
 		}
 	}

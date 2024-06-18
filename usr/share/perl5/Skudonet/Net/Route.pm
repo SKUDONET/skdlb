@@ -25,11 +25,6 @@ use strict;
 
 use Skudonet::Core;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my $ip_bin = &getGlobalConfiguration( 'ip_bin' );
 
@@ -203,15 +198,6 @@ sub addlocalnet    # ($if_ref)
 	# Add or replace local net to all tables
 	my @links = ( 'main', &getLinkNameList() );
 
-	my @isolates = ();
-	if ( $eload )
-	{
-		@isolates = &eload(
-							module => 'Skudonet::Net::Routing',
-							func   => 'getRoutingIsolate',
-							args   => [$$if_ref{ name }],
-		);
-	}
 
 	# filling the other tables
 	foreach my $link ( @links )
@@ -222,46 +208,34 @@ sub addlocalnet    # ($if_ref)
 
 		my $table = ( $link eq 'main' ) ? 'main' : "table_$link";
 
-		if ( grep ( /^(?:\*|$table)$/, @isolates ) )
-		{
-			$skip_route = 1;
-		}
-		elsif ( $link ne 'main' )
-		{
-			my $iface = &getInterfaceConfig( $link );
-
-			# ignores interfaces down or not configured
-			next if $iface->{ status } ne 'up';
-			next if !defined $iface->{ addr };
-
-			#if duplicated network, next
-			my $ip_table =
-			  new NetAddr::IP( $$iface{ addr }, $$iface{ mask } );
-			my $net_local_table = $ip_table->network();
-
-			if ( $net_local_table eq $net_local && $$if_ref{ name } ne $link )
+			if ( $link ne 'main' )
 			{
-				&zenlog(
-					"The network $net_local of dev $$if_ref{name} is the same than the network for $link, route is not going to be applied in table $table",
-					"error", "network"
-				);
-				$skip_route = 1;
+				my $iface = &getInterfaceConfig( $link );
+
+				# ignores interfaces down or not configured
+				next if $iface->{ status } ne 'up';
+				next if !defined $iface->{ addr };
+
+				#if duplicated network, next
+				my $ip_table =
+				  new NetAddr::IP( $$iface{ addr }, $$iface{ mask } );
+				my $net_local_table = $ip_table->network();
+
+				if ( $net_local_table eq $net_local && $$if_ref{ name } ne $link )
+				{
+					&zenlog(
+						"The network $net_local of dev $$if_ref{name} is the same than the network for $link, route is not going to be applied in table $table",
+						"error", "network"
+					);
+					$skip_route = 1;
+				}
 			}
-		}
 
 		if ( !$skip_route )
 		{
 			&applyRoutingCmd( 'replace', $if_ref, $table );
 		}
 
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Net::Routing',
-					func   => 'applyRoutingTableByIface',
-					args   => [$table, $$if_ref{ name }],
-			);
-		}
 	}
 
 	# filling the own table
@@ -273,24 +247,13 @@ sub addlocalnet    # ($if_ref)
 
 		next if $iface_sys->{ status } ne 'up';
 		next if $iface->{ type } eq 'virtual';
-		next if $iface->{ is_slave } eq 'true';    # Is in bonding iface
+		next if $iface->{ is_slave } eq 'true';
 
 		next
 		  if (   !defined $iface->{ addr }
-			   or length $iface->{ addr } == 0 );    #IP addr doesn't exist
+			   or length $iface->{ addr } == 0 );
 		next if ( !&isIp( $iface ) );
 
-		# do not import the iface route if it is isolate
-		my @isolates = ();
-		if ( $eload )
-		{
-			@isolates = &eload(
-								module => 'Skudonet::Net::Routing',
-								func   => 'getRoutingIsolate',
-								args   => [$$iface{ name }],
-			);
-		}
-		next if ( grep ( /^(?:\*|table_$$if_ref{name})$/, @isolates ) );
 
 		&zenlog(
 			   "addlocalnet: into current interface: name $$iface{name} type $$iface{type}",
@@ -313,14 +276,6 @@ sub addlocalnet    # ($if_ref)
 		&applyRoutingCmd( 'replace', $iface, $table );
 	}
 
-	if ( $eload )
-	{
-		&eload(
-				module => 'Skudonet::Net::Routing',
-				func   => 'applyRoutingCustom',
-				args   => ['add', "table_$$if_ref{name}"],
-		);
-	}
 
 	use Skudonet::Net::Core;
 	&setRuleIPtoTable( $$if_ref{ name }, $$if_ref{ addr }, "add" );
@@ -377,14 +332,6 @@ sub dellocalnet    # ($if_ref)
 			&applyRoutingCmd( 'del', $if_ref, $table );
 		}
 
-		if ( $eload )
-		{
-			&eload(
-					module => 'Skudonet::Net::Routing',
-					func   => 'applyRoutingCustom',
-					args   => ['del', "table_$$if_ref{name}"],
-			);
-		}
 	}
 }
 
@@ -684,16 +631,6 @@ sub genRoutingRulesPrio
 		return $ifacesInit;
 	}
 
-	if ( $eload )
-	{
-		# vpn rules
-		my $vpn = &getGlobalConfiguration( 'routingRulePrioVPN' );
-		if ( $type eq 'vpn' )
-		{
-			$min = $vpn;
-			$max = $farmL4;
-		}
-	}
 
 	my $prio;
 	my $prioList = &listRoutingRulesPrio();
@@ -961,33 +898,6 @@ sub applyRoutes    # ($table,$if_ref,$gateway)
 		$if_announce     = $toif;
 	}
 
-	# not send garps to network if node is backup or it is in maintenance
-	eval {
-		if ( $eload )
-		{
-			my $cl_status = &eload(
-									module => 'Skudonet::Cluster',
-									func   => 'getZClusterNodeStatus',
-									args   => [],
-			);
-			my $cl_maintenance = &eload(
-										 module => 'Skudonet::Cluster',
-										 func   => 'getClMaintenanceManual',
-										 args   => [],
-			);
-
-			if ( $cl_status ne "backup" and $cl_maintenance ne "true" )
-			{
-				require Skudonet::Net::Util;
-
-				#&sendGArp($$if_ref{parent},$$if_ref{addr})
-				&zenlog( "Announcing garp $if_announce and $$if_ref{addr} " );
-				&sendGArp( $if_announce, $$if_ref{ addr } );
-			}
-
-		}
-
-	};
 
 	return $status;
 }
@@ -1401,25 +1311,9 @@ sub listRoutingRules
 			 "debug", "PROFILING" );
 
 	my @rules_conf = ();
-	if ( $eload )
-	{
-		my $conf = &eload(
-						   module => 'Skudonet::Net::Routing',
-						   func   => 'listRoutingRulesConf',
-						   args   => [],
-		);
-		@rules_conf = @{ $conf };
-	}
-
-	my @priorities = ();
-	foreach my $r ( @rules_conf )
-	{
-		push @priorities, $r->{ priority };
-	}
-
 	foreach my $sys ( @{ &listRoutingRulesSys() } )
 	{
-		push @rules_conf, $sys if ( !grep ( /^$sys->{priority}$/, @priorities ) );
+			push @rules_conf, $sys;
 	}
 
 	return \@rules_conf;

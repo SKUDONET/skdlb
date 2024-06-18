@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -25,11 +26,6 @@ use Skudonet::Farm::Base;
 use Skudonet::Farm::Config;
 use Skudonet::Farm::Action;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # PUT /farms/<farmname> Modify a http|https Farm
 sub modify_http_farm    # ( $json_obj, $farmname )
@@ -55,11 +51,8 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 	$params->{ disable_tlsv1_1 }->{ listener } = "https";
 	$params->{ disable_tlsv1_2 }->{ listener } = "https";
 	$params->{ disable_tlsv1_3 }->{ listener } = "https";
-	if ( !$eload )
-	{
 		$params->{ "ciphers" }->{ 'values' } =
 		  ["all", "highsecurity", "customsecurity"];
-	}
 
 	if ( &getGlobalConfiguration( 'proxy_ng' ) eq 'true' )
 	{
@@ -107,7 +100,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 
 	if (
 		 (
-		      exists ( $json_obj->{ contimeout } )
+			  exists ( $json_obj->{ contimeout } )
 		   or exists ( $json_obj->{ resurrectime } )
 		 )
 		 and &getGlobalConfiguration( 'proxy_ng' ) eq 'true'
@@ -123,30 +116,6 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		}
 	}
 
-	# Flags
-	my $reload_ipds = 0;
-
-	if (    exists $json_obj->{ vport }
-		 || exists $json_obj->{ vip }
-		 || exists $json_obj->{ newfarmname } )
-	{
-		if ( $eload )
-		{
-			$reload_ipds = 1;
-
-			&eload(
-					module => 'Skudonet::IPDS::Base',
-					func   => 'runIPDSStopByFarm',
-					args   => [$farmname],
-			);
-
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['ipds', 'stop', $farmname],
-			);
-		}
-	}
 
 	######## Functions
 	# Modify Farm's Name
@@ -409,16 +378,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		{
 			$ciphers_lib = $c{ $json_obj->{ ciphers } };
 
-			my $ssloff = 1;
-			$ssloff = &eload(
-							  module => 'Skudonet::Farm::HTTP::HTTPS::Ext',
-							  func   => 'getFarmCipherSSLOffLoadingSupport',
-			) if ( $eload );
-
-			unless ( $ssloff )
-			{
 				&zenlog( "The CPU does not support SSL offloading.", "warning", "system" );
-			}
 
 			if ( &setFarmCipherList( $farmname, $ciphers_lib ) == -1 )
 			{
@@ -465,18 +425,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 			}
 
-			if ( $eload )
-			{
-				$status = &eload(
-								  module => 'Skudonet::Farm::HTTP::HTTPS::Ext',
-								  func   => 'setFarmCertificateSNI',
-								  args   => [$json_obj->{ certname }, $farmname],
-				);
-			}
-			else
-			{
 				$status = &setFarmCertificate( $json_obj->{ certname }, $farmname );
-			}
 
 			if ( $status == -1 )
 			{
@@ -504,7 +453,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 			  if ( $json_obj->{ $key_ssl } eq $farm_st->{ $key_ssl } )
 			  ;    # skip when the farm already has the request value
 
-			$action = $bool_to_int{ $json_obj->{ $key_ssl } };
+			$action    = $bool_to_int{ $json_obj->{ $key_ssl } };
 			$ssl_proto = $ssl_proto_hash{ $key_ssl } if exists $ssl_proto_hash{ $key_ssl };
 
 			if ( &setHTTPFarmDisableSSL( $farmname, $ssl_proto, $action ) == -1 )
@@ -527,7 +476,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		{
 			next if ( not exists $json_obj->{ $key_tls } );
 
-			$action = $bool_to_int{ $json_obj->{ $key_tls } };
+			$action    = $bool_to_int{ $json_obj->{ $key_tls } };
 			$tls_proto = $tls_proto_hash{ $key_tls } if exists $tls_proto_hash{ $key_tls };
 
 			$tls_params_ref->{ $tls_proto } = $action;
@@ -667,20 +616,6 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 
 	my $out_obj = &getHTTPOutFarm( $farmname );
 
-	if ( $reload_ipds and $eload )
-	{
-		&eload(
-				module => 'Skudonet::IPDS::Base',
-				func   => 'runIPDSStartByFarm',
-				args   => [$farmname],
-		);
-
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['ipds', 'start', $farmname],
-		);
-	}
 
 	my $body = {
 				 description => $desc,
@@ -710,11 +645,6 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 			else
 			{
 				&runFarmReload( $farmname );
-				&eload(
-						module => 'Skudonet::Cluster',
-						func   => 'runZClusterRemoteManager',
-						args   => ['farm', 'reload', $farmname],
-				) if ( $eload );
 			}
 		}
 	}

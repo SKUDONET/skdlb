@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 sub validCGISession    # ()
 {
@@ -47,12 +42,8 @@ sub validCGISession    # ()
 
 	if ( $session && $session->param( 'is_logged_in' ) && !$session->is_expired )
 	{
-		# ignore cluster nodes status to reset session expiration date
-		unless ( $q->path_info eq '/system/cluster/nodes' )
-		{
 			my $session_timeout = &getGlobalConfiguration( 'session_timeout' ) // 30;
 			$session->expire( 'is_logged_in', '+' . $session_timeout . 'm' );
-		}
 
 		$validSession = 1;
 		require Skudonet::User;
@@ -120,7 +111,7 @@ sub authenticateCredentials    #($user,$curpasswd)
 		Authen::Simple::Passwd->import;
 
 		my $passfile = "/etc/shadow";
-		my $simple = Authen::Simple::Passwd->new( path => "$passfile" );
+		my $simple   = Authen::Simple::Passwd->new( path => "$passfile" );
 
 		if ( $simple->authenticate( $user, $pass ) )
 		{
@@ -128,14 +119,6 @@ sub authenticateCredentials    #($user,$curpasswd)
 			$valid_credentials = 1;
 
 		}
-	}
-	elsif ( $eload )
-	{
-		$valid_credentials = &eload(
-									 module => 'Skudonet::RBAC::Runtime',
-									 func   => 'runRBACAuthUser',
-									 args   => [$user, $pass]
-		);
 	}
 
 	return $valid_credentials;

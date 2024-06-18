@@ -25,11 +25,6 @@ use strict;
 use Skudonet::Farm::Core;
 use Skudonet::API31::Farm::Get;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 # POST
 
@@ -160,11 +155,6 @@ sub new_farm_backend    # ( $json_obj, $farmname )
 					 status  => &getFarmVipStatus( $farmname ),
 		};
 
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['farm', 'restart', $farmname],
-		) if ( $eload );
 
 		&httpResponse( { code => 201, body => $body } );
 	}
@@ -273,11 +263,6 @@ sub new_farm_backend    # ( $json_obj, $farmname )
 					 status  => &getFarmVipStatus( $farmname ),
 		};
 
-		&eload(
-				module => 'Skudonet::Cluster',
-				func   => 'runZClusterRemoteManager',
-				args   => ['farm', 'restart', $farmname],
-		) if $eload;
 
 		&httpResponse( { code => 201, body => $body } );
 	}
@@ -309,19 +294,11 @@ sub new_service_backend    # ( $json_obj, $farmname, $service )
 	# validate FARM TYPE
 	my $type = &getFarmType( $farmname );
 
-	if ( $type eq "gslb" && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API31::Farm::GSLB',
-				func   => 'new_gslb_service_backend',
-				args   => [$json_obj, $farmname, $service]
-		);
-	}
-	elsif ( $type !~ /^https?$/ )
-	{
-		my $msg = "The $type farm profile does not support services.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
+		if ( $type !~ /^https?$/ )
+		{
+			my $msg = "The $type farm profile does not support services.";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
 
 	# HTTP
 	require Skudonet::Net::Validate;
@@ -442,11 +419,6 @@ sub new_service_backend    # ( $json_obj, $farmname, $service )
 		else
 		{
 			&runFarmReload( $farmname );
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'reload', $farmname],
-			) if ( $eload );
 		}
 	}
 
@@ -525,14 +497,6 @@ sub service_backends
 
 	my $type = &getFarmType( $farmname );
 
-	if ( $type eq 'gslb' && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API31::Farm::GSLB',
-				func   => 'list_gslb_service_backends',
-				args   => [$farmname, $service]
-		);
-	}
 
 	if ( $type !~ /^https?$/ )
 	{
@@ -821,11 +785,6 @@ sub modify_backends    #( $json_obj, $farmname, $id_server )
 				 status      => &getFarmVipStatus( $farmname ),
 	};
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['farm', 'restart', $farmname],
-	) if ( $eload && &getFarmStatus( $farmname ) eq 'up' );
 
 	&httpResponse( { code => 200, body => $body } );
 }
@@ -847,19 +806,11 @@ sub modify_service_backends    #( $json_obj, $farmname, $service, $id_server )
 
 	my $type = &getFarmType( $farmname );
 
-	if ( $type eq "gslb" && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API31::Farm::GSLB',
-				func   => 'modify_gslb_service_backends',
-				args   => [$json_obj, $farmname, $service, $id_server]
-		);
-	}
-	elsif ( $type !~ /^https?$/ )
-	{
-		my $msg = "The $type farm profile does not support services.";
-		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
-	}
+		if ( $type !~ /^https?$/ )
+		{
+			my $msg = "The $type farm profile does not support services.";
+			&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
+		}
 
 	# HTTP
 	require Skudonet::Farm::Base;
@@ -869,7 +820,7 @@ sub modify_service_backends    #( $json_obj, $farmname, $service, $id_server )
 	require Skudonet::Farm::HTTP::Service;
 
 	# validate SERVICE
-	my @services = &getHTTPFarmServices( $farmname );
+	my @services      = &getHTTPFarmServices( $farmname );
 	my $found_service = grep { $service eq $_ } @services;
 
 	# check if the service exists
@@ -986,11 +937,6 @@ sub modify_service_backends    #( $json_obj, $farmname, $service, $id_server )
 		else
 		{
 			&runFarmReload( $farmname );
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'reload', $farmname],
-			) if ( $eload );
 		}
 	}
 
@@ -1026,7 +972,7 @@ sub delete_backend    # ( $farmname, $id_server )
 	require Skudonet::Farm::Backend;
 
 	my $backends = &getFarmServers( $farmname );
-	my $exists = &getFarmServer( $backends, $id_server );
+	my $exists   = &getFarmServer( $backends, $id_server );
 
 	if ( !$exists )
 	{
@@ -1046,17 +992,6 @@ sub delete_backend    # ( $farmname, $id_server )
 	&zenlog( "Success, the backend $id_server in farm $farmname has been deleted.",
 			 "info", "FARMS" );
 
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['farm', 'delete', $farmname, 'backend', $id_server],
-	) if ( $eload && $type eq 'l4xnat' );
-
-	&eload(
-			module => 'Skudonet::Cluster',
-			func   => 'runZClusterRemoteManager',
-			args   => ['farm', 'restart', $farmname],
-	) if ( $eload && $type eq 'datalink' );
 
 	my $message = "Backend removed";
 	require Skudonet::Farm::Base;
@@ -1089,19 +1024,11 @@ sub delete_service_backend    # ( $farmname, $service, $id_server )
 	# validate FARM TYPE
 	my $type = &getFarmType( $farmname );
 
-	if ( $type eq 'gslb' && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API31::Farm::GSLB',
-				func   => 'delete_gslb_service_backend',
-				args   => [$farmname, $service, $id_server]
-		);
-	}
-	elsif ( $type !~ /^https?$/ )
-	{
-		my $msg = "The $type farm profile does not support services.";
-		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-	}
+		if ( $type !~ /^https?$/ )
+		{
+			my $msg = "The $type farm profile does not support services.";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
 
 	# HTTP
 	require Skudonet::Farm::Base;
@@ -1169,11 +1096,6 @@ sub delete_service_backend    # ( $farmname, $service, $id_server )
 		else
 		{
 			&runFarmReload( $farmname );
-			&eload(
-					module => 'Skudonet::Cluster',
-					func   => 'runZClusterRemoteManager',
-					args   => ['farm', 'reload', $farmname],
-			) if ( $eload );
 		}
 	}
 

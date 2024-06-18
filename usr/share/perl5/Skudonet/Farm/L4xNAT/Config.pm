@@ -29,11 +29,6 @@ my $configdir = &getGlobalConfiguration( 'configdir' );
 use Skudonet::Config;
 use Skudonet::Nft;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 =begin nd
 Function: getL4FarmParam
@@ -162,40 +157,15 @@ sub setL4FarmParam
 	{
 		$value = "snat"     if ( $value eq "nat" );
 		$value = "stlsdnat" if ( $value eq "stateless_dnat" );
-		$parameters = qq(, "mode" : "$value" );
 
 		# deactivate leastconn and persistence for ingress modes
-		if ( $value eq "dsr" || $value eq "stateless_dnat" )
+		if ( $value eq "dsr" || $value eq "stlsdnat" )
 		{
 			require Skudonet::Farm::L4xNAT::L4sd;
 			&setL4sdType( $farm_name, "none" );
 
-			if ( $eload )
-			{
-				# unassign DoS & RBL
-				&eload(
-						module => 'Skudonet::IPDS::Base',
-						func   => 'runIPDSStopByFarm',
-						args   => [$farm_name, "dos"],
-				);
-				&eload(
-						module => 'Skudonet::IPDS::Base',
-						func   => 'runIPDSStopByFarm',
-						args   => [$farm_name, "rbl"],
-				);
-			}
 		}
 
-		# take care of floating interfaces without masquerading
-		if ( $value eq "snat" && $eload )
-		{
-			my $farm_ref = &getL4FarmStruct( $farm_name );
-			&eload(
-					module => 'Skudonet::Net::Floating',
-					func   => 'setFloatingSourceAddr',
-					args   => [$farm_ref, undef],
-			);
-		}
 	}
 	elsif ( $param eq "vip" )
 	{
@@ -284,8 +254,8 @@ sub setL4FarmParam
 	}
 	elsif ( $param eq "persist" )
 	{
-		$value = "srcip" if ( $value eq "ip" );
-		$value = "none"  if ( $value eq "" );
+		$value      = "srcip" if ( $value eq "ip" );
+		$value      = "none"  if ( $value eq "" );
 		$parameters = qq(, "persistence" : "$value" );
 	}
 	elsif ( $param eq "persisttm" )
@@ -346,9 +316,25 @@ sub setL4FarmParam
 	}
 	elsif ( $param eq "logs" )
 	{
-		$srvparam   = "log";
-		$value      = "forward" if ( $value eq "true" );
-		$value      = "none" if ( $value eq "false" );
+		$srvparam = "log";
+		if ( $value eq "false" )
+		{
+			$value = "none";
+		}
+		elsif ( $value eq "true" )
+		{
+			require Skudonet::Farm::L4xNAT::Config;
+			my $farm_ref = &getL4FarmStruct( $farm_name );
+			if (    $farm_ref->{ nattype } eq "dsr"
+				 or $farm_ref->{ nattype } eq "stateless_dnat" )
+			{
+				$value = "output";
+			}
+			else
+			{
+				$value = "forward";
+			}
+		}
 		$parameters = qq(, "$srvparam" : "$value");
 	}
 	elsif ( $param eq "log-prefix" )
@@ -382,9 +368,6 @@ sub setL4FarmParam
 		&doL4FarmRules( "reload", $farm_name, $prev_config )
 		  if ( $prev_config->{ status } eq "up" );
 
-		# reload source address maquerade
-		require Skudonet::Farm::Config;
-		&reloadFarmsSourceAddressByFarm( $farm_name );
 	}
 
 	return $output;
@@ -449,7 +432,7 @@ sub _getL4ParseFarmConfig
 		{
 			my @l = split /"/, $line;
 			$output = $l[3];
-			$output = "nat" if ( $output eq "snat" );
+			$output = "nat"            if ( $output eq "snat" );
 			$output = "stateless_dnat" if ( $output eq "stlsdnat" );
 		}
 
@@ -462,7 +445,7 @@ sub _getL4ParseFarmConfig
 
 		if ( $line =~ /\"persistence\"/ && $param eq 'persist' )
 		{
-			my @l = split /"/, $line;
+			my @l   = split /"/, $line;
 			my $out = $l[3];
 			if ( $out =~ /none/ )
 			{
@@ -494,11 +477,11 @@ sub _getL4ParseFarmConfig
 
 		if ( $line =~ /\"helper\"/ && $param eq 'proto' )
 		{
-			my @l = split /"/, $line;
+			my @l   = split /"/, $line;
 			my $out = $l[3];
 
 			$output = $out if ( $out ne "none" );
-			$exit = 1;
+			$exit   = 1;
 		}
 
 		if ( $line =~ /\"scheduler\"/ && $param eq 'alg' )
@@ -512,7 +495,7 @@ sub _getL4ParseFarmConfig
 
 		if ( $line =~ /\"sched-param\"/ && $param eq 'alg' )
 		{
-			my @l = split /"/, $line;
+			my @l   = split /"/, $line;
 			my $out = $l[3];
 
 			if ( $output eq "hash" )
@@ -591,7 +574,7 @@ sub _getL4ParseFarmConfig
 		if ( $output ne "-1" )
 		{
 			$line =~ s/$output/$value/g if defined $value;
-			return $output if ( $exit );
+			return $output              if ( $exit );
 		}
 	}
 
@@ -704,7 +687,7 @@ sub getL4FarmStruct
 	my $config = &getFarmPlainInfo( $farm{ name } );
 
 	$farm{ nattype } = &_getL4ParseFarmConfig( 'mode', undef, $config );
-	$farm{ mode } = $farm{ nattype };
+	$farm{ mode }    = $farm{ nattype };
 
 	require Skudonet::Farm::L4xNAT::L4sd;
 	my $l4sched = &getL4sdType( $farm{ name } );
@@ -717,9 +700,9 @@ sub getL4FarmStruct
 		$farm{ lbalg } = &_getL4ParseFarmConfig( 'alg', undef, $config );
 	}
 
-	$farm{ vip }    = &_getL4ParseFarmConfig( 'vip',   undef, $config );
-	$farm{ vport }  = &_getL4ParseFarmConfig( 'vipp',  undef, $config );
-	$farm{ vproto } = &_getL4ParseFarmConfig( 'proto', undef, $config );
+	$farm{ vip }      = &_getL4ParseFarmConfig( 'vip',   undef, $config );
+	$farm{ vport }    = &_getL4ParseFarmConfig( 'vipp',  undef, $config );
+	$farm{ vproto }   = &_getL4ParseFarmConfig( 'proto', undef, $config );
 	$farm{ sourceip } = "";
 	$farm{ sourceip } = &_getL4ParseFarmConfig( 'sourceaddr', undef, $config );
 
@@ -731,7 +714,6 @@ sub getL4FarmStruct
 	$farm{ proto }      = &getL4ProtocolTransportLayer( $farm{ vproto } );
 	$farm{ bootstatus } = &_getL4ParseFarmConfig( 'bootstatus', undef, $config );
 	$farm{ status }     = &getL4FarmStatus( $farm{ name } );
-	$farm{ logs } = &_getL4ParseFarmConfig( 'logs', undef, $config ) if ( $eload );
 	$farm{ servers } = &_getL4FarmParseServers( $config );
 
 	if ( $farm{ lbalg } eq 'weight' )
@@ -924,7 +906,7 @@ sub getFarmPortList
 			 "debug", "PROFILING" );
 	my $fvipp = shift;
 
-	my @portlist = split ( ',', $fvipp );
+	my @portlist    = split ( ',', $fvipp );
 	my @retportlist = ();
 
 	if ( !grep ( /\*/, @portlist ) )
@@ -974,7 +956,7 @@ sub getL4ProtocolTransportLayer
 	my $vproto = shift;
 
 	return
-	    ( $vproto =~ /sip|tftp/ ) ? 'udp'
+		( $vproto =~ /sip|tftp/ ) ? 'udp'
 	  : ( $vproto eq 'ftp' )      ? 'tcp'
 	  :                             $vproto;
 }
@@ -1086,11 +1068,11 @@ sub writeL4NlbConfigFile
 	while ( defined $line )
 	{
 		$next_line = <$fi>;
-		$write = 0 if ( $line =~ /\"policies\"\:/ );
+		$write     = 0 if ( $line =~ /\"policies\"\:/ );
 
 		if (    defined ( $next_line )
 			 && $next_line =~ /\"policies\"\:/
-			 && $line =~ /\]/ )
+			 && $line      =~ /\]/ )
 		{
 			$line =~ s/,$//g;
 			$line =~ s/\n//g;
@@ -1151,9 +1133,9 @@ sub resetL4FarmConntrack
 	# Check there are not connections
 	require Skudonet::Farm::L4xNAT::Stats;
 	require Skudonet::Net::ConnStats;
-	my $vip = &getL4FarmParam( "vip", $farm_name );
+	my $vip     = &getL4FarmParam( "vip", $farm_name );
 	my $netstat = &getConntrack( '', $vip, '', '', '' );
-	my $conns = &getL4FarmEstConns( $farm_name, $netstat );
+	my $conns   = &getL4FarmEstConns( $farm_name, $netstat );
 	$conns += &getL4FarmSYNConns( $farm_name, $netstat );
 
 	if ( $conns > 0 )

@@ -23,12 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
-
 my $configdir = &getGlobalConfiguration( 'configdir' );
 
 =begin nd
@@ -67,7 +61,7 @@ sub getDatalinkFarmBackends    # ($farm_name)
 		# ;server;45.2.2.3;eth0;1;1;up
 		if ( $line ne "" && $line =~ /^\;server\;/ && $first ne "true" )
 		{
-			my @aux = split ( ';', $line );
+			my @aux    = split ( ';', $line );
 			my $status = $aux[6];
 			$status = "undefined" if ( $farmStatus eq "down" );
 			push @servers,

@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -23,11 +24,6 @@
 use strict;
 use Skudonet::Farm::Core;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 sub modify_farm    # ( $json_obj, $farmname )
 {
@@ -53,26 +49,18 @@ sub modify_farm    # ( $json_obj, $farmname )
 		&modify_http_farm( $json_obj, $farmname );
 	}
 
-	if ( $type eq "l4xnat" )
+	elsif ( $type eq "l4xnat" )
 	{
 		require Skudonet::API40::Farm::Put::L4xNAT;
 		&modify_l4xnat_farm( $json_obj, $farmname );
 	}
 
-	if ( $type eq "datalink" )
+	elsif ( $type eq "datalink" )
 	{
 		require Skudonet::API40::Farm::Put::Datalink;
 		&modify_datalink_farm( $json_obj, $farmname );
 	}
 
-	if ( $type eq "gslb" && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API40::Farm::Put::GSLB',
-				func   => 'modify_gslb_farm',
-				args   => [$json_obj, $farmname],
-		);
-	}
 }
 
 1;

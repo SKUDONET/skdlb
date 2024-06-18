@@ -27,13 +27,6 @@ use Skudonet::Log;
 use Skudonet::Config;
 use Config::Tiny;
 
-my $eload;
-$eload = 1 if ( eval { require Skudonet::ELoad; } );
-
-# TODO
-# ipds-rbl-domains
-# waf-ruleset
-# waf-files
 
 # string to use when a branch of the id tree finishes
 my $FIN = undef;
@@ -92,73 +85,11 @@ sub getIdsTree
 			if ( $type =~ /http/ )
 			{
 				my @cnames;
-				if ( $eload )
-				{
-					@cnames = &eload(
-									  module => 'Skudonet::Farm::HTTP::HTTPS::Ext',
-									  func   => 'getFarmCertificatesSNI',
-									  args   => [$f],
-					);
-				}
-				else
-				{
 					require Skudonet::Farm::HTTP::HTTPS;
 					@cnames = ( &getFarmCertificate( $f ) );
-				}
 				$tree->{ 'farms' }->{ $f }->{ 'certificates' } = &addIdsArrays( \@cnames );
 			}
 
-			if ( $eload )
-			{
-				# add zones
-				if ( $type eq 'gslb' )
-				{
-					my @zones = &eload(
-										module => 'Skudonet::Farm::GSLB::Zone',
-										func   => 'getGSLBFarmZones',
-										args   => [$f],
-					);
-					$tree->{ 'farms' }->{ $f }->{ 'zones' } = &addIdsArrays( \@zones );
-				}
-
-				# add bl
-				my @bl = &eload(
-								 module => 'Skudonet::IPDS::Blacklist::Core',
-								 func   => 'listBLByFarm',
-								 args   => [$f],
-				);
-
-				$tree->{ 'farms' }->{ $f }->{ 'ipds' }->{ 'blacklists' } =
-				  &addIdsArrays( \@bl );
-
-				# add dos
-				my @dos = &eload(
-								  module => 'Skudonet::IPDS::DoS::Core',
-								  func   => 'listDOSByFarm',
-								  args   => [$f],
-				);
-				$tree->{ 'farms' }->{ $f }->{ 'ipds' }->{ 'dos' } = &addIdsArrays( \@dos );
-
-				# add rbl
-				my @rbl = &eload(
-								  module => 'Skudonet::IPDS::RBL::Core',
-								  func   => 'listRBLByFarm',
-								  args   => [$f],
-				);
-				$tree->{ 'farms' }->{ $f }->{ 'ipds' }->{ 'rbl' } =
-				  &addIdsArrays( \@rbl );
-
-				#add waf
-				if ( $type =~ /http/ )
-				{
-					my @waf = &eload(
-									  module => 'Skudonet::IPDS::WAF::Core',
-									  func   => 'listWAFByFarm',
-									  args   => [$f],
-					);
-					$tree->{ 'farms' }->{ $f }->{ 'ipds' }->{ 'waf' } = &addIdsArrays( \@waf );
-				}
-			}
 		}
 	}
 
@@ -172,10 +103,11 @@ sub getIdsTree
 
 	# add interfaces
 	my @if_list = ( 'nic', 'vlan', 'virtual' );
-	push @if_list, 'bond' if ( $eload );
 	foreach my $type ( @if_list )
 	{
-		my $if_key = ( $type eq 'bond' ) ? 'bonding' : $type;
+		my $if_key;
+			$if_key = $type;
+
 		$tree->{ 'interfaces' }->{ $if_key } = $FIN;
 
 		my @list = &getInterfaceTypeList( $type );
@@ -185,63 +117,6 @@ sub getIdsTree
 		}
 	}
 
-	if ( $eload )
-	{
-		# add floating interfaces
-		my $float = &eload( module => 'Skudonet::Net::Floating',
-							func   => 'getFloatingList', );
-		$tree->{ 'interfaces' }->{ 'floating' } = &addIdsArrays( $float );
-
-		# add routing
-		my @routing_table = &eload( module => 'Skudonet::Net::Route',
-									func   => 'listRoutingTablesNames', );
-		$tree->{ 'routing' }->{ 'tables' } = &addIdsArrays( \@routing_table );
-
-		# add ipds rules
-		$tree->{ 'ipds' } = &eload( module => 'Skudonet::IPDS::Core',
-									func   => 'getIPDSIds', );
-
-		# add rbac
-		my @users = &eload( module => 'Skudonet::RBAC::User::Core',
-							func   => 'getRBACUserList', );
-		my @groups = &eload( module => 'Skudonet::RBAC::Group::Core',
-							 func   => 'getRBACGroupList', );
-		my @roles = &eload( module => 'Skudonet::RBAC::Role::Config',
-							func   => 'getRBACRolesList', );
-		$tree->{ 'rbac' }->{ 'users' }  = &addIdsArrays( \@users );
-		$tree->{ 'rbac' }->{ 'roles' }  = &addIdsArrays( \@roles );
-		$tree->{ 'rbac' }->{ 'groups' } = &addIdsArrays( \@groups );
-
-		foreach my $g ( @groups )
-		{
-			my $g_cfg = &eload(
-								module => 'Skudonet::RBAC::Group::Core',
-								func   => 'getRBACGroupObject',
-								args   => [$g]
-			);
-
-			$tree->{ 'rbac' }->{ 'groups' }->{ $g }->{ 'users' } =
-			  &addIdsArrays( $g_cfg->{ 'users' } );
-			$tree->{ 'rbac' }->{ 'groups' }->{ $g }->{ 'farms' } =
-			  &addIdsArrays( $g_cfg->{ 'farms' } );
-			$tree->{ 'rbac' }->{ 'groups' }->{ $g }->{ 'interfaces' } =
-			  &addIdsArrays( $g_cfg->{ 'interfaces' } );
-		}
-
-		# add aliases
-		my $alias_bck_ref = &eload(
-									module => 'Skudonet::Alias',
-									func   => 'getAlias',
-									args   => ['backend'],
-		);
-		my $alias_if_ref = &eload(
-								   module => 'Skudonet::Alias',
-								   func   => 'getAlias',
-								   args   => ['interface'],
-		);
-		$tree->{ 'aliases' }->{ 'backends' }   = &addIdsKeys( $alias_bck_ref );
-		$tree->{ 'aliases' }->{ 'interfaces' } = &addIdsKeys( $alias_if_ref );
-	}
 
 	# add backups
 	my $backups = &getBackup();

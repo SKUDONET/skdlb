@@ -27,11 +27,6 @@ my $LOG_TAG = "";
 $LOG_TAG = "ZAPI"   if ( exists $ENV{ HTTP_ZAPI_KEY } );
 $LOG_TAG = "WEBGUI" if ( exists $ENV{ HTTP_COOKIE } );
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 my %http_status_codes = (
 
@@ -70,10 +65,6 @@ sub GET
 	if ( ref $code eq 'CODE' )
 	{
 		$code->( @captures );
-	}
-	else
-	{
-		&eload( module => $mod, func => $code, args => \@captures ) if $eload;
 	}
 }
 
@@ -145,10 +136,6 @@ sub POST
 	{
 		$code->( @args );
 	}
-	else
-	{
-		&eload( module => $mod, func => $code, args => \@args ) if $eload;
-	}
 }
 
 sub PUT
@@ -219,10 +206,6 @@ sub PUT
 	{
 		$code->( @args );
 	}
-	else
-	{
-		&eload( module => $mod, func => $code, args => \@args ) if $eload;
-	}
 }
 
 sub DELETE
@@ -241,10 +224,6 @@ sub DELETE
 	if ( ref $code eq 'CODE' )
 	{
 		$code->( @captures );
-	}
-	else
-	{
-		&eload( module => $mod, func => $code, args => \@captures ) if $eload;
 	}
 }
 
@@ -336,7 +315,7 @@ sub httpResponse    # ( \%hash ) hash_keys->( $code, %headers, $body )
 
 		if ( &validCGISession() )
 		{
-			my $session = CGI::Session->load( $q );
+			my $session        = CGI::Session->load( $q );
 			my $session_cookie = $q->cookie( CGISESSID => $session->id );
 
 			push @headers,

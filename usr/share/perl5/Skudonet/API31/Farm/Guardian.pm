@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 ###############################################################################
 #
 #    Skudonet Software License
@@ -22,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 #  PUT /farms/<farmname>/fg Modify the parameters of the farm guardian in a Farm
 #  PUT /farms/<farmname>/fg Modify the parameters of the farm guardian in a Service
@@ -136,17 +132,6 @@ sub modify_farmguardian    # ( $json_obj, $farmname )
 		}
 	}
 
-	if ( $type eq 'gslb' && $eload )
-	{
-		&eload(
-				module => 'Skudonet::API31::Farm::GSLB',
-				func   => 'modify_gslb_farmguardian',
-				args   => [$json_obj, $farmname, $service]
-		);
-	}
-
-	else
-	{
 		# HTTP or L4xNAT
 		# get current farmguardian configuration
 		my @fgconfig = &getFarmGuardianConf( $farmname, $service );
@@ -216,7 +201,6 @@ sub modify_farmguardian    # ( $json_obj, $farmname )
 		};
 
 		&httpResponse( { code => 200, body => $body } );
-	}
 }
 
 1;
