@@ -2385,6 +2385,10 @@ sub setFarmProxyNGConf    # ($proxy_mode,$farm_name)
 					$array[$i] = "$1" . ( $connto + 1 );
 				}
 			}
+			if ( $array[$i] =~ /^(\s*Ignore100Continue\s+)([23])/ )
+			{
+				$array[$i] = "$1" . "1";
+			}
 		}
 
 		if ( $bw == 1 )
