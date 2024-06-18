@@ -157,6 +157,7 @@ sub setL4FarmParam
 	{
 		$value = "snat"     if ( $value eq "nat" );
 		$value = "stlsdnat" if ( $value eq "stateless_dnat" );
+		$parameters = qq(, "mode" : "$value" );
 
 		# deactivate leastconn and persistence for ingress modes
 		if ( $value eq "dsr" || $value eq "stlsdnat" )
