@@ -23,11 +23,6 @@
 
 use strict;
 
-my $eload;
-if ( eval { require Skudonet::ELoad; } )
-{
-	$eload = 1;
-}
 
 require Skudonet::System;
 
@@ -88,7 +83,7 @@ sub get_version
 	require Skudonet::SystemInfo;
 
 	my $desc       = "Get version";
-	my $skudonet    = &getGlobalConfiguration( 'version' );
+	my $skudonet   = &getGlobalConfiguration( 'version' );
 	my $kernel     = &getKernelVersion();
 	my $hostname   = &getHostname();
 	my $date       = &getDate();
@@ -96,7 +91,7 @@ sub get_version
 
 	my $params = {
 				   'kernel_version'    => $kernel,
-				   'skudonet_version'   => $skudonet,
+				   'skudonet_version'  => $skudonet,
 				   'hostname'          => $hostname,
 				   'system_date'       => $date,
 				   'appliance_version' => $applicance,
@@ -118,7 +113,7 @@ sub get_system_info
 
 	my $desc = "Get the system information";
 
-	my $skudonet       = &getGlobalConfiguration( 'version' );
+	my $skudonet      = &getGlobalConfiguration( 'version' );
 	my $lang          = &getGlobalConfiguration( 'lang' );
 	my $kernel        = &getKernelVersion();
 	my $hostname      = &getHostname();
@@ -126,14 +121,16 @@ sub get_system_info
 	my $applicance    = &getApplianceVersion();
 	my $user          = &getUser();
 	my @zapi_versions = &listZapiVersions();
-	my $edition       = ( $eload ) ? "enterprise" : "community";
+	
+	my $edition;
+		$edition = "community";
 	my $platform      = &getGlobalConfiguration( 'cloud_provider' );
 
 	my $params = {
 				   'system_date'             => $date,
 				   'appliance_version'       => $applicance,
 				   'kernel_version'          => $kernel,
-				   'skudonet_version'         => $skudonet,
+				   'skudonet_version'        => $skudonet,
 				   'hostname'                => $hostname,
 				   'user'                    => $user,
 				   'supported_zapi_versions' => \@zapi_versions,
@@ -142,15 +139,6 @@ sub get_system_info
 				   'language'                => $lang,
 				   'platform'                => $platform,
 	};
-
-	if ( $eload )
-	{
-		$params = &eload(
-						  module => 'Skudonet::System::Ext',
-						  func   => 'setSystemExtendZapi',
-						  args   => [$params],
-		);
-	}
 
 	my $body = { description => $desc, params => $params };
 	&httpResponse( { code => 200, body => $body } );

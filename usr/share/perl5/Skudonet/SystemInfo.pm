@@ -110,7 +110,8 @@ sub getApplianceVersion
 	my $applianceFile = &getGlobalConfiguration( 'applianceVersionFile' );
 	my $lsmod         = &getGlobalConfiguration( 'lsmod' );
 	my @packages      = @{ &logAndGet( "$lsmod", "array" ) };
-	my @hypervisor    = grep ( /(xen|vm|hv|kvm)_/, @packages );
+	my @hypervisor    = grep ( /(xen|vm|hv|kvm|qemu)_/, @packages );
+	my $no_detected   = "System version not detected";
 
 	# look for appliance vesion
 	if ( -f $applianceFile )
@@ -124,12 +125,12 @@ sub getApplianceVersion
 	}
 
 	# generate appliance version
-	if ( !$version )
+	if ( !$version or $version =~ /$no_detected/ )
 	{
 		my $kernel = &getKernelVersion();
 
 		my $awk      = &getGlobalConfiguration( 'awk' );
-		my $ifconfig = &getGlobalConfiguration( 'ifconfig' );
+		my $ifconfig = &getGlobalConfiguration( 'ifconfig_bin' );
 
 		# look for mgmt interface
 		my @ifaces = @{ &logAndGet( "$ifconfig -s | $awk '{print $1}'", "array" ) };
@@ -137,7 +138,7 @@ sub getApplianceVersion
 		# Network appliance
 		if ( grep ( /mgmt/, @ifaces ) )
 		{
-			$version = "SNA 3300";
+			$version = "ZNA 3300";
 		}
 		else
 		{
@@ -145,10 +146,11 @@ sub getApplianceVersion
 			if    ( $kernel =~ /3\.2\.0\-4/ )      { $version = "3110"; }
 			elsif ( $kernel =~ /3\.16\.0\-4/ )     { $version = "4000"; }
 			elsif ( $kernel =~ /3\.16\.7\-ckt20/ ) { $version = "4100"; }
-			else { $version = "System version not detected"; }
+			elsif ( $kernel =~ /6\.1\.\d+/ )       { $version = "10000"; }
+			else                                   { $version = $no_detected; }
 
 			# virtual appliance
-			if ( $hypervisor[0] =~ /(xen|vm|hv|kvm)_/ )
+			if ( $hypervisor[0] =~ /(xen|vm|hv|kvm|qemu)_/ )
 			{
 				$version = "SVA $version";
 			}
@@ -166,17 +168,18 @@ sub getApplianceVersion
 		$filelines[0] = $version;
 		untie @filelines;
 
-		&zenlog("Appliance version is configured as '$version'","INFO","System");
+		&zenlog( "Appliance version is configured as '$version'", "INFO", "System" );
 	}
 
 	# virtual appliance
-	if ( @hypervisor && $hypervisor[0] =~ /(xen|vm|hv|kvm)_/ )
+	if ( @hypervisor && $hypervisor[0] =~ /(xen|vm|hv|kvm|qemu)_/ )
 	{
 		$hyperv = $1;
 		$hyperv = 'HyperV' if ( $hyperv eq 'hv' );
 		$hyperv = 'Vmware' if ( $hyperv eq 'vm' );
-		$hyperv = 'Xen' if ( $hyperv eq 'xen' );
-		$hyperv = 'KVM' if ( $hyperv eq 'kvm' );
+		$hyperv = 'Xen'    if ( $hyperv eq 'xen' );
+		$hyperv = 'KVM'    if ( $hyperv eq 'kvm' );
+		$hyperv = 'QEMU'   if ( $hyperv eq 'qemu' );
 	}
 
 # before skudonet versions had hypervisor in appliance version file, so not inclue it in the chain
@@ -241,7 +244,7 @@ sub getCPUSecondToJiffy
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
-	my $sec = shift // 1;
+	my $sec   = shift // 1;
 	my $ticks = &getCPUTicks();
 
 	return -1 unless ( $ticks > 0 );

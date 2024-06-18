@@ -1369,18 +1369,6 @@ sub getInterfaceNameStruct
 
 	my $interfaces_ref;
 
-	#### EE Begin
-	my $bonding_struct;
-	if ( $eload )
-	{
-		my $params = ["name"];
-		$bonding_struct = &eload(
-								  module => 'Skudonet::Net::Bonding',
-								  func   => 'getBondListStruct',
-								  args   => [$params]
-		);
-	}
-	#### EE End
 
 	opendir ( my $conf_dir, &getGlobalConfiguration( 'configdir' ) );
 	foreach my $filename ( readdir ( $conf_dir ) )
@@ -1393,12 +1381,6 @@ sub getInterfaceNameStruct
 			my $virtual   = $3;
 
 			my $type = "nic";
-			#### EE Begin
-			if ( $eload )
-			{
-				$type = "bond" if ( exists $bonding_struct->{ $interface } );
-			}
-			#### EE End
 			if ( defined $virtual )
 			{
 				if ( defined $if_type )

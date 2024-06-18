@@ -106,6 +106,7 @@ $zlb_start_script="$configdir/zlb-start";
 $zlb_stop_script="$configdir/zlb-stop";
 $zlb_start_tpl="$templatedir/zlb-start.template";
 $zlb_stop_tpl="$templatedir/zlb-stop.template";
+# cluster hooks
 
 ## Skudonet Files
 #appliance version file
@@ -228,6 +229,7 @@ $aptget_bin="/usr/bin/apt-get";
 $aptkey_bin="/usr/bin/apt-key";
 #Where is apt-cache?
 $aptcache_bin="/usr/bin/apt-cache";
+#Where is gpg?
 #Where is checkupgrades?
 $checkupgrades_bin="/usr/local/skudonet/bin/checkupgrades";#update
 $checkupdates_bin="/usr/local/skudonet/bin/checkupdates";#update
@@ -277,6 +279,7 @@ $default_lsmod="/usr/sbin/lsmod";#update
 #This variable is modified from postinst
 $lsmod="/usr/sbin/lsmod";
 #Where is gdnsd?
+#Where is gdnsdctl?
 #Where is gdnsd plugins?
 #Where is l4sd?
 $l4sd="$zbindir/l4sd";#update
@@ -515,8 +518,6 @@ $bonding_hwaddr_filename="bonding_slave/perm_hwaddr";
 #WAF Assistant
 
 # IPDS stats
-# How time wait to execute the stats rotate
-# hours to keep the ipds stats database
 
 # Rabc Module
 
