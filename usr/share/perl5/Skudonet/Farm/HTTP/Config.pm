@@ -1565,8 +1565,9 @@ sub getHTTPFarmConfigErrorMessage    # ($farm_name)
 
 	$run[0] = $run[1] if ( $run[0] =~ /waf/i );
 
-	$run[0] =~ / line (\d+): /;
-	my $line_num = $1;
+	$run[0] =~ / line (\d+): (.*)/;
+	my $line_num  = $1;
+	my $proxy_err = $2;
 
 	# get line
 	( $farm_name, $service ) = @_;
@@ -1592,8 +1593,9 @@ sub getHTTPFarmConfigErrorMessage    # ($farm_name)
 # examples of error msg
 #	AAAhttps, /usr/local/skudonet/config/AAAhttps_proxy.cfg line 36: unknown directive
 #	AAAhttps, /usr/local/skudonet/config/AAAhttps_proxy.cfg line 40: SSL_CTX_use_PrivateKey_file failed - aborted
-	$file_line =~ /\s*([\w-]+)/;
+	$file_line =~ /\s*([\w-]+)\s+(.*)/;
 	my $param = $1;
+	my $value = $2;
 	$msg = "Error in the configuration file";
 
 	# parse line
@@ -1613,6 +1615,7 @@ sub getHTTPFarmConfigErrorMessage    # ($farm_name)
 	{
 		$srv = "in the service $srv" if ( $srv );
 		$msg = "Error in the parameter $param ${srv}";
+		$msg .= ".$value : $proxy_err" if $proxy_err;
 	}
 
 	elsif ( &debug() )

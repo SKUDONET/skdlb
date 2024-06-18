@@ -459,7 +459,7 @@ sub getPoundHTTPFarmBackendsStats    # ($farm_name,$service_name)
 	#0. http Listener 185.76.64.223:80 a
 	#0. Service "HTTP" active (4)
 	#0. Backend 172.16.110.13:80 active (1 0.780 sec) alive (61)
-	#1. Backend 172.16.110.14:80 active (1 0.878 sec) alive (90)
+	#1. Backend (backend.test)172.16.110.14:80 active (1 0.878 sec) alive (90)
 	#2. Backend 172.16.110.11:80 active (1 0.852 sec) alive (99)
 	#3. Backend 172.16.110.12:80 active (1 0.826 sec) alive (75)
 	my @proxyctl = &getHTTPFarmGlobalStatus( $farm_name );
@@ -472,6 +472,7 @@ sub getPoundHTTPFarmBackendsStats    # ($farm_name,$service_name)
 	) if $eload;
 
 	my $backend_info;
+	my $fqdn_re = &getValidFormat( 'fqdn' );
 
 	# Parse ly proxy info
 	foreach my $line ( @proxyctl )
@@ -486,39 +487,41 @@ sub getPoundHTTPFarmBackendsStats    # ($farm_name,$service_name)
 
 		next if ( defined $service_name && $service_name ne $serviceName );
 
-		# Parse backend connections
-		# i.e.
-		#      0. Backend 192.168.100.254:80 active (5 0.000 sec) alive (0)
+	   # Parse backend connections
+	   # i.e.
+	   #      0. Backend (backend.test)192.168.100.254:80 active (5 0.000 sec) alive (0)
+	   #      1. Backend 192.168.100.253:80 active (5 0.000 sec) alive (0)
 		if ( $line =~
-			/(\d+)\. Backend (\d+\.\d+\.\d+\.\d+|[a-fA-F0-9:]+):(\d+) (\w+) .+ (\w+)(?: \((\d+)\))?/
+			/(\d+)\. Backend (?:\(($fqdn_re)\))?(\d+\.\d+\.\d+\.\d+|[a-fA-F0-9:]+):(\d+) (\w+) .+ (\w+)(?: \((\d+)\))?/
 		  )
 		{
+			my $fqdn = $2;
+			my $ip   = $3;
 			my $backendHash = {
 								id      => $1 + 0,
-								ip      => $2,
-								port    => $3 + 0,
-								status  => $5,
+								ip      => $fqdn ? $fqdn : $ip,
+								port    => $4 + 0,
+								status  => $6,
 								pending => 0,
 								service => $serviceName,
 			};
-			$backendHash->{ alias } = $alias->{ $2 } if $eload;
-			$backend_info->{ $backendHash->{ id } }->{ ip }   = $backendHash->{ ip };
+			$backendHash->{ alias } = $alias->{ $ip } if $eload;
+			$backend_info->{ $backendHash->{ id } }->{ ip }   = $ip;
+			$backend_info->{ $backendHash->{ id } }->{ fqdn } = $fqdn;
 			$backend_info->{ $backendHash->{ id } }->{ port } = $backendHash->{ port };
 
-			if ( defined $6 )
+			if ( defined $7 )
 			{
-				$backendHash->{ established } = $6 + 0;
+				$backendHash->{ established } = $7 + 0;
 			}
 			else
 			{
 				$backendHash->{ established } =
-				  &getHTTPBackendEstConns( $farm_name,
-										   $backendHash->{ ip },
-										   $backendHash->{ port } );
+				  &getHTTPBackendEstConns( $farm_name, $ip, $backendHash->{ port } );
 			}
 
 			# Getting real status
-			my $backend_disabled = $4;
+			my $backend_disabled = $5;
 			if ( $backend_disabled eq "DISABLED" )
 			{
 				require Skudonet::Farm::HTTP::Backend;
@@ -546,9 +549,7 @@ sub getPoundHTTPFarmBackendsStats    # ($farm_name,$service_name)
 			require Skudonet::Farm::Stats;
 
 			$backendHash->{ pending } =
-			  &getBackendSYNConns( $farm_name,
-								   $backendHash->{ ip },
-								   $backendHash->{ port } );
+			  &getBackendSYNConns( $farm_name, $ip, $backendHash->{ port } );
 
 			push ( @{ $stats->{ backends } }, $backendHash );
 		}
@@ -560,10 +561,12 @@ sub getPoundHTTPFarmBackendsStats    # ($farm_name,$service_name)
 		{
 			push @{ $stats->{ sessions } },
 			  {
-				client       => $1 + 0,
-				session      => $2,
-				id           => $3 + 0,
-				backend_ip   => $backend_info->{ $3 }->{ ip },
+				client     => $1 + 0,
+				session    => $2,
+				id         => $3 + 0,
+				backend_ip => $backend_info->{ $3 }->{ fqdn }
+				? $backend_info->{ $3 }->{ fqdn }
+				: $backend_info->{ $3 }->{ ip },
 				backend_port => $backend_info->{ $3 }->{ port },
 				service      => $serviceName,
 			  };

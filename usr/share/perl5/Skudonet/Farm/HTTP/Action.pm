@@ -75,9 +75,12 @@ sub _runHTTPFarmStart    # ($farm_name, $writeconf)
 		my $ssyncd_enabled = &getGlobalConfiguration( 'ssyncd_enabled' );
 		if ( $ssyncd_enabled eq 'true' )
 		{
-			if ( &getPersistence( $farmname ) == 0 )
+			if ( &getPersistence( $farm_name ) == 0 )
 			{
-				$args = '-s';
+				if ( &eload( module => 'Skudonet::Cluster', func => 'getZClusterStatus' ) )
+				{
+					$args = '-s';
+				}
 			}
 		}
 	}

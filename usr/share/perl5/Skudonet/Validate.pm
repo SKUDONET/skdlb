@@ -92,6 +92,7 @@ my %format_re = (
 
 	# hostname
 	'hostname' => $hostname,
+	'fqdn'     => qr/$hostname(?:\.$hostname)*/,
 
 	# license
 	'license_format' => qr/(?:txt|html)/,

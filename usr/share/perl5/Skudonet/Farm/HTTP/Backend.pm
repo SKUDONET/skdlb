@@ -1484,7 +1484,6 @@ sub setHTTPFarmBackendsSessionsRemove    #($farm_name,$service,$backendid)
 			 "debug", "PROFILING" );
 	my ( $farm_name, $service, $backendid ) = @_;
 
-	my @service;
 	my $serviceid;
 	my $proxy_ng = &getGlobalConfiguration( 'proxy_ng' );
 	my $err      = 0;
@@ -1585,6 +1584,7 @@ sub getHTTPFarmBackendsStatusInfo    # ($farm_name)
 
 	my $serviceName;
 	my $service_re = &getValidFormat( 'service' );
+	my $fqdn_re    = &getValidFormat( 'fqdn' );
 
 	# Get l7 proxy info
 	#i.e. of proxyctl:
@@ -1593,7 +1593,7 @@ sub getHTTPFarmBackendsStatusInfo    # ($farm_name)
 	#0. http Listener 185.76.64.223:80 a
 	#0. Service "HTTP" active (4)
 	#0. Backend 172.16.110.13:80 active (1 0.780 sec) alive (61)
-	#1. Backend 172.16.110.14:80 active (1 0.878 sec) alive (90)
+	#1. Backend (bakend.test)172.16.110.14:80 active (1 0.878 sec) alive (90)
 	#2. Backend 172.16.110.11:80 active (1 0.852 sec) alive (99)
 	#3. Backend 172.16.110.12:80 active (1 0.826 sec) alive (75)
 	my @proxyctl = &getHTTPFarmBackendStatusCtl( $farm_name );
@@ -1608,22 +1608,23 @@ sub getHTTPFarmBackendsStatusInfo    # ($farm_name)
 			$serviceName = $2;
 		}
 
-		# Parse backend connections
-		# i.e.
-		#      0. Backend 192.168.100.254:80 active (5 0.000 sec) alive (0)
+	   # Parse backend connections
+	   # i.e.
+	   #      0. Backend (backend.test)192.168.100.254:80 active (5 0.000 sec) alive (0)
+	   #      1. Backend 192.168.100.253:80 active (5 0.000 sec) alive (0)
 		if ( $line =~
-			/(\d+)\. Backend (\d+\.\d+\.\d+\.\d+|[a-fA-F0-9:]+):(\d+) (\w+) .+ (\w+)(?: \((\d+)\))?/
+			/(\d+)\. Backend (?:\(($fqdn_re)\))?(\d+\.\d+\.\d+\.\d+|[a-fA-F0-9:]+):(\d+) (\w+) .+ (\w+)(?: \((\d+)\))?/
 		  )
 		{
 			my $backendHash = {
 								id     => $1 + 0,
-								ip     => $2,
-								port   => $3 + 0,
-								status => $5,
+								ip     => $2 ? $2 : $3,
+								port   => $4 + 0,
+								status => $6,
 			};
 
 			# Getting real status
-			my $backend_disabled = $4;
+			my $backend_disabled = $5;
 			if ( $backend_disabled eq "DISABLED" )
 			{
 				require Skudonet::Farm::HTTP::Backend;

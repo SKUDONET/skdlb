@@ -26,7 +26,8 @@ use strict;
 # show license
 sub get_license
 {
-	&zenlog(__FILE__ . ":" . __LINE__ . ":" . (caller(0))[3] . "( @_ )", "debug", "PROFILING" );
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $format = shift;
 
 	require Skudonet::System;
@@ -50,12 +51,13 @@ sub get_license
 
 	my $file = &slurpFile( $licenseFile );
 
-	&httpResponse({ code => 200, body => $file, type => 'text/plain' });
+	&httpResponse( { code => 200, body => $file, type => 'text/plain' } );
 }
 
 sub get_supportsave
 {
-	&zenlog(__FILE__ . ":" . __LINE__ . ":" . (caller(0))[3] . "( @_ )", "debug", "PROFILING" );
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	my $desc = "Get supportsave file";
 
 	require Skudonet::System;
@@ -68,7 +70,8 @@ sub get_supportsave
 # GET /system/version
 sub get_version
 {
-	&zenlog(__FILE__ . ":" . __LINE__ . ":" . (caller(0))[3] . "( @_ )", "debug", "PROFILING" );
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
 	require Skudonet::SystemInfo;
 	require Skudonet::Certificate;
 
@@ -82,7 +85,7 @@ sub get_version
 
 	my $params = {
 				   'kernel_version'    => $kernel,
-				   'skudonet_version'   => $skudonet,
+				   'skudonet_version'  => $skudonet,
 				   'hostname'          => $hostname,
 				   'system_date'       => $date,
 				   'appliance_version' => $applicance,
