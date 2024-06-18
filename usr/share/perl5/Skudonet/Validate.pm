@@ -512,9 +512,9 @@ sub checkZAPIParams
 	{
 		if ( exists $param_obj->{ $p }->{ edition } )
 		{
-			if ( $param_obj->{ $p }->{ edition } eq 'ce' )
+			if ( $param_obj->{ $p }->{ edition } eq 'ee' )
 			{
-				delete $param_obj->{ $p };
+					delete $param_obj->{ $p };
 			}
 		}
 	}
