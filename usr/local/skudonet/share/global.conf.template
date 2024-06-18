@@ -13,7 +13,7 @@ $nftlb_debug="5";
 #ZAPI Versions
 $zapi_versions="3 3.1 3.2 4.0.2";#update
 # API model path
-$zapi_model_path="/usr/local/skudonet/zapi-model";
+$zapi_model_path="/usr/local/skudonet/zapi-model";#update
 #ZAPI KEY
 $zapikey="";
 #proxy
@@ -52,68 +52,70 @@ $backupdir="$zdir/backups";#update
 #Log directory
 $logdir="/var/log";#update
 #piddir
-$piddir="/var/run";
+$piddir="/var/run";#update
 #skudonet activation certificate path
 $zlbcertfile_path="$basedir/zlbcertfile.pem";#update
 # directory of the zapi binaries
-$zapi_directory="$basedir/zapi";
+$zapi_directory="$basedir/zapi";#update
 #first boot flag
-$first_boot_flag="/etc/firstzlbboot";
+$first_boot_flag="/etc/firstzlbboot";#update
 #zna migration flag
-$migration_flag="/etc/zlbmigration";
+$migration_flag="/etc/zlbmigration";#update
 #skudonet service
-$skudonet_service="/etc/init.d/skudonet";
+$skudonet_service="/etc/init.d/skudonet";#update
 #skudonet no restart service flag
-$skudonet_service_norestart_flag="/etc/zlbnorestart";
+$skudonet_service_norestart_flag="/etc/zlbnorestart";#update
 # directory of the migration scripts
-$mig_dir="$zdir/migrating";
+$mig_dir="$zdir/migrating";#update
 
 # System files
 #rt tables file
-$rttables="/etc/iproute2/rt_tables";
+$rttables="/etc/iproute2/rt_tables";#update
 $rttables_tpl="$templatedir/rt_tables.template";#update
 #HTPASSWD file
 $htpass="/etc/passwd";#update
 #shadow file
-$shadow_file="/etc/shadow";
+$shadow_file="/etc/shadow";#update
 #dns file server?
-$filedns="/etc/resolv.conf";
+$filedns="/etc/resolv.conf";#update
 # apt sources configuration file
-$fileapt="/etc/apt/sources.list";
+$fileapt="/etc/apt/sources.list";#update
 # apt Skudonet source
-$apt_source_skudonet="/etc/apt/sources.list.d/skudonet.list";
+$apt_source_skudonet="/etc/apt/sources.list.d/skudonet.list";#update
 # apt user conf
-$apt_conf_file="/etc/apt/apt.conf";
+$apt_conf_file="/etc/apt/apt.conf";#update
 # apt updates dir
-$update_dir="/usr/local/skudonet/updates";
+$update_dir="/usr/local/skudonet/updates";#update
 # Skudonet URL repo
-$repo_url_skudonet="repo.skudonet.com";
+$repo_url_skudonet="repo.skudonet.com";#update
 # Skudonet GPG key
-$gpg_key_skudonet="ee.skudonet.com.gpg.key";
+$gpg_key_skudonet="ee.skudonet.com.gpg.key";#update
 # Bios version
-$bios_version="/sys/devices/virtual/dmi/id/bios_version";
+$bios_version="/sys/devices/virtual/dmi/id/bios_version";#update
 
 # networking service
-$networking_service="/etc/init.d/networking";
+$networking_service="/etc/init.d/networking";#update
 
 #SNMP Service
-$snmpdconfig_tpl="$templatedir/snmpd.conf.template";
-$snmpdconfig_file="/etc/snmp/snmpd.conf";
-$snmpd_service="/etc/init.d/snmpd";
+$snmpdconfig_tpl="$templatedir/snmpd.conf.template";#update
+$snmpdconfig_file="/etc/snmp/snmpd.conf";#update
+$snmpd_service="/etc/init.d/snmpd";#update
 
 # start / stop scripts
-$zlb_start_script="$configdir/zlb-start";
-$zlb_stop_script="$configdir/zlb-stop";
-$zlb_start_tpl="$templatedir/zlb-start.template";
-$zlb_stop_tpl="$templatedir/zlb-stop.template";
+$zlb_start_script="$configdir/zlb-start";#update
+$zlb_stop_script="$configdir/zlb-stop";#update
+$zlb_start_tpl="$templatedir/zlb-start.template";#update
+$zlb_stop_tpl="$templatedir/zlb-stop.template";#update
 # cluster hooks
+$cluster_hook_pre_maintenance="$configdir/pre-maintenance";#update
+$cluster_hook_post_maintenance="$configdir/post-maintenance";#update
 
 ## Skudonet Files
 #appliance version file
-$applianceVersionFile="/etc/skudonet_version";
+$applianceVersionFile="/etc/skudonet_version";#update
 #this file
 $globalcfg="$configdir/global.conf";#update
-$globalcfg_tpl="$templatedir/global.conf.template";
+$globalcfg_tpl="$templatedir/global.conf.template";#update
 # Zen license
 $licenseFileTxt="$zdir/license.txt";#update
 # Zen license
@@ -126,36 +128,36 @@ $temp_farm="letsencryptSkudonet";
 $le_farm="LetsencryptSkudonet";
 $le_service="LetsencryptZ";
 $le_binary="/usr/local/skudonet/bin/certbot-auto --no-self-upgrade";#update
-$le_certbot_bin="/usr/bin/certbot";
-$le_fullchain_path="/usr/local/skudonet/config/letsencrypt/";
-$le_webroot_path="/usr/local/skudonet/app/letsencryptz/webroot/";
-$le_webserver_config_file="/usr/local/skudonet/app/letsencryptz/etc/cherokee_localhost.conf";
-$le_config_path="/usr/local/skudonet/config/letsencrypt/";
-$le_manual_auth_hook="$zbindir/le_dns_auth_hook";
-$le_manual_cleanup_hook="$zbindir/le_dns_cleanup_hook";
-$le_acme_bin="/usr/local/skudonet/app/letsencryptz/acme/acme.sh";
-$le_acme_config_path="$le_config_path/acme";
-$le_acme_cert_path="$le_acme_config_path/live";
+$le_certbot_bin="/usr/bin/certbot";#update
+$le_fullchain_path="/usr/local/skudonet/config/letsencrypt/";#update
+$le_webroot_path="/usr/local/skudonet/app/letsencryptz/webroot/";#update
+$le_webserver_config_file="/usr/local/skudonet/app/letsencryptz/etc/cherokee_localhost.conf";#update
+$le_config_path="/usr/local/skudonet/config/letsencrypt/";#update
+$le_manual_auth_hook="$zbindir/le_dns_auth_hook";#update
+$le_manual_cleanup_hook="$zbindir/le_dns_cleanup_hook";#update
+$le_acme_bin="/usr/local/skudonet/app/letsencryptz/acme/acme.sh";#update
+$le_acme_config_path="$le_config_path/acme";#update
+$le_acme_cert_path="$le_acme_config_path/live";#update
 $le_email="";
-$le_cron_file="/etc/cron.d/letsencryptz";
-$le_renewal_bin="$zbindir/letsencryptz-autorenew";
+$le_cron_file="/etc/cron.d/letsencryptz";#update
+$le_renewal_bin="$zbindir/letsencryptz-autorenew";#update
 $le_renewal_timeout="120";
 
 #File configuration GUI
-$http_server_dir="$zdir/app/cherokee";
-$http_server_service="/etc/init.d/cherokee";
+$http_server_dir="$zdir/app/cherokee";#update
+$http_server_service="/etc/init.d/cherokee";#update
 $confhttp="$http_server_dir/etc/cherokee/cherokee.conf";#update
 $confhttp_tpl="$templatedir/cherokee.conf.template";#update
-$http_server_cert="$certdir/skdcert.pem";#update
-$http_server_key="$certdir/skdcert-c.key";#update
-$http_server_cert_tpl="$templatedir/skdcert.pem";
-$http_server_key_tpl="$templatedir/skdcert-c.key";
-$http_bin="$http_server_dir/sbin/cherokee";
+$http_server_cert="$certdir/skdcert.pem";
+$http_server_key="$certdir/skdcert-c.key";
+$http_server_cert_tpl="$templatedir/skdcert.pem";#update
+$http_server_key_tpl="$templatedir/skdcert-c.key";#update
+$http_bin="$http_server_dir/sbin/cherokee";#update
 
 #Where is temperature file?
 $temperatureFile="/proc/acpi/thermal_zone/THRM/temperature";
 # network files
-$sys_net_dir="/sys/class/net";
+$sys_net_dir="/sys/class/net";#update
 
 
 ## binaries
@@ -318,9 +320,9 @@ $grep_bin="/bin/grep";
 #Where is nft?
 $nft_bin="/usr/local/sbin/nft";#update
 #Where is nftlb?
-$nftlb_bin="/usr/local/skudonet/app/nftlb/sbin/nftlb";
+$nftlb_bin="/usr/local/skudonet/app/nftlb/sbin/nftlb";#update
 #Where is the nftlb service?
-$nftlb_svc="$zbindir/nftlbd";
+$nftlb_svc="$zbindir/nftlbd";#update
 #Where is poweroff
 $aws_poweroff_bin="/sbin/poweroff";#update
 $default_poweroff_bin="/usr/sbin/poweroff";#update
@@ -393,7 +395,7 @@ $ntp="pool.ntp.org";
 
 
 ## Network global configuration options ##
-$fwmarksconf="$configdir/fwmarks.conf";
+$fwmarksconf="$configdir/fwmarks.conf";#update
 #System Default Gateway
 $defaultgw="";
 #Interface Default Gateway
@@ -417,7 +419,7 @@ $ipv6_enabled="false";
 # Maximum recent ip list
 # Recent ip hash
 # SIP Module Parameters
-$l4xnat_sip_params="";#update
+$l4xnat_sip_params="";
 
 
 #FarmGuardian binary, create advanced check for backend servers
@@ -426,7 +428,7 @@ $fgmark="$zbindir/mark.so";#update
 
 # files to save the status of the system packages
 $apt_msg="$localconfig/apt_message.txt";
-$apt_outdated_list="$localconfig/apt_outdated_list.txt";
+$apt_outdated_list="$localconfig/apt_outdated_list.txt";#update
 
 #maintenance status under human action, flag
 
@@ -441,7 +443,7 @@ $rrd_dir="rrd";#update
 #Service for configure Zen directory replication
 $zenino="$zbindir/enterprise.bin zeninotify";#update
 #Zen Inotify pid file
-$zeninopid="/var/run/zeninotify.pid";
+$zeninopid="/var/run/zeninotify.pid";#update
 #Rsync replication parameters
 $zenrsync="-azvr --delete";#update
 #ARP unsolicited
@@ -449,9 +451,9 @@ $arp_unsolicited="";
 #ARP announcement, true / false (default)
 $arp_announce="";
 #Where is the script ARP announcement?
-$arp_announce_bin="/usr/local/skudonet/bin/arp_announce";
+$arp_announce_bin="/usr/local/skudonet/bin/arp_announce";#update
 #path for cron task of arp announcement
-$arp_announce_cron_path="/etc/cron.d/arp_announce";
+$arp_announce_cron_path="/etc/cron.d/arp_announce";#update
 
 #Network duplicated net. It is used to include the route of a virtual interface in all of interfaces where this networking segment is defined
 $duplicated_net="false";
@@ -461,16 +463,16 @@ $duplicated_net="false";
 
 
 # Cron service
-$cron_service="/etc/init.d/cron";
-$cron_conf="/etc/cron.d/skudonet";
-$cron_tpl="$templatedir/skudonet.cron";
+$cron_service="/etc/init.d/cron";#update
+$cron_conf="/etc/cron.d/skudonet";#update
+$cron_tpl="$templatedir/skudonet.cron";#update
 
 # Netplug service
-$netplug_init_tpl="$templatedir/netplug.template";
-$netplugd_conf_tpl="$templatedir/netplugd.conf.template";
-$netplug_init="/etc/netplug/netplug";
-$netplugd_conf="/etc/netplug/netplugd.conf";
-$netplugd_srv="/etc/init.d/netplug";
+$netplug_init_tpl="$templatedir/netplug.template";#update
+$netplugd_conf_tpl="$templatedir/netplugd.conf.template";#update
+$netplug_init="/etc/netplug/netplug";#update
+$netplugd_conf="/etc/netplug/netplugd.conf";#update
+$netplugd_srv="/etc/init.d/netplug";#update
 
 
 #syslog service
@@ -479,7 +481,7 @@ $netplugd_srv="/etc/init.d/netplug";
 
 # keepalived configuration file
 # conntrackd configuration file
-$conntrackd_conf="/etc/conntrackd/conntrackd.conf";
+$conntrackd_conf="/etc/conntrackd/conntrackd.conf";#update
 #Where is curl binary?
 $curl_bin="/usr/bin/curl";
 # cluster floating interfaces configuration file path
@@ -491,13 +493,13 @@ $curl_bin="/usr/bin/curl";
 $primary_backup="$zbindir/primary-backup.sh";#update
 
 # sshd file
-$sshConf="/etc/ssh/sshd_config";
+$sshConf="/etc/ssh/sshd_config";#update
 # ssh service
-$sshService="/etc/init.d/ssh";
+$sshService="/etc/init.d/ssh";#update
 # sshkey file path
-$key_path="/root/.ssh";
+$key_path="/root/.ssh";#update
 # sshkey file path
-$key_id="id_rsa";
+$key_id="id_rsa";#update
 # ssh keygen command
 $keygen_cmd="ssh-keygen -t rsa -f $key_path/$key_id -N '' -q";#update
 
@@ -508,7 +510,7 @@ $zenbackup="$zbindir/zenbackup.pl";#update
 $backupfor="$configdir $basedir/*.pem $confhttp $rttables $sshConf $snmpdconfig_file /etc/hostname $filedns /etc/cron.d/skudonet $applianceVersionFile";#update
 
 #Bonding interfaces
-$bonding_hwaddr_filename="bonding_slave/perm_hwaddr";
+$bonding_hwaddr_filename="bonding_slave/perm_hwaddr";#update
 
 #Notifications Module
 # How time wait to execute the logs rotate
@@ -554,19 +556,19 @@ $l4sdcfg="$configdir/l4sd.cfg";#update
 # routing
 # VPN prio
 # L4 farm prio
-$routingRulePrioFarmL4="25000";
+$routingRulePrioFarmL4="25000";#update
 # datalink farm prio
-$routingRulePrioFarmDatalink="26000";
+$routingRulePrioFarmDatalink="26000";#update
 # Min prio for rules created by the user. It must be greater than all farms rules
-$routingRulePrioUserMin="29000";
+$routingRulePrioUserMin="29000";#update
 # Maximum prio for rules created by the user. It must be lower than ifaces priority
-$routingRulePrioUserMax="30999";
+$routingRulePrioUserMax="30999";#update
 # Prio for virtual interfaces that have the networking segmend defined in two interfaces
-$routingRulePrioIfacesDuplicated="31000";
+$routingRulePrioIfacesDuplicated="31000";#update
 # initial interface tables prio
-$routingRulePrioIfaces="32000";
+$routingRulePrioIfaces="32000";#update
 # deafult priority for routing entries
-$routingRoutePrio="5";
+$routingRoutePrio="5";#update
 
 # time period to get the interface throughput stats
 
