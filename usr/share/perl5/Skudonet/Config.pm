@@ -188,6 +188,7 @@ Function: setConfigStr2Arr
 Parameters:
 	object - reference to a hash
 	parameters - list of parameters to change from string to array
+	not_sorted - 0 sorted, 1 not sorted.
 
 Returns:
 	hash ref - Object updated
@@ -200,14 +201,24 @@ sub setConfigStr2Arr
 			 "debug", "PROFILING" );
 	my $obj        = shift;
 	my $param_list = shift;
+	my $not_sorted = shift;
 
 	foreach my $param_name ( @{ $param_list } )
 	{
 		my @list = ();
 
 		# split parameter if it is not a blank string
-		@list = sort split ( ' ', $obj->{ $param_name } )
-		  if ( $obj->{ $param_name } );
+		if ( $obj->{ $param_name } )
+		{
+			if ( $not_sorted )
+			{
+				@list = split ( ' ', $obj->{ $param_name } );
+			}
+			else
+			{
+				@list = sort split ( ' ', $obj->{ $param_name } );
+			}
+		}
 		$obj->{ $param_name } = \@list;
 	}
 
@@ -253,7 +264,12 @@ sub getTiny
 	require Config::Tiny;
 
 	# returns object on success or undef on error.
-	return Config::Tiny->read( $file_path );
+	my $tiny_object = Config::Tiny->read( $file_path );
+	if ( not defined $tiny_object )
+	{
+		&zenlog( "Error reading $file_path", "warning" );
+	}
+	return $tiny_object;
 }
 
 =begin nd
@@ -329,6 +345,64 @@ sub getTinyObj    #( $filepath, $object, $key_ref )
 
 	return $tiny_ref;
 
+}
+
+=begin nd
+Function: setTiny
+	Save an struct in a config file. The file is locked before than applying the changes
+
+Parameters:
+	path - Tiny conguration file where to apply the change
+	tiny_ref - Hash ref to apply the change
+
+Returns:
+	Integer -  Error code: 0 on success or other value on failure
+=cut
+
+sub setTiny
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my ( $path, $tiny_ref ) = @_;
+	unless ( $tiny_ref )
+	{
+		&zenlog( "Object not defined trying to save it in file $path" );
+		return;
+	}
+	require Skudonet::Lock;
+	require Config::Tiny;
+
+	my $lock_file = &getLockFile( $path );
+	my $lock_fd = &openlock( $lock_file, 'w' );
+
+	my $fileHandle = &getTiny( $path );
+
+	unless ( $fileHandle )
+	{
+		&zenlog( "Could not open file $path: $Config::Tiny::errstr" );
+		return -1;
+	}
+	foreach my $object ( %{ $tiny_ref } )
+	{
+		foreach my $param ( keys %{ $tiny_ref->{ $object } } )
+		{
+			if ( ref $tiny_ref->{ $object }->{ $param } eq "ARRAY" )
+			{
+				$fileHandle->{ $object }->{ $param } =
+				  join ( ' ', @{ $tiny_ref->{ $object }->{ $param } } );
+			}
+			else
+			{
+				$fileHandle->{ $object }->{ $param } = $tiny_ref->{ $object }->{ $param };
+			}
+		}
+	}
+
+	my $success = $fileHandle->write( $path );
+	close $lock_fd;
+	unlink $lock_file;
+
+	return ( $success ) ? 0 : 1;
 }
 
 =begin nd
