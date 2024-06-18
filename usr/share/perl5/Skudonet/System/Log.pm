@@ -57,6 +57,7 @@ sub getLogs
 	opendir ( DIR, $logdir );
 	my @files = readdir ( DIR );
 	closedir ( DIR );
+	@files = sort { -M "$logdir/$a" <=> -M "$logdir/$b" } ( @files );
 
 	foreach my $line ( @files )
 	{
@@ -109,7 +110,8 @@ sub getLogLines
 		@lines = @{ &logAndGet( "$tail -n $lines_number ${path}/$logFile", "array" ) };
 	}
 
-	return \@lines;
+	my @reverse = reverse @lines;
+	return \@reverse;
 }
 
 1;
