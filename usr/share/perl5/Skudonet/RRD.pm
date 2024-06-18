@@ -271,10 +271,6 @@ sub printGraph    #($type,$time)
 	{
 		&genCpuGraph( $type, $graph, $time, $end );
 	}
-	elsif ( $type =~ /^dev-*/ )
-	{
-		&genDiskGraph( $type, $graph, $time, $end );
-	}
 	elsif ( $type eq "load" )
 	{
 		&genLoadGraph( $type, $graph, $time, $end );
@@ -302,6 +298,10 @@ sub printGraph    #($type,$time)
 				func   => 'genIPDSGraph',
 				args   => [$type, $graph, $time, $end],
 		);
+	}
+	elsif ( $type =~ /^dev-*/ )
+	{
+		&genDiskGraph( $type, $graph, $time, $end );
 	}
 	else
 	{
