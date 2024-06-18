@@ -45,6 +45,7 @@ sub getLetsencryptConfigPath    # ( )
 {
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
+
 	return &getGlobalConfiguration( 'le_config_path' );
 }
 
@@ -388,7 +389,7 @@ sub setLetsencryptFarmService
 							 "^/.well-known/acme-challenge/" );
 	if ( $error )
 	{
-		&zenlog( "Error creating the URL pattern on service $le_service",
+		&zenlog( "Error creating the URL pattern on Service $le_service",
 				 "Error", "LetsEncryptZ" );
 		return 3;
 	}
@@ -400,26 +401,52 @@ sub setLetsencryptFarmService
 	require Skudonet::Farm::Action;
 	if ( &getGlobalConfiguration( 'proxy_ng' ) ne 'true' )
 	{
-		$error = &runFarmStop( $farm_name, "" );
+		&zenlog(
+				 "Restarting the Farm $farm_name due to Service $le_service is configured.",
+				 "Info", "LetsEncryptZ" );
+		use Time::HiRes qw(usleep);
+		my $max_retry = 5;
+
+		my $retry = 1;
+		$error = 1;
+		while ( $error and ( $retry < $max_retry ) )
+		{
+			&zenlog( "Stopping ( retry $retry/$max_retry ) Farm $farm_name.",
+					 "Info", "LetsEncryptZ" );
+			$error = &runFarmStop( $farm_name, "" );
+			$retry++;
+			usleep 500;
+		}
 		if ( $error )
 		{
-			&zenlog( "Error stopping the farm $farm_name", "Error", "LetsEncryptZ" );
+			&zenlog( "Error stopping the Farm $farm_name", "Error", "LetsEncryptZ" );
 			return 5;
 		}
-		$error = &runFarmStart( $farm_name, "" );
+
+		$retry = 1;
+		$error = 1;
+		while ( $error and ( $retry < $max_retry ) )
+		{
+			&zenlog( "Starting ( retry $retry/$max_retry ) Farm $farm_name.",
+					 "Info", "LetsEncryptZ" );
+			$error = &runFarmStart( $farm_name, "" );
+			$retry++;
+			usleep 500;
+		}
 		if ( $error )
 		{
-			&zenlog( "Error starting the farm $farm_name", "Error", "LetsEncryptZ" );
+			&zenlog( "Error starting the Farm $farm_name", "Error", "LetsEncryptZ" );
 			return 6;
 		}
-		&zenlog( "The Farm $farm_name has been restarted", "Info", "LetsEncryptZ" );
+		&zenlog( "The Farm $farm_name has been restarted successfully",
+				 "Info", "LetsEncryptZ" );
 	}
 	else
 	{
 		$error = &_runFarmReload( $farm_name );
 		if ( $error )
 		{
-			&zenlog( "Error reloading the farm $farm_name", "Error", "LetsEncryptZ" );
+			&zenlog( "Error reloading the Farm $farm_name", "Error", "LetsEncryptZ" );
 			return 5;
 		}
 		&zenlog( "The Farm $farm_name has been reloaded", "Info", "LetsEncryptZ" );
@@ -456,13 +483,13 @@ sub unsetLetsencryptFarmService
 		my $error = &runFarmStop( $farm_name );
 		if ( $error )
 		{
-			&zenlog( "Error stopping the farm $farm_name", "Error", "LetsEncryptZ" );
+			&zenlog( "Error stopping the Farm $farm_name", "Error", "LetsEncryptZ" );
 			return 1;
 		}
 		$error = &runFarmDelete( $farm_name );
 		if ( $error )
 		{
-			&zenlog( "Error deleting the farm $farm_name", "Error", "LetsEncryptZ" );
+			&zenlog( "Error deleting the Farm $farm_name", "Error", "LetsEncryptZ" );
 			return 2;
 		}
 		&zenlog( "The Farm $farm_name has been deleted", "Info", "LetsEncryptZ" );
@@ -475,37 +502,62 @@ sub unsetLetsencryptFarmService
 			my $error = &delHTTPFarmService( $farm_name, $le_service );
 			if ( $error )
 			{
-				&zenlog( "Error Deleting the service $le_service on farm $farm_name",
+				&zenlog( "Error deleting the Service $le_service on Farm $farm_name",
 						 "Error", "LetsEncryptZ" );
 				return 3;
 			}
-			&zenlog( "The service $le_service on farm $farm_name has been deleted",
+			&zenlog( "The Service $le_service on Farm $farm_name has been deleted",
 					 "Info", "LetsEncryptZ" );
 
 			# Restart the farm
 			require Skudonet::Farm::Action;
 			if ( &getGlobalConfiguration( 'proxy_ng' ) ne 'true' )
 			{
-				$error = &runFarmStop( $farm_name, "" );
+				&zenlog(
+						 "Restarting the Farm $farm_name due to Service $le_service is deleted.",
+						 "Info", "LetsEncryptZ" );
+				use Time::HiRes qw(usleep);
+				my $max_retry = 5;
+
+				my $retry = 1;
+				$error = 1;
+				while ( $error and ( $retry < $max_retry ) )
+				{
+					&zenlog( "Stopping ( retry $retry/$max_retry ) Farm $farm_name.",
+							 "Info", "LetsEncryptZ" );
+					$error = &runFarmStop( $farm_name, "" );
+					$retry++;
+					usleep 500;
+				}
 				if ( $error )
 				{
 					&zenlog( "Error stopping the farm $farm_name", "Error", "LetsEncryptZ" );
 					return 1;
 				}
-				$error = &runFarmStart( $farm_name, "" );
+				$retry = 1;
+				$error = 1;
+				while ( $error and ( $retry < $max_retry ) )
+				{
+					&zenlog( "Starting ( retry $retry/$max_retry ) Farm $farm_name.",
+							 "Info", "LetsEncryptZ" );
+					$error = &runFarmStart( $farm_name, "" );
+					$retry++;
+					usleep 500;
+				}
 				if ( $error )
 				{
-					&zenlog( "Error starting the farm $farm_name", "Error", "LetsEncryptZ" );
+					&zenlog( "Error starting the Farm $farm_name", "Error", "LetsEncryptZ" );
 					return 4;
 				}
-				&zenlog( "The Farm $farm_name has been restarted", "Info", "LetsEncryptZ" );
+				&zenlog( "The Farm $farm_name has been restarted successfully.",
+						 "Info", "LetsEncryptZ" );
 			}
 			else
 			{
 				$error = &_runFarmReload( $farm_name );
 				if ( $error )
 				{
-					&zenlog( "Error reloading the farm $farm_name", "Error", "LetsEncryptZ" );
+					&zenlog( "Error reloading the Farm $farm_name", "Error", "LetsEncryptZ" );
 					return 1;
 				}
 				&zenlog( "The farm $farm_name has been reloaded", "Info", "LetsEncryptZ" );
@@ -960,8 +1012,8 @@ sub runLetsencryptRenew  # ( $le_cert_name, $farm_name, $vip, $force, $lock_fh )
 	# run le_binary command
 	my $test_opt = "--test-cert"
 	  unless ( &checkLetsencryptStaging( $le_cert_name ) );
-	my $certname_opt = "--cert-name " . $le_cert_name;
 	my $force_opt = "--force-renewal --break-my-certs" if ( $force eq "true" );
+	my $certname_opt = "--cert-name " . $le_cert_name;
 	my $fullchain_opt =
 	  "--fullchain-path " . &getGlobalConfiguration( 'le_fullchain_path' );
 	my $webroot_opt =

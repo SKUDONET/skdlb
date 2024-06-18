@@ -32,6 +32,7 @@
 
 use strict;
 use warnings;
+
 use Getopt::Long;
 use Switch;
 use Skudonet::Config;
@@ -222,7 +223,7 @@ if ( not defined $error_ref )
 				 "Letsencryptz-renewal" );
 	}
 	&runLetsencryptLocalWebserverStop();
-	&zenlog( "$action Farm '$farm_name' was succesfully",
+	&zenlog( "$action Farm '$farm_name' was successful.",
 			 "info", "Letsencryptz-renewal" );
 	close $lock_le_renew_fh;
 	exit 1;
@@ -251,26 +252,63 @@ if ( defined $restart )
 	require Skudonet::Farm::Action;
 	require Skudonet::Farm::Base;
 	require Skudonet::Certificate;
+	use Time::HiRes qw(usleep);
+	my $max_retry = 5;
 
 	foreach my $farm ( @{ &getCertFarmsUsed( $cert ) } )
 	{
 		# restart farm used and up
-		if ( &getFarmStatus( $farm ) ne 'down' )
+		require Skudonet::Farm::HTTP::Config;
+		my $farm_status = &getHTTPFarmStatus( $farm );
+		if ( $farm_status eq 'up' )
 		{
+			my $retry = 1;
 			&zenlog( "Restarting farm '$farm' using certificate '$cert_name'.",
 					 "info", "Letsencryptz-renewal" );
-			$error = &runFarmStop( $farm, "" );
-			if ( $error )
+			while ( ( $farm_status eq "up" ) and ( $retry < $max_retry ) )
 			{
+				&zenlog(
+					"Stopping ( retry $retry/$max_retry ) farm '$farm' using certificate '$cert_name'.",
+					"info", "Letsencryptz-renewal"
+				);
+				$error = &runFarmStop( $farm, "" );
+				$farm_status = &getHTTPFarmStatus( $farm );
+				$retry++;
+				usleep 500;
+			}
+			if ( $farm_status eq "up" )
+			{
+				&zenlog( "Farm '$farm' using certificate '$cert_name' can not been stopped.",
+						 "info", "Letsencryptz-renewal" );
 				push @farms_restarted_error, $farm;
 				next;
 			}
-			$error = &runFarmStart( $farm, "" );
-			if ( $error )
+			&zenlog(
+				   "Farm '$farm' using certificate '$cert_name' has been stopped successfully.",
+				   "info", "Letsencryptz-renewal" );
+
+			$retry = 1;
+			while ( ( $farm_status ne "up" ) and ( $retry < $max_retry ) )
 			{
+				&zenlog(
+					"Starting ( retry $retry/$max_retry ) farm '$farm' using certificate '$cert_name'.",
+					"info", "Letsencryptz-renewal"
+				);
+				$error = &runFarmStart( $farm, "" );
+				$farm_status = &getHTTPFarmStatus( $farm );
+				$retry++;
+				usleep 500;
+			}
+			if ( $farm_status ne "up" )
+			{
+				&zenlog( "Farm '$farm' using certificate '$cert_name' can not been started.",
+						 "info", "Letsencryptz-renewal" );
 				push @farms_restarted_error, $farm;
 				next;
 			}
+			&zenlog(
+				   "Farm '$farm' using certificate '$cert_name' has been started successfully.",
+				   "info", "Letsencryptz-renewal" );
 			push @farms_restarted, $farm;
 		}
 	}
