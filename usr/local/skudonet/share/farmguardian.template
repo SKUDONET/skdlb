@@ -132,3 +132,12 @@ log=false
 interval=15
 cut_conns=true
 template=true
+
+[check_udp_nc]
+description=Send UDP connection to Backend and check if port is open.
+command=nc -vz -w 1 -u HOST PORT
+farms=
+log=false
+interval=15
+cut_conns=true
+template=true
