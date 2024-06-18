@@ -3882,7 +3882,8 @@ sub getHTTPFarm100Continue    # ($farm_name)
 			 "debug", "PROFILING" );
 	my $farm_name = shift;
 
-	my $output;
+	#default mode if directive is not present
+	my $output = 'ignore';
 
 	my $farm_filename = &getFarmFile( $farm_name );
 	open my $fileconf, '<', "$configdir/$farm_filename";
