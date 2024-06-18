@@ -66,7 +66,7 @@ sub getCertFiles    # ()
 }
 
 =begin nd
-Function: getCertFiles
+Function: getPemCertFiles
 
 	Returns a list of only .pem certificate files in the config directory.
 
@@ -791,12 +791,12 @@ sub getCertInfo
 	# CSR
 	else
 	{
+		my $cn = "";
 		require Skudonet::File;
 
 		my @cert_data =
 		  @{ &logAndGet( "$openssl req -in $filepath -text -noout", "array" ) };
 
-		my $cn = "";
 		my ( $string ) = grep ( /\sSubject: /, @cert_data );
 		if ( $string =~ /CN ?= ?([^,]+)/ )
 		{
@@ -805,13 +805,22 @@ sub getCertInfo
 
 		%response = (
 					  file       => $certfile,
-					  type       => 'CSR',
+					  type       => "CSR",
 					  CN         => $cn,
 					  issuer     => "NA",
 					  creation   => &getFileDateGmt( $filepath ),
 					  expiration => "NA",
 					  status     => 'valid',
 		);
+		if ( $certfile =~ /^(.*)\.csr$/ )
+		{
+			my $key_file = "$1.key";
+			my $certdir  = &getGlobalConfiguration( 'certdir' );
+			if ( -f "$certdir/$key_file" )
+			{
+				$response{ "key" } = "$key_file";
+			}
+		}
 	}
 
 	return \%response;

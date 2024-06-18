@@ -75,7 +75,8 @@ if ( $q->path_info =~ qr{^/certificates/letsencryptz} )
 if ( $q->path_info =~ qr{^/certificates} )
 {
 	require Skudonet::API40::Certificate;
-	my $cert_name_re = &getValidFormat( 'certificate_name' );
+	my $cert_name_re    = &getValidFormat( 'certificate_name' );
+	my $cert_csr_key_re = &getValidFormat( 'cert_csr_key' );
 
 	#  GET List SSL certificates
 	GET qr{^/certificates$} => \&certificates;
@@ -85,6 +86,9 @@ if ( $q->path_info =~ qr{^/certificates} )
 
 	#  Download SSL certificate
 	GET qr{^/certificates/($cert_re)$} => \&download_certificate;
+
+	#  GET CSR Key information
+	GET qr{^/certificates/($cert_csr_key_re)/info$}, \&get_csr_key_info;
 
 	#  Create CSR certificates
 	POST qr{^/certificates$} => \&create_csr;

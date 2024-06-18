@@ -87,6 +87,51 @@ sub get_certificate_info    # ()
 	}
 }
 
+# GET /certificates/CSRKEY/info
+sub get_csr_key_info    # ()
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my $csr_key_filename = shift;
+	my $csr_name;
+
+	require Skudonet::Certificate;
+
+	my $desc     = "Show CSR Key details";
+	my $cert_dir = &getGlobalConfiguration( 'certdir' );
+
+	# check is the certificate file exists
+	if ( !-f "$cert_dir/$csr_key_filename" )
+	{
+		my $msg = "CSR Key file not found.";
+		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
+	}
+	if ( $csr_key_filename =~ /^(.*)\.key$/ )
+	{
+		$csr_name = "$1.csr";
+	}
+
+	my $csr_key;
+	if ( -f "$cert_dir/$csr_name" )
+	{
+		open ( my $fh, "<", "$cert_dir/$csr_key_filename" );
+		while ( <$fh> )
+		{
+			$csr_key .= $_;
+		}
+		close $fh;
+	}
+	if ( defined $csr_key )
+	{
+		&httpResponse( { code => 200, body => $csr_key, type => 'text/plain' } );
+	}
+	else
+	{
+		my $msg = "Could not get such CSR Key information";
+		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+	}
+}
+
 # GET /certificates/CERTIFICATE
 sub download_certificate    # ()
 {
@@ -98,10 +143,19 @@ sub download_certificate    # ()
 	my $cert_dir  = &getGlobalConfiguration( 'certdir' );
 	my $cert_path = "$cert_dir/$cert_filename";
 
-	unless ( $cert_filename =~ /\.(pem|csr)$/ && -f $cert_path )
+	unless ( $cert_filename =~ /\.(pem|csr|key)$/ && -f $cert_path )
 	{
 		my $msg = "Could not find such certificate";
 		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
+	}
+	if ( $cert_filename =~ /^(.*)\.key$/ )
+	{
+		my $csr_name = "$1.csr";
+		if ( not -f "$cert_dir/$csr_name" )
+		{
+			my $msg = "Could not find such CSR Key";
+			&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
+		}
 	}
 
 	&httpDownloadResponse(

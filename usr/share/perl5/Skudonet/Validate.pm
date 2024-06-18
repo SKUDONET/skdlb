@@ -266,6 +266,7 @@ my %format_re = (
 	'cert_pem'            => qr/$cert_name\.pem/,
 	'cert_name'           => qr/[a-zA-Z0-9\-]+/,
 	'cert_csr'            => qr/\w[\w\.\-]*\.csr/,
+	'cert_csr_key'        => qr/\w[\w\.\-]*\.key/,
 	'cert_dh2048'         => qr/\w[\w\.\-]*_dh2048\.pem/,
 	'le_certificate_name' => $cert_name,
 	'le_mail'             => $email,
