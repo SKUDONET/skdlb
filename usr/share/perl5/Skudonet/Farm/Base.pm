@@ -196,7 +196,10 @@ sub getFarmVipStatus    # ($farm_name)
 		}
 	}
 
+	else
+	{
 		$backends = &getFarmServers( $farm_name );
+	}
 
 	# checking status
 	foreach my $be ( @{ $backends } )

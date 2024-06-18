@@ -4,7 +4,6 @@
    "method" : "PUT",
    "params" : {
       "dhcp" : {
-         "edition" : "ee",
          "non_blank" : "true",
          "values" : [
             "true",

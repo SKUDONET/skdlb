@@ -220,6 +220,35 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		$restart_flag = "true";
 	}
 
+	# Enable or disable ignore 100 continue header
+	if ( exists ( $json_obj->{ ignore_100_continue } ) )
+	{
+		if ( $json_obj->{ ignore_100_continue } !~ /^(?:true|false)$/ )
+		{
+			my $msg = "Invalid ignore_100_continue value.";
+			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+		}
+
+		require Skudonet::Farm::HTTP::Config;
+		my $action = 0;
+		$action = 1 if ( $json_obj->{ ignore_100_continue } =~ /^true$/ );
+
+		my $newaction = &getHTTPFarm100Continue( $farmname );
+		$newaction = ( $newaction eq "pass" ) ? 0 : 1;
+
+		if ( $newaction != $action )
+		{
+			my $status = &setHTTPFarm100Continue( $farmname, $action );
+
+			if ( $status == -1 )
+			{
+				my $msg = "Some errors happened trying to modify the certname.";
+				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			}
+
+			$restart_flag = "true";
+		}
+	}
 
 	# Modify HTTP Verbs Accepted
 	if ( exists ( $json_obj->{ httpverb } ) )

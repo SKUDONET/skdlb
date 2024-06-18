@@ -114,6 +114,10 @@ sub get_farm_struct
 						  error503        => $err503
 	};
 
+	#translate 100 continue parameter
+	my $ignore_100_continue = &getHTTPFarm100Continue( $farmname );
+	$output_params->{ ignore_100_continue } =
+	  ( $ignore_100_continue eq "pass" ) ? "false" : "true";
 
 	if ( $type eq "https" )
 	{

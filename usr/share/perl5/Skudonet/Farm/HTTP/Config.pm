@@ -1741,6 +1741,12 @@ sub getHTTPFarmStruct
 	require Skudonet::Farm::Config;
 	$farm = &get_http_farm_headers_struct( $farmname, $farm );
 
+	$farm->{ ignore_100_continue } = &getHTTPFarm100Continue( $farmname );
+	if ( $proxy_ng eq 'true' )
+	{
+		$farm->{ ignore_100_continue } =
+		  ( $farm->{ ignore_100_continue } eq "ignore" ) ? "true" : "false";
+	}
 
 	return $farm;
 }
