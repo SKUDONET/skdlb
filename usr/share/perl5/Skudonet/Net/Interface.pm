@@ -135,6 +135,7 @@ sub getInterfaceConfig    # \%iface ($if_name, $ip_version)
 	  ( $iface->{ addr } =~ /:/ ) ? '6' : ( $iface->{ addr } =~ /\./ ) ? '4' : 0;
 	$iface->{ net } =
 	  &getAddressNetwork( $iface->{ addr }, $iface->{ mask }, $iface->{ ip_v } );
+	$iface->{ dhcp }    = $fileHandler->{ $if_name }->{ dhcp }    // 'false';
 
 
 	if ( $iface->{ dev } =~ /:/ )
@@ -261,7 +262,7 @@ sub setInterfaceConfig    # $bool ($if_ref)
 	use Data::Dumper;
 	&zenlog( "setInterfaceConfig: " . Dumper( $if_ref ), "debug", "NETWORK" )
 	  if &debug() > 2;
-	my @if_params = ( 'status', 'name', 'addr', 'mask', 'gateway', 'mac' );
+	my @if_params = ( 'status', 'name', 'addr', 'mask', 'gateway', 'mac', 'dhcp' );
 
 	my $configdir       = &getGlobalConfiguration( 'configdir' );
 	my $config_filename = "$configdir/if_$$if_ref{ name }_conf";
@@ -326,6 +327,7 @@ sub cleanInterfaceConfig
 	$fileHandler->{ $if_ref->{ name } } = {
 							  mask   => "",
 							  status => $fileHandler->{ $if_ref->{ name } }->{ status },
+							  dhcp   => "false",
 							  addr   => "",
 							  mac    => $if_ref->{ mac },
 							  gateway => "",
@@ -1586,6 +1588,8 @@ sub get_interface_list_struct
 			#~ ipv     => $if_ref->{ ip_v },
 		};
 
+		$if_conf->{ dhcp } = $if_ref->{ dhcp }
+		  if ( $if_ref->{ type } ne 'virtual' );
 
 		if ( $if_ref->{ type } eq 'nic' )
 		{
@@ -1623,6 +1627,7 @@ sub get_nic_struct
 	if ( !defined $if_ref->{ name } )    { $if_ref->{ name }    = ""; }
 	if ( !defined $if_ref->{ addr } )    { $if_ref->{ addr }    = ""; }
 	if ( !defined $if_ref->{ mask } )    { $if_ref->{ mask }    = ""; }
+	if ( !defined $if_ref->{ dhcp } )    { $if_ref->{ dhcp }    = "false"; }
 	if ( !defined $if_ref->{ gateway } ) { $if_ref->{ gateway } = ""; }
 	if ( !defined $if_ref->{ status } )  { $if_ref->{ status }  = ""; }
 	if ( !defined $if_ref->{ mac } )     { $if_ref->{ mac }     = ""; }
@@ -1631,6 +1636,7 @@ sub get_nic_struct
 				   name    => $if_ref->{ name },
 				   ip      => $if_ref->{ addr },
 				   netmask => $if_ref->{ mask },
+				   dhcp    => $if_ref->{ dhcp },
 				   gateway => $if_ref->{ gateway },
 				   status  => $if_ref->{ status },
 				   mac     => $if_ref->{ mac },
@@ -1658,6 +1664,7 @@ sub get_nic_list_struct
 		if ( !defined $if_ref->{ name } )    { $if_ref->{ name }    = ""; }
 		if ( !defined $if_ref->{ addr } )    { $if_ref->{ addr }    = ""; }
 		if ( !defined $if_ref->{ mask } )    { $if_ref->{ mask }    = ""; }
+		if ( !defined $if_ref->{ dhcp } )    { $if_ref->{ dhcp }    = "false"; }
 		if ( !defined $if_ref->{ gateway } ) { $if_ref->{ gateway } = ""; }
 		if ( !defined $if_ref->{ status } )  { $if_ref->{ status }  = ""; }
 		if ( !defined $if_ref->{ mac } )     { $if_ref->{ mac }     = ""; }
@@ -1666,6 +1673,7 @@ sub get_nic_list_struct
 						name    => $if_ref->{ name },
 						ip      => $if_ref->{ addr },
 						netmask => $if_ref->{ mask },
+						dhcp    => $if_ref->{ dhcp },
 						gateway => $if_ref->{ gateway },
 						status  => $if_ref->{ status },
 						mac     => $if_ref->{ mac },
@@ -1702,6 +1710,7 @@ sub get_vlan_struct
 	if ( !defined $interface->{ name } )    { $interface->{ name }    = ""; }
 	if ( !defined $interface->{ addr } )    { $interface->{ addr }    = ""; }
 	if ( !defined $interface->{ mask } )    { $interface->{ mask }    = ""; }
+	if ( !defined $interface->{ dhcp } )    { $interface->{ dhcp }    = "false"; }
 	if ( !defined $interface->{ gateway } ) { $interface->{ gateway } = ""; }
 	if ( !defined $interface->{ status } )  { $interface->{ status }  = ""; }
 	if ( !defined $interface->{ mac } )     { $interface->{ mac }     = ""; }
@@ -1710,6 +1719,7 @@ sub get_vlan_struct
 				   name    => $interface->{ name },
 				   ip      => $interface->{ addr },
 				   netmask => $interface->{ mask },
+				   dhcp    => $interface->{ dhcp },
 				   gateway => $interface->{ gateway },
 				   status  => $interface->{ status },
 				   mac     => $interface->{ mac },
@@ -1735,6 +1745,7 @@ sub get_vlan_list_struct
 		if ( !defined $if_ref->{ name } )    { $if_ref->{ name }    = ""; }
 		if ( !defined $if_ref->{ addr } )    { $if_ref->{ addr }    = ""; }
 		if ( !defined $if_ref->{ mask } )    { $if_ref->{ mask }    = ""; }
+		if ( !defined $if_ref->{ dhcp } )    { $if_ref->{ dhcp }    = "false"; }
 		if ( !defined $if_ref->{ gateway } ) { $if_ref->{ gateway } = ""; }
 		if ( !defined $if_ref->{ status } )  { $if_ref->{ status }  = ""; }
 		if ( !defined $if_ref->{ mac } )     { $if_ref->{ mac }     = ""; }
@@ -1743,6 +1754,7 @@ sub get_vlan_list_struct
 						name    => $if_ref->{ name },
 						ip      => $if_ref->{ addr },
 						netmask => $if_ref->{ mask },
+						dhcp    => $if_ref->{ dhcp },
 						gateway => $if_ref->{ gateway },
 						status  => $if_ref->{ status },
 						mac     => $if_ref->{ mac },
@@ -1852,6 +1864,13 @@ sub setVlan    # if_ref
 
 	my $oldIf_ref = &getInterfaceConfig( $if_ref->{ name } );
 
+	if ( $if_ref->{ dhcp } eq "true" )
+	{
+		$if_ref->{ addr }    = "";
+		$if_ref->{ net }     = "";
+		$if_ref->{ mask }    = "";
+		$if_ref->{ gateway } = "";
+	}
 
 	if ( length $if_ref->{ mac } == 0 )
 	{

@@ -1,0 +1,135 @@
+#!/usr/bin/perl
+###############################################################################
+#
+#    Skudonet Software License
+#    This file is part of the Skudonet Load Balancer software package.
+#
+#    Copyright (C) 2014-today SKUDONET SL, Sevilla (Spain)
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+###############################################################################
+
+# Place this file in /etc/network/if-up.d/
+
+use strict;
+use warnings;
+use feature 'say';
+use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
+
+require Skudonet::Log;
+require Skudonet::Config;
+require Skudonet::Net::Interface;
+require Skudonet::Net::Route;
+require Skudonet::Net::Validate;
+require Skudonet::Farm::Core;
+require Skudonet::Farm::Base;
+require Skudonet::Farm::Config;
+
+my $if_name = $ENV{ interface } // '';
+&zenlog( "Launched DHCP for the interface $if_name", 'debug2', 'dhcp' );
+
+if ( !$ENV{ new_ip_address } or !$ENV{ new_subnet_mask } )
+{
+	&zenlog( "DHCP does not find any IP/Netmask for interface '$if_name'",
+			 'warning', 'dhcp' );
+	exit 0;
+}
+
+exit 0 if $if_name eq '';
+exit 0 if $if_name eq 'lo';
+exit 0 if $if_name eq 'cl_maintenance';
+
+my $if_conf_ref = &getInterfaceConfig( $if_name );
+
+exit 0 if ( !defined $if_conf_ref );
+exit 0 if ( $if_conf_ref->{ dhcp } ne 'true' );
+exit 0 if ( $if_conf_ref->{ type } eq 'virtual' );
+
+if (     ( $ENV{ new_ip_address } eq $if_conf_ref->{ addr } )
+	 and ( $ENV{ new_subnet_mask } eq $if_conf_ref->{ mask } ) )
+{
+	&zenlog(
+		"DHCP is sending same configuration IP/Netmask '$ENV{ new_ip_address }/$ENV{ new_subnet_mask }', no changes are made for interface '$if_name'",
+		'warning', 'dhcp'
+	);
+	exit 0;
+}
+
+&zenlog( "Applying a new networking configuration for the interface $if_name",
+		 'info', 'dhcp' );
+use Data::Dumper;
+
+my $old_ip = $if_conf_ref->{ addr };
+
+$if_conf_ref->{ addr }    = $ENV{ new_ip_address };
+$if_conf_ref->{ mask }    = $ENV{ new_subnet_mask };
+$if_conf_ref->{ gateway } = $ENV{ new_routers };
+$if_conf_ref->{ ip_v } =
+    ( $ENV{ new_ip_address } =~ /:/ )  ? '6'
+  : ( $ENV{ new_ip_address } =~ /\./ ) ? '4'
+  :                                      0;
+
+# Add new IP, netmask and gateway
+require Skudonet::Lock;
+my $iface_config_file =
+  &getGlobalConfiguration( 'configdir' ) . "/if_$if_name" . "_conf";
+
+&lockResource( $iface_config_file, "l" );
+
+unless ( &setInterfaceConfig( $if_conf_ref ) )
+{
+	&zenlog( "Error saving the new dhcp configuration", "error", "dhcp" );
+	&lockResource( $iface_config_file, "ud" );
+	next;
+}
+
+&lockResource( $iface_config_file, "ud" );
+
+&saveDefaultGateway( $if_conf_ref );
+
+&writeRoutes( $if_conf_ref->{ name } );
+
+&applyRoutes( "local", $if_conf_ref );
+
+# change farm vip,
+my @farms = &getFarmListByVip( $old_ip );
+if ( @farms )
+{
+	&zenlog( "Overwritting farms vip with $if_conf_ref->{ addr }", "debug",
+			 'dhcp' );
+	&setAllFarmByVip( $if_conf_ref->{ addr }, \@farms );
+}
+
+exit 0;
+
+######### functs
+
+sub saveDefaultGateway
+{
+	my $if_ref = shift;
+
+	my $defGw  = &getGlobalConfiguration( 'defaultgwif' );
+	my $defGw6 = &getGlobalConfiguration( 'defaultgwif6' );
+
+	#Save Default GW configuration from global.
+	if ( "$defGw" eq "$if_ref->{ dev }" or "$defGw6" eq "$if_ref->{ dev }" )
+	{
+		&zenlog( "Changing Default GW for table Global", "info", 'dhcp' );
+		&applyRoutes( "global", $if_ref, $$if_ref{ gateway } );
+	}
+}
+
+1;

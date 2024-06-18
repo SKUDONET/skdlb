@@ -246,9 +246,36 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 	# Delete old interface configuration
 	my $if_ref = &getInterfaceConfig( $nic ) // &getSystemInterface( $nic );
 
+	# Ignore the dhcp parameter if it is equal to the configured one
+	delete $json_obj->{ dhcp }
+	  if ( exists $json_obj->{ dhcp } && $json_obj->{ dhcp } eq $if_ref->{ dhcp } );
 
 	my @child = &getInterfaceChild( $nic );
 
+	if ( exists $json_obj->{ dhcp } )
+	{
+		# only allow dhcp when no other parameter was sent
+		if ( $json_obj->{ dhcp } eq 'true' )
+		{
+			if (    exists $json_obj->{ ip }
+				 or exists $json_obj->{ netmask }
+				 or exists $json_obj->{ gateway } )
+			{
+				my $msg =
+				  "It is not possible set 'ip', 'netmask' or 'gateway' while 'dhcp' is going to be set up.";
+				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			}
+		}
+		elsif ( !exists $json_obj->{ ip } )
+		{
+			if ( @child )
+			{
+				my $msg =
+				  "This interface has appending some virtual interfaces, please, set up a new 'ip' in the current networking range.";
+				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			}
+		}
+	}
 
 	# check if network is correct
 
@@ -441,14 +468,56 @@ sub modify_interface_nic    # ( $json_obj, $nic )
 	$if_ref->{ ip_v }    = &ipversion( $if_ref->{ addr } );
 	$if_ref->{ net } =
 	  &getAddressNetwork( $if_ref->{ addr }, $if_ref->{ mask }, $if_ref->{ ip_v } );
+	$if_ref->{ dhcp } = $json_obj->{ dhcp } if exists $json_obj->{ dhcp };
 
 	my $set_flag = 1;
+
+	# set DHCP
+	my $nic_config_file = "";
+	if ( exists $json_obj->{ dhcp } )
+	{
+		if ( $json_obj->{ dhcp } eq "true" )
+		{
+			require Skudonet::Lock;
+			$nic_config_file =
+			  &getGlobalConfiguration( 'configdir' ) . "/if_$if_ref->{ name }_conf";
+			&lockResource( $nic_config_file, "l" );
+		}
+
+		require Skudonet::Net::DHCP;
+		if ( $json_obj->{ dhcp } eq 'true' )
+		{
+			&enableDHCP( $if_ref );
+		}
+		else
+		{
+			&disableDHCP( $if_ref );
+		}
+
+		if (    $json_obj->{ dhcp } eq 'false' and !exists $json_obj->{ ip }
+			 or $json_obj->{ dhcp } eq 'true' )
+		{
+			$set_flag = 0;
+		}
+	}
+
 	if ( !&setInterfaceConfig( $if_ref ) )
 	{
+		if ( $json_obj->{ dhcp } eq "true" )
+		{
+			require Skudonet::Lock;
+			&lockResource( $nic_config_file, "ud" );
+		}
 		my $msg = "Errors found trying to modify interface $nic";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
+	# Free the resource
+	if ( $json_obj->{ dhcp } eq "true" )
+	{
+		require Skudonet::Lock;
+		&lockResource( $nic_config_file, "ud" );
+	}
 
 	# set up
 	if (     $if_ref->{ addr } && $if_ref->{ mask }

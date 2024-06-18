@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+###############################################################################
+#
+#    Skudonet Software License
+#    This file is part of the Skudonet Load Balancer software package.
+#
+#    Copyright (C) 2014-today SKUDONET SL, Sevilla (Spain)
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+###############################################################################
+
+# Place this file in /etc/network/if-up.d/
+#
+
+use strict;      
+use warnings;    
+use feature 'say';
+use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
+
+require Skudonet;
+require Skudonet::Net::Route;
+
+###############################
+#AWS environment variables
+###############################
+#CLASS = hotplug
+#IFACE = eth0
+#IFUPDOWN_eth0 = post-up
+#LOGICAL = eth0
+#METHOD = dhcp
+#MODE = start
+#PATH = /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+#PHASE = post-up
+#PWD = /
+#VERBOSITY = 0
+##############################
+
+
+my $vble = "";
+&zenlog ("##############################");
+$ARGV[0]  = $vble;
+foreach my $key (sort keys(%ENV)) {
+  &zenlog("ENV VBLE:  $key = $ENV{$key}");
+}
+&zenlog ("##############################");
+
+#ENABLE DHCP FOR CLOUD (AWS, AZURE, etc) 
+if ( defined $ENV{'ADDRFAM'} and $ENV{'ADDRFAM'} eq "inet"){
+
+	&zenlog("Configuring dhcp file for $ENV{'IFACE'}");
+
+	my $if_ref = &getSystemInterface( $ENV{'IFACE'} );
+
+	$if_ref->{'dhcp'} = "true";
+	&setInterfaceConfig ( $if_ref );
+}
+exit 0;

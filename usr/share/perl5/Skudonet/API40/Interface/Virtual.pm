@@ -116,6 +116,7 @@ sub new_vini    # ( $json_obj )
 	$if_ref->{ name }    = $json_obj->{ name };
 	$if_ref->{ vini }    = $json_obj->{ vini };
 	$if_ref->{ addr }    = $json_obj->{ ip };
+	$if_ref->{ dhcp }    = 'false';
 	$if_ref->{ gateway } = "" if !$if_ref->{ gateway };
 	$if_ref->{ type }    = 'virtual';
 

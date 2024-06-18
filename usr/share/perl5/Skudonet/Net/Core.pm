@@ -141,6 +141,12 @@ sub upIf    # ($if_ref, $writeconf)
 		$fileHandler->write( $file );
 	}
 
+	if ( !$status and $if_ref->{ dhcp } eq 'true' )
+	{
+		require Skudonet::Net::DHCP;
+		$status = &startDHCP( $if_ref->{ name } );
+	}
+
 
 	return $status;
 }
@@ -175,6 +181,11 @@ sub downIf    # ($if_ref, $writeconf)
 		return -1;
 	}
 
+	if ( $if_ref->{ dhcp } eq 'true' )
+	{
+		require Skudonet::Net::DHCP;
+		$status = &stopDHCP( $if_ref->{ name } );
+	}
 
 	my $ip_cmd;
 
@@ -329,6 +340,12 @@ sub delIf    # ($if_ref)
 
 	my $status;
 
+	# remove dhcp configuration
+	if ( exists $if_ref->{ dhcp } and $if_ref->{ dhcp } eq 'true' )
+	{
+		require Skudonet::Net::DHCP;
+		&disableDHCP( $if_ref );
+	}
 
 	require Skudonet::Net::Interface;
 	$status = &cleanInterfaceConfig( $if_ref );
@@ -352,10 +369,13 @@ sub delIf    # ($if_ref)
 		}
 		else
 		{
+			if ( $if_ref->{ dhcp } ne 'true' )
+			{
 				# If $if is a Interface, delete that IP
 				$ip_cmd = "$ip_bin addr del $$if_ref{addr}/$$if_ref{mask} dev $$if_ref{name}";
 				$status = &logAndRun( $ip_cmd )
 				  if ( length $if_ref->{ addr } && length $if_ref->{ mask } );
+			}
 
 			# If $if is a Vlan, delete Vlan
 			if ( $$if_ref{ vlan } ne '' )
