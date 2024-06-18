@@ -73,7 +73,13 @@ sub _runHTTPFarmStart    # ($farm_name, $writeconf)
 	if ( $eload )
 	{
 		my $ssyncd_enabled = &getGlobalConfiguration( 'ssyncd_enabled' );
-		$args = '-s' if ( $ssyncd_enabled eq 'true' );
+		if ( $ssyncd_enabled eq 'true' )
+		{
+			if ( &getPersistence( $farmname ) == 0 )
+			{
+				$args = '-s';
+			}
+		}
 	}
 
 	my $cmd =
