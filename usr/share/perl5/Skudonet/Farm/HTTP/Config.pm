@@ -1747,12 +1747,32 @@ sub getHTTPFarmStruct
 		  ( &getHTTPFarmDisableSSL( $farmname, "SSLv2" ) ) ? "true" : "false";
 		$farm->{ disable_sslv3 } =
 		  ( &getHTTPFarmDisableSSL( $farmname, "SSLv3" ) ) ? "true" : "false";
-		$farm->{ disable_tlsv1 } =
-		  ( &getHTTPFarmDisableSSL( $farmname, "TLSv1" ) ) ? "true" : "false";
-		$farm->{ disable_tlsv1_1 } =
-		  ( &getHTTPFarmDisableSSL( $farmname, "TLSv1_1" ) ) ? "true" : "false";
+
+		# When tlsv1_2 is disabled, tlsv1 and tlsv1_1 are always disabled.
+		# When tlsv1_1 is disabled, tlsv1 is always disabled too.
 		$farm->{ disable_tlsv1_2 } =
 		  ( &getHTTPFarmDisableSSL( $farmname, "TLSv1_2" ) ) ? "true" : "false";
+		if ( $farm->{ disable_tlsv1_2 } eq "true" )
+		{
+			$farm->{ disable_tlsv1_1 } = "true";
+			$farm->{ disable_tlsv1 }   = "true";
+		}
+		else
+		{
+			$farm->{ disable_tlsv1_1 } =
+			  ( &getHTTPFarmDisableSSL( $farmname, "TLSv1_1" ) ) ? "true" : "false";
+			if ( $farm->{ disable_tlsv1_1 } eq "true" )
+			{
+				$farm->{ disable_tlsv1 } = "true";
+			}
+			else
+			{
+				$farm->{ disable_tlsv1 } =
+				  ( &getHTTPFarmDisableSSL( $farmname, "TLSv1" ) ) ? "true" : "false";
+			}
+		}
+		$farm->{ disable_tlsv1_3 } =
+		  ( &getHTTPFarmDisableSSL( $farmname, "TLSv1_3" ) ) ? "true" : "false";
 	}
 
 	$farm->{ logs } = &getHTTPFarmLogs( $farmname );

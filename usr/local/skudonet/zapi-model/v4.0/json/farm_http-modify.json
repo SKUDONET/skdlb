@@ -76,6 +76,15 @@
             "false"
          ]
       },
+      "disable_tlsv1_3" : {
+         "depend_on" : "listener==https",
+         "description" : "Only in https listener. If this field has the value true the connections using TLS security protocol with version 1.3 is not allowed; or false if the protocol TLSv1.3 is allowed.",
+         "non_blank" : "true",
+         "values" : [
+            "true",
+            "false"
+         ]
+      },
       "error414" : {
          "description" : "",
          "required" : "false"

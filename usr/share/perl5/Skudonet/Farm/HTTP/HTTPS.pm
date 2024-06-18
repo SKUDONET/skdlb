@@ -342,12 +342,12 @@ sub getHTTPFarmDisableSSL    # ($farm_name, $protocol)
 =begin nd
 Function: setHTTPFarmDisableSSL
 
-	Enable or disable a security protocol for a HTTPS farm
+	Enable or disable security protocols for a HTTPS farm
 
 Parameters:
 	farmname - Farm name
-	protocol - SSL or TLS protocol to disable/enable: SSLv2|SSLv3|TLSv1|TLSv1_1|TLSv1_2
-	action - The available actions are: 1 to disable or 0 to enable
+	protocol - Scalar or hash ref containing SSL or TLS protocols to disable/enable: SSLv2|SSLv3|TLSv1|TLSv1_1|TLSv1_2|TLSv1_3
+	action - The available actions are: 1 to disable or 0 to enable. Not used when parameter protocol is a hash ref containing the action.
 
 Returns:
 	Integer - Error code: 0 on success or -1 on failure
@@ -370,36 +370,220 @@ sub setHTTPFarmDisableSSL    # ($farm_name, $protocol, $action )
 
 	tie my @file, 'Tie::File', "$configdir/$farm_filename";
 
-	if ( $action == 1 )
-	{
-		foreach my $line ( @file )
-		{
-			if ( $line =~ /Ciphers\ .*/ )
-			{
-				$line = "$line\n\tDisable $protocol";
-				last;
-			}
-		}
-		$output = 0;
-	}
-	else
+	my @lines_removed;
+	if ( ref ( $protocol ) eq 'HASH' )
 	{
 		my $it = -1;
 		foreach my $line ( @file )
 		{
 			$it = $it + 1;
-			last if ( $line =~ /Disable $protocol$/ );
+			if ( $line =~ /Ciphers\ .*/ )
+			{
+				foreach my $param ( keys %$protocol )
+				{
+					if ( $protocol->{ $param } == 1 )
+					{
+						$line = "$line\n\tDisable $param";
+						delete $protocol->{ $param };
+					}
+				}
+			}
+			elsif ( $line =~ /^\tDisable (TLSv1(_[1-3])*)$/ )
+			{
+				if ( exists $protocol->{ $1 } and $protocol->{ $1 } == 0 )
+				{
+					push ( @lines_removed, $it );
+				}
+			}
+			elsif ( $line =~ /^\tService "*"$/ )
+			{
+				last;
+			}
 		}
 
-		# Remove line only if it is found (we haven't arrive at last line).
-		splice ( @file, $it, 1 ) if ( ( $it + 1 ) != scalar @file );
+		my $index = 0;
+		foreach my $offset ( @lines_removed )
+		{
+			$offset = $offset - $index;
+			splice ( @file, $offset, 1 );
+			$index++;
+		}
+
 		$output = 0;
+	}
+	else
+	{
+		if ( $action == 1 )
+		{
+			foreach my $line ( @file )
+			{
+				if ( $line =~ /Ciphers\ .*/ )
+				{
+					$line = "$line\n\tDisable $protocol";
+					last;
+				}
+			}
+			$output = 0;
+		}
+		else
+		{
+			my $it = -1;
+			foreach my $line ( @file )
+			{
+				$it = $it + 1;
+				last if ( $line =~ /Disable $protocol$/ );
+			}
+
+			# Remove line only if it is found (we haven't arrive at last line).
+			splice ( @file, $it, 1 ) if ( ( $it + 1 ) != scalar @file );
+			$output = 0;
+		}
 	}
 
 	untie @file;
 	close $lock_fh;
 
 	return $output;
+}
+
+=begin nd
+Function: setHTTPFarmDisableTLS
+
+	Decides what TLS protocols need to be disabled or enabled for an HTTPS farm
+
+Parameters:
+	farmname - Farm name
+	disable_tls - hash containing TLS versions to enable (0) or disable (1):
+		    - $disable->{ TLSv1_3 } : 0/1
+		    - $disable->{ TLSv1_2 } : 0/1
+		    - $disable->{ TLSv1_1 } : 0/1
+		    - $disable->{ TLSv1 } : 0/1
+
+Returns:
+	Hash - error-ref->{ code }: 0 on success, 1 on failure when writing config file, 2 on failure due to wrong TLS protocols config
+	     - error_ref->{ msg }: error message
+=cut
+
+sub setHTTPFarmDisableTLS    # ($farm_name, $disable_tls )
+{
+	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
+			 "debug", "PROFILING" );
+	my ( $farmname, $disable_tls ) = @_;
+
+	my $tls_status->{ TLSv1_3 } = &getHTTPFarmDisableSSL( $farmname, "TLSv1_3" );
+	$tls_status->{ TLSv1_2 } = &getHTTPFarmDisableSSL( $farmname, "TLSv1_2" );
+	$tls_status->{ TLSv1_1 } = &getHTTPFarmDisableSSL( $farmname, "TLSv1_1" );
+	$tls_status->{ TLSv1 }   = &getHTTPFarmDisableSSL( $farmname, "TLSv1" );
+
+	my $error_ref->{ code } = 0;
+	if ( exists $disable_tls->{ TLSv1_3 } )
+	{
+		if ( $tls_status->{ TLSv1_3 } != $disable_tls->{ TLSv1_3 } )
+		{
+			if ( $disable_tls->{ TLSv1_3 } == 1 and $tls_status->{ TLSv1_2 } == 1 )
+			{
+				if ( not exists $disable_tls->{ TLSv1_2 } or $disable_tls->{ TLSv1_2 } == 1 )
+				{
+					my $msg = "Cannot disable TLSv1_3 while TLSv1_2 is disabled.";
+					$error_ref->{ code } = 2;
+					$error_ref->{ msg }  = $msg;
+					return $error_ref;
+				}
+			}
+			$tls_status->{ TLSv1_3 } = $disable_tls->{ TLSv1_3 };
+		}
+		else
+		{
+			delete $disable_tls->{ TLSv1_3 };
+		}
+	}
+
+	if ( exists $disable_tls->{ TLSv1_2 } )
+	{
+		if ( $tls_status->{ TLSv1_2 } != $disable_tls->{ TLSv1_2 } )
+		{
+			if ( $disable_tls->{ TLSv1_2 } == 1 )
+			{
+				if ( $tls_status->{ TLSv1_3 } == 1 )
+				{
+					my $msg = "Cannot disable TLSv1_2 while TLSv1_3 is disabled.";
+					$error_ref->{ code } = 2;
+					$error_ref->{ msg }  = $msg;
+					return $error_ref;
+				}
+				else
+				{
+					$disable_tls->{ TLSv1_1 } = 1 if $tls_status->{ TLSv1_1 } == 0;
+					$disable_tls->{ TLSv1 }   = 1 if $tls_status->{ TLSv1 } == 0;
+
+				}
+			}
+			$tls_status->{ TLSv1_2 } = $disable_tls->{ TLSv1_2 };
+		}
+		else
+		{
+			delete $disable_tls->{ TLSv1_2 };
+		}
+	}
+
+	if ( exists $disable_tls->{ TLSv1_1 } )
+	{
+		if ( $tls_status->{ TLSv1_1 } != $disable_tls->{ TLSv1_1 } )
+		{
+			if ( $disable_tls->{ TLSv1_1 } == 1 )
+			{
+				$disable_tls->{ TLSv1 } = 1 if $tls_status->{ TLSv1 } == 0;
+			}
+			else
+			{
+				if ( $tls_status->{ TLSv1_2 } == 1 )
+				{
+					my $msg = "Cannot enable TLSv1_1 while TLSv1_2 is disabled.";
+					$error_ref->{ code } = 2;
+					$error_ref->{ msg }  = $msg;
+					return $error_ref;
+				}
+			}
+			$tls_status->{ TLSv1_1 } = $disable_tls->{ TLSv1_1 };
+		}
+		else
+		{
+			delete $disable_tls->{ TLSv1_1 };
+		}
+	}
+
+	if ( exists $disable_tls->{ TLSv1 } )
+	{
+		if ( $tls_status->{ TLSv1 } != $disable_tls->{ TLSv1 } )
+		{
+			if ( $disable_tls->{ TLSv1 } == 0 )
+			{
+				if ( $tls_status->{ TLSv1_1 } == 1 )
+				{
+					my $msg = "Cannot enable TLSv1 while TLSv1_1 is disabled.";
+					$error_ref->{ code } = 2;
+					$error_ref->{ msg }  = $msg;
+					return $error_ref;
+				}
+			}
+		}
+		else
+		{
+			delete $disable_tls->{ TLSv1 };
+		}
+	}
+
+	if ( %$disable_tls )
+	{
+		if ( &setHTTPFarmDisableSSL( $farmname, $disable_tls ) == -1 )
+		{
+			my $msg = "Some errors happened trying to modify TLS.";
+			$error_ref->{ code } = 1;
+			$error_ref->{ msg }  = $msg;
+			return $error_ref;
+		}
+	}
+	return $error_ref;
 }
 
 1;

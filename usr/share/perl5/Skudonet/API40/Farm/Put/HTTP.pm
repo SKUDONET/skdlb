@@ -54,6 +54,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 	$params->{ disable_tlsv1 }->{ listener }   = "https";
 	$params->{ disable_tlsv1_1 }->{ listener } = "https";
 	$params->{ disable_tlsv1_2 }->{ listener } = "https";
+	$params->{ disable_tlsv1_3 }->{ listener } = "https";
 	if ( !$eload )
 	{
 		$params->{ "ciphers" }->{ 'values' } =
@@ -478,14 +479,9 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 			}
 		}
 
-		# Disable security protocol
-		# API parameter => l7 proxy parameter
 		my %ssl_proto_hash = (
-							   "disable_sslv2"   => "SSLv2",
-							   "disable_sslv3"   => "SSLv3",
-							   "disable_tlsv1"   => "TLSv1",
-							   "disable_tlsv1_1" => "TLSv1_1",
-							   "disable_tlsv1_2" => "TLSv1_2",
+							   "disable_sslv2" => "SSLv2",
+							   "disable_sslv3" => "SSLv3"
 		);
 
 		my %bool_to_int = (
@@ -509,6 +505,123 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 			{
 				my $msg = "Some errors happened trying to modify $key_ssl.";
 				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			}
+		}
+
+		my %tls_proto_hash = (
+							   "disable_tlsv1"   => "TLSv1",
+							   "disable_tlsv1_1" => "TLSv1_1",
+							   "disable_tlsv1_2" => "TLSv1_2",
+							   "disable_tlsv1_3" => "TLSv1_3"
+		);
+
+		my $tls_proto;
+		my $tls_params_ref;
+		foreach my $key_tls ( keys %tls_proto_hash )
+		{
+			next if ( not exists $json_obj->{ $key_tls } );
+
+			$action = $bool_to_int{ $json_obj->{ $key_tls } };
+			$tls_proto = $tls_proto_hash{ $key_tls } if exists $tls_proto_hash{ $key_tls };
+
+			$tls_params_ref->{ $tls_proto } = $action;
+		}
+
+		if ( defined $tls_params_ref )
+		{
+			if ( exists $tls_params_ref->{ TLSv1_3 } )
+			{
+				if ( $tls_params_ref->{ TLSv1_3 } == 1 )
+				{
+					if (
+						 ( exists $tls_params_ref->{ TLSv1_2 } and $tls_params_ref->{ TLSv1_2 } == 1 )
+						 or ( $farm_st->{ disable_tlsv1_2 } eq "true"
+							  and not exists $tls_params_ref->{ TLSv1_2 } )
+					  )
+					{
+						my $msg = "TLSv1_2 and TLSv1_3 cannot be disabled at the same time.";
+						&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+					}
+				}
+				else
+				{
+					if ( $farm_st->{ disable_tlsv1_3 } eq "false" )
+					{
+						delete $tls_params_ref->{ TLSv1_3 };
+					}
+				}
+			}
+			elsif ( exists $tls_params_ref->{ TLSv1_2 } )
+			{
+				if ( $tls_params_ref->{ TLSv1_2 } == 1 )
+				{
+
+					if ( $farm_st->{ disable_tlsv1_3 } eq "true"
+						 and not exists $tls_params_ref->{ TLSv1_3 } )
+					{
+						my $msg = "TLSv1_2 and TLSv1_3 cannot be disabled at the same time.";
+						&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+					}
+				}
+				else
+				{
+					if ( $farm_st->{ disable_tlsv1_2 } eq "false" )
+					{
+						delete $tls_params_ref->{ TLSv1_2 };
+					}
+				}
+			}
+
+			if (
+				 ( exists $tls_params_ref->{ TLSv1_1 }  and $tls_params_ref->{ TLSv1_1 } == 0 )
+				 or ( exists $tls_params_ref->{ TLSv1 } and $tls_params_ref->{ TLSv1 } == 0 ) )
+			{
+				if (
+					 ( exists $tls_params_ref->{ TLSv1_2 } and $tls_params_ref->{ TLSv1_2 } == 1 )
+					 or ( $farm_st->{ disable_tlsv1_2 } eq "true"
+						  and not exists $tls_params_ref->{ TLSv1_2 } )
+				  )
+				{
+					my $msg = "TLSv1_1 and TLSv1 cannot be enabled when TLSv1_2 is disabled.";
+					&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+				}
+			}
+			if ( exists $tls_params_ref->{ TLSv1_1 } and $tls_params_ref->{ TLSv1_1 } == 1 )
+			{
+				if ( $farm_st->{ disable_tlsv1_1 } eq "true" )
+				{
+					delete $tls_params_ref->{ TLSv1_1 };
+				}
+			}
+
+			if ( exists $tls_params_ref->{ TLSv1 } )
+			{
+				if ( $tls_params_ref->{ TLSv1 } == 0 )
+				{
+					if (
+						 ( exists $tls_params_ref->{ TLSv1_1 } and $tls_params_ref->{ TLSv1_1 } == 1 )
+						 or ( $farm_st->{ disable_tlsv1_1 } eq "true"
+							  and not exists $tls_params_ref->{ TLSv1_1 } )
+					  )
+					{
+						my $msg = "TLSv1 cannot be enabled when TLSv1_1 is disabled.";
+						&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+					}
+				}
+				else
+				{
+					if ( $farm_st->{ disable_tlsv1 } eq "true" )
+					{
+						delete $tls_params_ref->{ TLSv1 };
+					}
+				}
+			}
+
+			my $error_ref = &setHTTPFarmDisableTLS( $farmname, $tls_params_ref )
+			  if %$tls_params_ref;
+			if ( $error_ref->{ code } != 0 )
+			{
+				&httpErrorResponse( code => 400, desc => $desc, msg => $error_ref->{ msg } );
 			}
 		}
 	}
