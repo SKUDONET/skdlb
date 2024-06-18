@@ -61,6 +61,12 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		  ["all", "highsecurity", "customsecurity"];
 	}
 
+	if ( &getGlobalConfiguration( 'proxy_ng' ) eq 'true' )
+	{
+		$params->{ ignore_100_continue }->{ 'values' } =
+		  ["true", "false"];
+	}
+
 	# Check allowed parameters
 	my $error_msg = &checkZAPIParams( $json_obj, $params, $desc );
 	return &httpErrorResponse( code => 400, desc => $desc, msg => $error_msg )
