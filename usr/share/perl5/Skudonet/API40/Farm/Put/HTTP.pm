@@ -251,20 +251,45 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 	}
 
 	# Enable or disable ignore 100 continue header
-	if ( exists ( $json_obj->{ ignore_100_continue } )
-		 and
-		 ( $json_obj->{ ignore_100_continue } ne $farm_st->{ ignore_100_continue } )
-	  )    # this is a bugfix
+	if ( exists ( $json_obj->{ ignore_100_continue } ) )
 	{
-		my $action = ( $json_obj->{ ignore_100_continue } eq "true" ) ? 1 : 0;
-
-		my $status = &setHTTPFarm100Continue( $farmname, $action );
-
-		if ( $status == -1 )
+		if ( $json_obj->{ ignore_100_continue } eq "false" )
 		{
-			my $msg =
-			  "Some errors happened trying to modify the ignore_100_continue parameter.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			$json_obj->{ ignore_100_continue } = "pass";
+		}
+		elsif ( $json_obj->{ ignore_100_continue } eq "true" )
+		{
+			$json_obj->{ ignore_100_continue } = "ignore";
+		}
+
+		if ( $json_obj->{ ignore_100_continue } ne $farm_st->{ ignore_100_continue } )
+		{
+			my $action;
+			if ( $json_obj->{ ignore_100_continue } eq "ignore" )
+			{
+				$action = 1;
+			}
+			elsif ( $json_obj->{ ignore_100_continue } eq "silent" )
+			{
+				$action = 2;
+			}
+			elsif ( $json_obj->{ ignore_100_continue } eq "not-allow" )
+			{
+				$action = 3;
+			}
+			else
+			{
+				$action = 0;
+			}
+
+			my $status = &setHTTPFarm100Continue( $farmname, $action );
+
+			if ( $status == -1 )
+			{
+				my $msg =
+				  "Some errors happened trying to modify the ignore_100_continue parameter.";
+				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
+			}
 		}
 	}
 

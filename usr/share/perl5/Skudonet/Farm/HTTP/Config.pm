@@ -3872,7 +3872,7 @@ Parameters:
 	farmname - Farm name
 
 Returns:
-	scalar - The possible values are: 0 on disabled, 1 on enabled
+	string - The possible values are: "pass", "ignore", "silent" and "pass"
 
 =cut
 
@@ -3882,7 +3882,7 @@ sub getHTTPFarm100Continue    # ($farm_name)
 			 "debug", "PROFILING" );
 	my $farm_name = shift;
 
-	my $output = 'true';
+	my $output;
 
 	my $farm_filename = &getFarmFile( $farm_name );
 	open my $fileconf, '<', "$configdir/$farm_filename";
@@ -3892,7 +3892,22 @@ sub getHTTPFarm100Continue    # ($farm_name)
 		if ( $line =~ /^[#\s]*Service \"/ ) { last; }
 		elsif ( $line =~ /Ignore100Continue (\d).*/ )
 		{
-			$output = ( $1 eq '0' ) ? 'false' : 'true';
+			if ( $1 eq '1' )
+			{
+				$output = 'ignore';
+			}
+			elsif ( $1 eq '2' )
+			{
+				$output = 'silent';
+			}
+			elsif ( $1 eq '3' )
+			{
+				$output = 'not-allow';
+			}
+			else
+			{
+				$output = 'pass';
+			}
 			last;
 		}
 	}
@@ -3907,7 +3922,7 @@ Function: setHTTPFarm100Continue
 
 Parameters:
 	farmname - Farm name
-	action - The available actions are: 1 to enable or 0 to disable
+	action - The available actions are: 0 to enable mode "Pass", 1 to enable mode "Ignore", 2 to enable mode "Silent pass" or 3 to enable mode "Not allow"
 
 Returns:
 	scalar - The possible values are: 0 on success or -1 on failure

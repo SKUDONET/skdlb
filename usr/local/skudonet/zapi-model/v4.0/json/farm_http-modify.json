@@ -69,7 +69,7 @@
       },
       "disable_tlsv1_2" : {
          "depend_on" : "listener==https",
-         "description" : "Only in https listener. If this field has the value true the connections using TLS security protocol with version 1.2 is not allowed; or false if the",
+         "description" : "Only in https listener. If this field has the value true the connections using TLS security protocol with version 1.2 is not allowed; or false if the protocol TLSv1.2 is allowed.",
          "non_blank" : "true",
          "values" : [
             "true",
@@ -109,12 +109,16 @@
          ]
       },
       "ignore_100_continue" : {
-         "description" : "If this field has the value true the 100 continue HTTP header will be ignored; if the value is false, the 100 continue header will be processed.",
+         "description" : "This field indicates the possible values accepted for managing the 100 Continue header: false and pass enable mode PASS, true and ignore enable mode IGNORE, silent enables mode SILENT PASS and not-allow enables mode NOT ALLOW.",
          "edition" : "ee",
          "non_blank" : "true",
          "values" : [
             "true",
-            "false"
+            "false",
+            "pass",
+            "ignore",
+            "silent",
+            "not-allow"
          ]
       },
       "listener" : {
