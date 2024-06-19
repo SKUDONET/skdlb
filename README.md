@@ -1,4 +1,4 @@
-![LOGO](https://github.com/SKUDONET/skdlb/assets/139971696/49c9cb23-e2ab-4bd6-93ca-a1efe29fe240)
+![LOGO](https://github.com/SKUDONET/skdlb/assets/139971696/3389c323-5543-44a0-9768-79fa6497ed95)
 
 # [SKUDONET Load Balancer](https://www.skudonet.com)
 This is the repository of **SKUDONET Load Balancer** Community Edition (**Zen Load Balancer** CE next generation) and it'll guide you to install a development and testing instance of load balancer.
@@ -28,7 +28,7 @@ SKUDONET CE ISO is a Debian Bookworm template with Skudonet already installed. I
 
 https://www.skudonet.com/products/community/
 
-![UEFI](https://github.com/SKUDONET/skdlb/assets/139971696/657c34f4-df8b-40c1-aa26-9fb1e1bdc490)
+![UEFI](https://github.com/SKUDONET/skdlb/assets/139848444/09095187-ca52-480d-8464-dadf9a67c08c)
 
 ### Installation on Debian Bookworm
 
@@ -105,10 +105,11 @@ Finally, just execute a `git push` and request a pull of your changes. In additi
 
 ### Screenshots
 
-![skd7_dashboard](https://github.com/SKUDONET/skdlb/assets/139971696/21cab240-f404-422b-86e0-9b982bc91e7f)
-![skd7_farms](https://github.com/SKUDONET/skdlb/assets/139971696/5bb18d4d-be4c-4602-b02f-cb8fe0b3ad3e)
-![skd7_letsencrypt](https://github.com/SKUDONET/skdlb/assets/139971696/55e86ec5-6b94-4f39-86f6-d110f11976ad)
-![skd7_services](https://github.com/SKUDONET/skdlb/assets/139971696/888abde7-5f39-4207-b60e-04f6787e434e)
+![skd7_dashboard](https://github.com/SKUDONET/skdlb/assets/139848444/badf123b-61ac-42d9-b34f-724cb856c075)
+![skd7_farms](https://github.com/SKUDONET/skdlb/assets/139848444/3972da6b-9e96-4753-9ae0-dd0127e54238)
+![skd7_letsencrypt](https://github.com/SKUDONET/skdlb/assets/139848444/55a006e1-6b1b-482c-92aa-b6bd3c6d808a)
+![skd7_services](https://github.com/SKUDONET/skdlb/assets/139848444/6017392a-5f63-4e00-8b4a-87daa1bd7669)
+![skd7_dhcp](https://github.com/SKUDONET/skdlb/assets/139848444/bf6ad318-47fa-4442-8c7c-3f8e9eaa8b20)
 
 ### Creating & Updating Documentation or Translations
 In the official [GitHub wiki](https://github.com/skudonet/skdlb/wiki) there is available a list of pages and it's translations. Please clone the wiki, apply your changes and request a pull in order to be applied.
