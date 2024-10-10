@@ -174,6 +174,16 @@ sub delete_certificate    # ( $cert_filename )
 	my $desc     = "Delete certificate";
 	my $cert_dir = &getGlobalConfiguration( 'certdir' );
 
+	# check is a system certificate
+	my $cert_system;
+		$cert_system = "skdcert.pem";
+
+	if ( $cert_filename eq $cert_system )
+	{
+		my $msg = "System Certificate can not be deleted.";
+		&httpErrorResponse( code => 404, desc => $desc, msg => $msg );
+	}
+
 	# check is the certificate file exists
 	if ( !-f "$cert_dir\/$cert_filename" )
 	{
