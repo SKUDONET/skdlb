@@ -75,7 +75,7 @@ Parameters:
 	if_ref - Reference to a network interface hash.
 
 Returns:
-	Integer - Error code, 0 on success or another value on failure.
+	Integer - Error code, 0 on success or 1 on failure.
 
 =cut
 
@@ -86,9 +86,10 @@ sub disableDHCP
 	my $if_ref = shift;
 	my $err    = 0;
 
-	$err = &stopDHCP( $if_ref->{ name } );
-	$err if $err;
-
+	if ( &stopDHCP( $if_ref->{ name } ) )
+	{
+		return 1;
+	}
 	if ( $if_ref->{ addr } )
 	{
 		# Delete old IP and Netmask from system to replace it
@@ -157,9 +158,9 @@ sub startDHCP
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $if_name = shift;
-	my $pgrep = &getGlobalConfiguration( "pgrep" );
-	my $cmd = &getDHCPCmd( $if_name );
-	my @pids =  @{ &logAndGet( "$pgrep -f \"$cmd\"", "array" ) };
+	my $pgrep   = &getGlobalConfiguration( "pgrep" );
+	my $cmd     = &getDHCPCmd( $if_name );
+	my @pids    = @{ &logAndGet( "$pgrep -f \"$cmd\"", "array" ) };
 
 	if ( @pids )
 	{
@@ -186,7 +187,7 @@ Parameters:
 	if_name - String with the interface name
 
 Returns:
-	Integer - Error code, 0 on success or another value on failure
+	Integer - Error code, 0 on success or 1 on failure
 
 =cut
 
@@ -195,22 +196,31 @@ sub stopDHCP
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $if_name = shift;
-
-	my $pgrep = &getGlobalConfiguration( "pgrep" );
-	my $cmd   = &getDHCPCmd( $if_name );
-	my @pids  =  @{ &logAndGet( "$pgrep -f \"$cmd\"", "array" ) };
-	my $cnt;
+	my $pgrep   = &getGlobalConfiguration( "pgrep" );
+	my $cmd     = &getDHCPCmd( $if_name );
+	my @pids    = @{ &logAndGet( "$pgrep -f \"^$cmd\"", "array" ) };
 	if ( @pids )
 	{
 		&zenlog( "Stopping dhcp service for $if_name", "debug", "dhcp" );
-		$cnt  = kill 'KILL', @pids;
+		kill 'KILL', @pids;
 	}
-	# success if all process were killed
-	my $err = ( $cnt == scalar @pids ) ? 0 : 1;
-	&zenlog( "DHCP could not be stopped for $if_name", "error", "dhcp" )
-	  if ( $err );
 
-	return $err;
+	use Time::HiRes qw(usleep);
+	my $max_retry = 50;
+	my $retry     = 0;
+	while ( ( $retry < $max_retry ) )
+	{
+		# success if all process were killed (pgrep return code should be 1)
+		my $status = &logRunAndGet( "$pgrep -f \"^$cmd\"", "array" );
+		if ( $status->{ stderr } == 1 )
+		{
+			return 0;
+		}
+		$retry += 1;
+		usleep( 100_000 );
+	}
+	&zenlog( "DHCP could not be stopped for $if_name", "error", "dhcp" );
+	return 1;
 }
 
 1;

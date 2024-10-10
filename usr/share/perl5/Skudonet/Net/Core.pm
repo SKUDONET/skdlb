@@ -300,7 +300,7 @@ sub stopIf    # ($if_ref)
 	else
 	{
 		my @ifphysic = split ( /:/, $if );
-		my $ip       = $$if_ref{ addr };
+		my $ip = $$if_ref{ addr };
 
 		if ( $ip =~ /\./ )
 		{
@@ -337,6 +337,7 @@ sub delIf    # ($if_ref)
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my ( $if_ref ) = @_;
+	my %curr_if = %$if_ref;
 
 	my $status;
 
@@ -344,7 +345,11 @@ sub delIf    # ($if_ref)
 	if ( exists $if_ref->{ dhcp } and $if_ref->{ dhcp } eq 'true' )
 	{
 		require Skudonet::Net::DHCP;
-		&disableDHCP( $if_ref );
+		$status = &disableDHCP( \%curr_if );
+		if ( $status )
+		{
+			return 1;
+		}
 	}
 
 	require Skudonet::Net::Interface;
@@ -387,7 +392,7 @@ sub delIf    # ($if_ref)
 
 		# check if alternative stack is in use
 		my $ip_v_to_check = ( $$if_ref{ ip_v } == 4 ) ? 6 : 4;
-		my $interface     = &getInterfaceConfig( $$if_ref{ name }, $ip_v_to_check );
+		my $interface = &getInterfaceConfig( $$if_ref{ name }, $ip_v_to_check );
 
 		if ( !$interface )
 		{
