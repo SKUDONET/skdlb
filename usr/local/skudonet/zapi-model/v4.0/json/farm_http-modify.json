@@ -105,6 +105,15 @@
          "description" : "Personalized message error 414.",
          "edition" : "ee"
       },
+      "forwardSNI" : {
+         "description" : "Only in https listener. If this parameter has the value true, the SNI sent by the client is forwarded to the backend; if it has the value false, SNI is not forwarded.",
+         "edition" : "ee",
+         "non_blank" : "true",
+         "values" : [
+            "true",
+            "false"
+         ]
+      },
       "httpverb" : {
          "description" : "This field indicates the operations that will be permitted to the HTTP client requests. available values are: standardHTTP, accepted HTTP requests GET, POST, HEAD. extendedHTTP, accepted previous HTTP requests plus PUT,DELETE. optionsHTTP (from 4.0.1), add the OPTIONS verb to the previous ones. standardWebDAV, accepted previous HTTP requests plus LOCK, UNLOCK, PROPFIND, PROPPATCH, SEARCH, MKCOL, MOVE, COPY, OPTIONS, TRACE, MKACTIVITY, CHECKOUT, MERGE, REPORT, MSextWebDAV accepted previous HTTP requests plus SUBSCRIBE, UNSUBSCRIBE, NOTIFY, BPROPFIND, BPROPPATCH, POLL, BMOVE, BCOPY, BDELETE, CONNECT, or MSRPCext, accepted previous HTTP requests plus RPC_IN_DATA, RPC_OUT_DATA. Note that those values are case-sensitive.",
          "non_blank" : "true",
@@ -157,6 +166,15 @@
          "non_blank" : "true",
          "regex" : "(?^:[a-zA-Z0-9\\-]+)"
       },
+      "profiling" : {
+         "description" : "The farm Profiling logs the timers of the HTTP connections. If this parameter has the value true, the profiling logs are enabled; if it has the value false, profiling logs are disabled.",
+         "edition" : "ee",
+         "non_blank" : "true",
+         "values" : [
+            "true",
+            "false"
+         ]
+      },
       "reqtimeout" : {
          "description" : "How long the farm is going to wait for a client request in seconds.",
          "format_msg" : "expects a natural number",
@@ -196,6 +214,15 @@
          "description" : "Port of the farm, where the virtual service is listening.",
          "interval" : "1,65535",
          "non_blank" : "true"
+      },
+      "xforwarded" : {
+         "description" : "If this parameter has the value true, the X-Forwarded-For, X-Forwarded-Proto, X-Fowarded-Host and X-Forwarded-Port Headers are added. if it has the value false, only the X-Forwarded-For header is added",
+         "edition" : "ee",
+         "non_blank" : "true",
+         "values" : [
+            "true",
+            "false"
+         ]
       }
    },
    "url" : "/farm/<farmname>"

@@ -51,6 +51,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 	$params->{ disable_tlsv1_1 }->{ listener } = "https";
 	$params->{ disable_tlsv1_2 }->{ listener } = "https";
 	$params->{ disable_tlsv1_3 }->{ listener } = "https";
+	$params->{ forwardSNI }->{ listener }      = "https";
 		$params->{ "ciphers" }->{ 'values' } =
 		  ["all", "highsecurity", "customsecurity"];
 
@@ -184,47 +185,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		}
 	}
 
-	# Modify Rewrite Location Headers
-	if ( exists ( $json_obj->{ rewritelocation } ) )
-	{
-		my $rewritelocation = 0;
-		my $path            = 0;
-		if    ( $json_obj->{ rewritelocation } eq "disabled" ) { $rewritelocation = 0; }
-		elsif ( $json_obj->{ rewritelocation } eq "enabled" )  { $rewritelocation = 1; }
-		elsif ( $json_obj->{ rewritelocation } eq "enabled-backends" )
-		{
-			$rewritelocation = 2;
-		}
-		elsif ( $json_obj->{ rewritelocation } eq "enabled-path" )
-		{
-			$rewritelocation = 1;
-			$path            = 1;
-		}
-		elsif ( $json_obj->{ rewritelocation } eq "enabled-backends-path" )
-		{
-			$rewritelocation = 2;
-			$path            = 1;
-		}
 
-		if ( &setFarmRewriteL( $farmname, $rewritelocation, $path ) == -1 )
-		{
-			my $msg = "Some errors happened trying to modify the rewritelocation.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
-
-	# Enable the log connection tracking
-	if ( exists ( $json_obj->{ logs } ) )
-	{
-		require Skudonet::Farm::HTTP::Config;
-		my $status = &setHTTPFarmLogs( $farmname, $json_obj->{ logs } );
-
-		if ( $status )
-		{
-			my $msg = "Some errors happened trying to modify the log parameter.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
 
 	# Enable or disable ignore 100 continue header
 	if ( exists ( $json_obj->{ ignore_100_continue } ) )
@@ -280,15 +241,6 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 		}
 	}
 
-	#Modify Error WAF
-	if ( exists ( $json_obj->{ errorWAF } ) )
-	{
-		if ( &setFarmErr( $farmname, $json_obj->{ errorWAF }, "WAF" ) == -1 )
-		{
-			my $msg = "Some errors happened trying to modify the errorWAF.";
-			&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
-		}
-	}
 
 	#Modify Error 414
 	if ( exists ( $json_obj->{ error414 } ) )
@@ -433,6 +385,7 @@ sub modify_http_farm    # ( $json_obj, $farmname )
 				&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 			}
 		}
+
 
 		my %ssl_proto_hash = (
 							   "disable_sslv2" => "SSLv2",

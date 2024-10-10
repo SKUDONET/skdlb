@@ -110,6 +110,22 @@
       "vhost" : {
          "is_regex" : "true",
          "negated_regex" : "(?^:^\\^)"
+      },
+      "waf" : {
+         "edition" : "ee",
+         "values" : [
+            "true",
+            "false"
+         ]
+      },
+      "xforwarded" : {
+         "description" : "If this parameter has the value true, the X-Forwarded-For, X-Forwarded-Proto, X-Fowarded-Host and X-Forwarded-Port Headers are added. if it has the value false, only the X-Forwarded-For header is added",
+         "edition" : "ee",
+         "non_blank" : "true",
+         "values" : [
+            "true",
+            "false"
+         ]
       }
    },
    "url" : "/farms/<farmname>/services/<id>"

@@ -137,7 +137,7 @@ sub upload_backup
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 
-	my $msg = "Backup $name was created successfully.";
+	my $msg  = "Backup $name was created successfully.";
 	my $body = { description => $desc, params => $name, message => $msg };
 
 	&httpResponse( { code => 200, body => $body } );
@@ -222,9 +222,9 @@ sub apply_backup
 	  "The backup was properly applied. Some changes need a system reboot to work.";
 	my $error = &applyBackup( $backup );
 
-	if ( $error )
+	if ( $error->{ code } )
 	{
-		$msg = "There was a error applying the backup.";
+		$msg = "There was an error applying the backup: $error->{ desc }.";
 		&httpErrorResponse( code => 400, desc => $desc, msg => $msg );
 	}
 

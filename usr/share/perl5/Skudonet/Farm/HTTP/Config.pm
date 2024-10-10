@@ -530,6 +530,7 @@ sub setFarmListen    # ( $farm_name, $farmlisten )
 			$filefarmhttp[$i_f] =~ s/#//g;
 		}
 
+
 		# Check for ECDHCurve cyphers
 		if ( $filefarmhttp[$i_f] =~ /ECDHCurve/ && $flisten eq "http" )
 		{
@@ -1637,11 +1638,11 @@ sub getHTTPFarmStruct
 	elsif ( $httpverb == 4 ) { $httpverb = "MSRPCext"; }
 	elsif ( $httpverb == 5 ) { $httpverb = "optionsHTTP"; }
 
-	my $errWAF = &getFarmErr( $farmname, "WAF" );
 	my $err414 = &getFarmErr( $farmname, "414" );
 	my $err500 = &getFarmErr( $farmname, "500" );
 	my $err501 = &getFarmErr( $farmname, "501" );
 	my $err503 = &getFarmErr( $farmname, "503" );
+
 
 	$farm = {
 			  status          => $status,
@@ -3494,6 +3495,7 @@ sub moveHeader
 
 	return $err;
 }
+
 
 =begin nd
 Function: getHTTPFarmLogs

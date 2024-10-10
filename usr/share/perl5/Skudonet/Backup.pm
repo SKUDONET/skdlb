@@ -250,6 +250,7 @@ sub uploadBackup
 
 	if ( $error )
 	{
+
 		&zenlog( "$filename looks being a not valid backup", 'error', 'backup' );
 		unlink $filepath;
 		return 2;
@@ -318,29 +319,36 @@ sub applyBackup
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $backup = shift;
-	my $error;
+	my $error_ref;
 	my $tar  = &getGlobalConfiguration( 'tar' );
 	my $file = &getGlobalConfiguration( 'backupdir' ) . "/backup-$backup.tar.gz";
 
 	# get current version
 	my $version = &getGlobalConfiguration( 'version' );
 
+
 	&zenlog( "Stopping Skudonet service", "info", "SYSTEM" );
-	$error = &logAndRun( "/etc/init.d/skudonet stop" );
+	my $error = &logAndRun( "/etc/init.d/skudonet stop" );
 	if ( $error )
 	{
-		&zenlog( "Problem stopping Skudonet Load Balancer service", "error", "SYSTEM" );
-		return $error;
+		my $msg = "Problem stopping Skudonet Load Balancer service";
+		&zenlog( $msg, "error", "SYSTEM" );
+		$error_ref->{ code } = 1;
+		$error_ref->{ desc } = $msg;
+		return $error_ref;
 	}
 
 	&zenlog( "Restoring backup $file", "info", "SYSTEM" );
-	my $cmd = "$tar -xvzf $file -C /";
+	my $cmd   = "$tar -xvzf $file -C /";
 	my $eject = &logAndGet( $cmd, 'array' );
 
 	if ( not @{ $eject } )
 	{
-		&zenlog( "The backup $file could not be extracted", "error", "SYSTEM" );
-		return $error;
+		my $msg = "The backup $file could not be extracted";
+		&zenlog( $msg, "error", "SYSTEM" );
+		$error_ref->{ code } = 1;
+		$error_ref->{ desc } = $msg;
+		return $error_ref;
 	}
 
 	&zenlog( "unpacked files: @{$eject}", "info", "SYSTEM" );
@@ -361,16 +369,19 @@ sub applyBackup
 
 	if ( !$error )
 	{
+		$error_ref->{ code } = 0;
 		&zenlog( "Backup applied and Skudonet Load Balancer restarted...",
 				 "info", "SYSTEM" );
 	}
 	else
 	{
-		&zenlog( "Problem restarting Skudonet Load Balancer service", "error",
-				 "SYSTEM" );
+		my $msg = "Problem restarting Skudonet Load Balancer service";
+		&zenlog( $msg, "error", "SYSTEM" );
+		$error_ref->{ code } = 1;
+		$error_ref->{ desc } = $msg;
 	}
 
-	return $error;
+	return $error_ref;
 }
 
 =begin nd
@@ -391,7 +402,7 @@ sub getBackupVersion
 	&zenlog( __FILE__ . ":" . __LINE__ . ":" . ( caller ( 0 ) )[3] . "( @_ )",
 			 "debug", "PROFILING" );
 	my $backup = shift;
-
+	my @out;
 	my $tar  = &getGlobalConfiguration( 'tar' );
 	my $file = &getGlobalConfiguration( 'backupdir' ) . "/backup-$backup.tar.gz";
 	my $config_path = &getGlobalConfiguration( 'globalcfg' );
@@ -399,7 +410,8 @@ sub getBackupVersion
 	# remove the first slash
 	$config_path =~ s/^\///;
 
-	my @out = @{ &logAndGet( "$tar -xOf $file $config_path", 'array' ) };
+	@out = @{ &logAndGet( "$tar -xOf $file $config_path", 'array' ) };
+
 
 	my $version = "";
 
@@ -418,4 +430,3 @@ sub getBackupVersion
 }
 
 1;
-
