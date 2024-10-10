@@ -160,7 +160,7 @@ sub startDHCP
 	my $if_name = shift;
 	my $pgrep   = &getGlobalConfiguration( "pgrep" );
 	my $cmd     = &getDHCPCmd( $if_name );
-	my @pids    = @{ &logAndGet( "$pgrep -f \"$cmd\"", "array" ) };
+	my @pids    = @{ &logAndGet( "$pgrep -f \"^$cmd\$\"", "array" ) };
 
 	if ( @pids )
 	{
@@ -172,10 +172,28 @@ sub startDHCP
 
 	&zenlog( "starting dhcp service for $if_name", "debug", "dhcp" );
 
-	my $err = &logAndRunBG( $cmd );
-	sleep ( 2 );    # wait a while to get an IP
-
-	return $err;
+	if ( &logAndRunBG( $cmd ) )
+	{
+		&zenlog( "Error running \"$cmd\"", "error", "dhcp" );
+		return 1;
+	}
+	use Time::HiRes qw(usleep);
+	my $max_retry = 50;
+	my $retry     = 0;
+	while ( ( $retry < $max_retry ) )
+	{
+		# check that dhcp cmd is running
+		my $status = &logRunAndGet( "$pgrep -f \"^$cmd\$\"" );
+		if ( $status->{ stderr } == 0 )
+		{
+			&zenlog( "DHCP service started succesfully for $if_name", "info", "dhcp" );
+			return 0;
+		}
+		$retry += 1;
+		usleep( 100_000 );
+	}
+	&zenlog( "DHCP service could not be started for $if_name", "error", "dhcp" );
+	return 1;
 }
 
 =begin nd
@@ -198,11 +216,15 @@ sub stopDHCP
 	my $if_name = shift;
 	my $pgrep   = &getGlobalConfiguration( "pgrep" );
 	my $cmd     = &getDHCPCmd( $if_name );
-	my @pids    = @{ &logAndGet( "$pgrep -f \"^$cmd\"", "array" ) };
+	my @pids    = @{ &logAndGet( "$pgrep -f \"^$cmd\$\"", "array" ) };
 	if ( @pids )
 	{
 		&zenlog( "Stopping dhcp service for $if_name", "debug", "dhcp" );
 		kill 'KILL', @pids;
+	}
+	else
+	{
+		return 0;
 	}
 
 	use Time::HiRes qw(usleep);
@@ -211,9 +233,10 @@ sub stopDHCP
 	while ( ( $retry < $max_retry ) )
 	{
 		# success if all process were killed (pgrep return code should be 1)
-		my $status = &logRunAndGet( "$pgrep -f \"^$cmd\"", "array" );
+		my $status = &logRunAndGet( "$pgrep -f \"^$cmd\$\"" );
 		if ( $status->{ stderr } == 1 )
 		{
+			&zenlog( "DHCP service was stopped succesfully for $if_name", "info", "dhcp" );
 			return 0;
 		}
 		$retry += 1;
