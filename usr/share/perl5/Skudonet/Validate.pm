@@ -42,7 +42,7 @@ my $ipv4v6        = qr/(?:$ipv4_addr|$ipv6_addr)/;
 my $boolean       = qr/(?:true|false)/;
 my $enable        = qr/(?:enable|disable)/;
 my $integer       = qr/\d+/;
-my $natural       = qr/[1-9]\d*/;    # natural number = {1, 2, 3, ...}
+my $natural = qr/[1-9]\d*/;    # natural number = {1, 2, 3, ...}
 my $weekdays = qr/(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)/;
 my $minutes  = qr/(?:\d|[0-5]\d)/;
 my $hours    = qr/(?:\d|[0-1]\d|2[0-3])/;
@@ -97,7 +97,7 @@ my %format_re = (
 	'zapi_password' => qr/.+/,
 
 	# common
-	'port'      => $port_range,
+	'port' => $port_range,
 	'multiport' =>
 	  qr/(?:\*|(?:$port_range|$port_range\:$port_range)(?:,$port_range|,$port_range\:$port_range)*)/,
 
@@ -113,7 +113,7 @@ my %format_re = (
 	'snmp_port'      => $port_range,
 	'snmp_scope'     => qr{(?:\d{1,3}\.){3}\d{1,3}\/\d{1,2}},    # ip/mask
 	'ntp'            => qr{[\w\.\-]+},
-	'http_proxy'     => qr{\S*},    # use any character except the spaces
+	'http_proxy' => qr{\S*},    # use any character except the spaces
 
 
 	# farms
@@ -647,8 +647,7 @@ sub checkZAPIParams
 			 ( exists $param_obj->{ $param }->{ 'exceptions' } )
 			 and (
 				   grep ( /^$json_obj->{ $param }$/,
-						  @{ $param_obj->{ $param }->{ 'exceptions' } } )
-			 )
+						  @{ $param_obj->{ $param }->{ 'exceptions' } } ) )
 		  )
 		{
 			return
@@ -898,8 +897,8 @@ sub httpResponseHelp
 		if ( exists $param_obj->{ $p }->{ interval } )
 		{
 			my ( $ll, $hl ) = split ( ',', $param_obj->{ $p }->{ interval } );
-			$ll                  = '-' if ( !defined $ll );
-			$hl                  = '-' if ( !defined $hl );
+			$ll = '-' if ( !defined $ll );
+			$hl = '-' if ( !defined $hl );
 			$param->{ interval } = "Expects a value between '$ll' and '$hl'.";
 		}
 		if ( exists $param_obj->{ $p }->{ non_blank }
@@ -927,8 +926,8 @@ sub httpResponseHelp
 	my $msg  = "No parameter has been sent. Please, try with:";
 	my $body = {
 
-				message => $msg,
-				params  => $resp_param,
+		message => $msg,
+		params  => $resp_param,
 	};
 	$body->{ description } = $desc if ( defined $desc );
 
@@ -1004,7 +1003,7 @@ sub putArrayAsText
 		$msg =~ s/<bs>.+<\|>(.+)<\/bp>/$1/g;
 
 		my $lastItem = pop @array;
-		my $list     = join ( ", ", @array );
+		my $list = join ( ", ", @array );
 		$list .= " and $lastItem";
 
 		# put list

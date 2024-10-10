@@ -352,6 +352,7 @@ $expect_bin="/usr/bin/expect";
 #Where is dig binary?
 $dig_bin="/usr/bin/dig";
 #Where is lshw?
+#Where is chsh?
 
 # zproxy
 #where is zproxy dir?
@@ -507,7 +508,7 @@ $keygen_cmd="ssh-keygen -t rsa -f $key_path/$key_id -N '' -q";#update
 $zenbackup="$zbindir/zenbackup.pl";#update
 
 #Do backup to
-$backupfor="$configdir $basedir/*.pem $confhttp $rttables $sshConf $snmpdconfig_file /etc/hostname $filedns /etc/cron.d/skudonet $applianceVersionFile";#update
+$backupfor="$configdir $basedir/*.pem $confhttp $rttables $sshConf $snmpdconfig_file /etc/hostname $filedns /etc/cron.d/skudonet $applianceVersionFile $libexec_dir/*";#update
 
 #Bonding interfaces
 $bonding_hwaddr_filename="bonding_slave/perm_hwaddr";#update
