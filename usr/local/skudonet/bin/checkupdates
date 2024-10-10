@@ -55,6 +55,7 @@ case "$1" in
 ;;
 
 '-i')   # Install the non-updated packages
+	$aptget_bin update > /dev/null
 	DEBIAN_FRONTEND=noninteractive $apt_bin --with-new-pkgs upgrade -o Dir::Etc::sourcelist="$apt_source_skudonet"
 	#checkupdates
 	#do this in order to update the web GUI alerts after any installation
