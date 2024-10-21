@@ -47,6 +47,8 @@ sub farms_name_http    # ( $farmname )
 				 services    => $services_ref,
 	};
 
+		require Skudonet::IPDS::WAF::Core;
+		$body->{ ipds } = &getIPDSWAFFarmRules( $farmname );
 
 	&httpResponse( { code => 200, body => $body } );
 }
@@ -73,6 +75,8 @@ sub farms_name_http_summary
 				 services    => $services_ref,
 	};
 
+		require Skudonet::IPDS::WAF::Core;
+		$body->{ ipds } = &getIPDSWAFFarmRules( $farmname );
 
 	&httpResponse( { code => 200, body => $body } );
 }

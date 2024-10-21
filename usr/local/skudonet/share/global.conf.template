@@ -384,6 +384,7 @@ $proxytpl="$templatedir/poundtpl.cfg";#update
 #maximum value of http body to pass to modsecurity
 $waf_max_body="32000";
 #Where is modsec rules check
+$waf_rule_check_bin="/usr/bin/modsec-rules-check";
 #time to ensure that the farm has been stopped completaly
 $http_farm_stop_grace_time="2";
 
@@ -517,6 +518,8 @@ $bonding_hwaddr_filename="bonding_slave/perm_hwaddr";#update
 # How time wait to execute the logs rotate
 
 #IPDS Module
+$wafConfDir="$configdir/ipds/waf";#update
+$wafSetDir="$wafConfDir/sets";#update
 
 #WAF Assistant
 

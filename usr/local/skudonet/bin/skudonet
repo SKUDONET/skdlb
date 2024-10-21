@@ -83,7 +83,7 @@ sub getInterfaceBlocks
 		{
 			$in_block = 'true';
 
-			if ( @interface )    # exclude first block
+			if ( @interface )         # exclude first block
 			{
 				my ( @array ) = @interface;
 				push ( @interface_list, \@array );    # store previous iface
@@ -100,7 +100,7 @@ sub getInterfaceBlocks
 	# for last block found
 	if ( @interface )
 	{
-		push ( @interface_list, \@interface );    # store last iface
+		push ( @interface_list, \@interface );        # store last iface
 	}
 
 	return @interface_list;
@@ -406,6 +406,9 @@ if ( $action eq "start" )
 		}
 	}
 
+		&zenlog( "skudonet: Initializating IPDS WAF Module..." );
+		use Skudonet::IPDS::WAF::Setup;
+		&initWAFModule();
 
 	&zenlog( "skudonet: Setting up virtual interfaces..." );
 

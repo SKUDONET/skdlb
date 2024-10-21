@@ -72,6 +72,9 @@ my $run_actions = qr/^(?:stop|start|restart)$/;
 my $name  = qr/^(?:[a-zA-Z0-9][\w]{5,31})$/;
 my $email = qr/(?:[a-zA-Z][\w\_\.]+)\@(?:[a-zA-Z0-9.-]+)\.(?:[a-zA-Z]{2,4})/;
 
+my $waf_file     = qr/(?:[\s+\w-]+)/;
+my $waf_file_ext = qr/(?:lua|LUA|conf|CONF|data|DATA)/;
+
 my %format_re = (
 
 	# generic types
@@ -159,6 +162,12 @@ my %format_re = (
 	'vlan_tag'         => qr/$vlan_tag/,
 	'virtual_tag'      => qr/$virtual_tag/,
 
+	# WAF
+	'waf_set_name'   => qr/[\.\w-]+/,
+	'waf_file'       => $waf_file,
+	'waf_file_ext'   => $waf_file_ext,
+	'waf_audit_log'  => qr/(?:$boolean|)/,
+	'waf_set_status' => qr/(?:$boolean|detection)/,
 
 	# certificates filenames
 	'certificate_name'    => $cert_name,

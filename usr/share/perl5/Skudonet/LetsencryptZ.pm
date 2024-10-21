@@ -787,10 +787,10 @@ sub runLetsencryptObtain    # ( $farm_name, $vip, $domains_list, $test, $force)
 	return 2 if $status;
 
 	# run le_binary command
-	my $test_opt     = "--test-cert"                      if ( $test eq "true" );
-	my $force_opt    = "--force-renewal --break-my-certs" if ( $force eq "true" );
+	my $test_opt = "--test-cert" if ( $test eq "true" );
+	my $force_opt = "--force-renewal --break-my-certs" if ( $force eq "true" );
 	my $certname_opt = "--cert-name " . @{ $domains_list }[0];
-	my $domains_opt  = "-d " . join ( ',', @{ $domains_list } );
+	my $domains_opt = "-d " . join ( ',', @{ $domains_list } );
 	my $fullchain_opt =
 	  "--fullchain-path " . &getGlobalConfiguration( 'le_fullchain_path' );
 	my $method_opt;
@@ -977,7 +977,7 @@ sub runLetsencryptRenew  # ( $le_cert_name, $farm_name, $vip, $force, $lock_fh )
 	# run le_binary command
 	my $test_opt = "--test-cert"
 	  unless ( &checkLetsencryptStaging( $le_cert_name ) );
-	my $force_opt    = "--force-renewal --break-my-certs" if ( $force eq "true" );
+	my $force_opt = "--force-renewal --break-my-certs" if ( $force eq "true" );
 	my $certname_opt = "--cert-name " . $le_cert_name;
 	my $fullchain_opt =
 	  "--fullchain-path " . &getGlobalConfiguration( 'le_fullchain_path' );
@@ -1119,7 +1119,7 @@ sub setLetsencryptCron   # ( $le_cert_name, $farm_name, $nic, $force, $restart )
 
 	$command .= " --farm $farm_name" if $farm_name;
 	$command .= " --vip $vip"        if $vip;
-	$command .= " --force"   if ( defined $force   and ( $force eq "true" ) );
+	$command .= " --force"           if ( defined $force and ( $force eq "true" ) );
 	$command .= " --restart" if ( defined $restart and ( $restart eq "true" ) );
 
 	push @le_cron_list, "$frequency $command";
