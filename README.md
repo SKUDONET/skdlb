@@ -1,14 +1,14 @@
 ![LOGO](https://github.com/SKUDONET/skdlb/assets/139971696/3389c323-5543-44a0-9768-79fa6497ed95)
 
-# [SKUDONET Load Balancer](https://www.skudonet.com)
-This is the repository of **SKUDONET Load Balancer** Community Edition (**Zen Load Balancer** CE next generation) and it'll guide you to install a development and testing instance of load balancer.
+# [SKUDONET Open Source Load Balancer and Open Source WAF](https://www.skudonet.com)
+This is the repository of **SKUDONET Open Source Load Balancer and Open Source WAF** Community Edition (**Zen Load Balancer** CE next generation) and it'll guide you to install a development and testing instance of load balancer.
 
 ## Repository Contents
 In this repository you'll find the source code usually placed into the folder `/usr/local/skudonet/` with the following structure:
 - **app/**: Applications, binaries and libraries that SKUDONET Load Balancer requires.
 - **bin/**: Additional application binaries directory. 
 - **backups/**: Default folder where the configuration backups will be placed.
-- **config/**: Default folder where the load balancing services, health checks and network configuration files will be placed.
+- **config/**: Default folder where the load balancing services, health checks, IPDS WAF and network configuration files will be placed.
 - **etc/**: Some system files to configure SKUDONET Load Balancer services.
 - **lib/**: Folder where Skudonet funcionality library is located.
 - **share/**: Folder for templates and other data.
@@ -28,7 +28,7 @@ SKUDONET CE ISO is a Debian Bookworm template with Skudonet already installed. I
 
 https://www.skudonet.com/products/community/
 
-![UEFI](https://github.com/SKUDONET/skdlb/assets/139848444/09095187-ca52-480d-8464-dadf9a67c08c)
+![UEFI](https://github.com/user-attachments/assets/7de1949f-3fd9-4313-86d0-793b94300f3f)
 
 ### Installation on Debian Bookworm
 
@@ -60,10 +60,47 @@ And finally, install the Skudonet CE
 root@skudonetlb#> apt-get install skudonet
 ```
 
+### Install the OWASP CoreRuleSet Rules in SKUDONET Community version
+
+1. Go to a directory to download the OWASP CoreRuleSet
+```
+root@skudonetlb#> cd /opt
+```
+
+2. Download the latest OWASP CoreRuleSet
+```
+root@skudonetlb#> wget https://github.com/coreruleset/coreruleset/archive/refs/heads/main.zip
+```
+
+3. Decompress the OWASP CoreRuleSet file
+```
+root@skudonetlb#> unzip main.zip
+```
+
+4. Copy all the Rulesets and data to SKUDONET IPDS WAF Rulesets config directory
+```
+root@skudonetlb#> cp coreruleset-main/rules/* /usr/local/skudonet/config/ipds/waf/sets/
+```
+
+5. Copy the setup example file to SKUDONET IPDS WAF Rulesets config directory
+  It is mandatory to setup tx.crs_setup_version
+```
+root@skudonetlb#> grep -v "^SecDefaultAction" coreruleset-main/crs-setup.conf.example > /usr/local/skudonet/config/ipds/waf/sets/REQUEST-90-CONFIGURATION.conf
+```
+
+Now the SKUDONET Opensource Load Balancer has all the OWASP Rulesets and them can be applied to the HTTP/S Farms. 
+
 ## Updates
 
 Please use the Skudonet APT repo in order to check if updates are available. 
 
+## Troubleshooting
+
+The Perl errors are logging to /var/log/cherokee-error.log file.
+The Web GUI access logs are logging to /var/log/cherokee-access.log file.
+All the software logs ( farm logs, WAF logs, SKUDONET logs ) go to /var/log/syslog file.
+Config files are saved in the directory /usr/local/skudonet/config.
+SKUDONET WAF Rulesets are saved in the directory /usr/local/skudonet/config/ipds/waf/sets.
 
 ## How to Contribute
 You can contribute with the evolution of the SKUDONET Load Balancer in a wide variety of ways:
@@ -105,11 +142,13 @@ Finally, just execute a `git push` and request a pull of your changes. In additi
 
 ### Screenshots
 
-![skd7_dashboard](https://github.com/SKUDONET/skdlb/assets/139848444/badf123b-61ac-42d9-b34f-724cb856c075)
-![skd7_farms](https://github.com/SKUDONET/skdlb/assets/139848444/3972da6b-9e96-4753-9ae0-dd0127e54238)
-![skd7_letsencrypt](https://github.com/SKUDONET/skdlb/assets/139848444/55a006e1-6b1b-482c-92aa-b6bd3c6d808a)
-![skd7_services](https://github.com/SKUDONET/skdlb/assets/139848444/6017392a-5f63-4e00-8b4a-87daa1bd7669)
-![skd7_dhcp](https://github.com/SKUDONET/skdlb/assets/139848444/bf6ad318-47fa-4442-8c7c-3f8e9eaa8b20)
+![skd7_dashboard](https://github.com/user-attachments/assets/f10ef46c-1b38-46e0-8b14-3ce297052184)
+![skd7_farms](https://github.com/user-attachments/assets/745edd31-30c6-4d3f-9122-b908d10aed2f)
+![skd7_letsencrypt](https://github.com/user-attachments/assets/fdd58736-c8a5-4296-80c9-9c9ab5d949da)
+![skd7_services](https://github.com/user-attachments/assets/d0c5f4f3-428d-4cd5-afb7-65542183f530)
+![skd7_dhcp](https://github.com/user-attachments/assets/dbf599a3-62e5-406f-822f-100daf34f2b0)
+![skd7_wafedit](https://github.com/user-attachments/assets/68cea9f0-25d1-4447-9bc6-eeb40de50d4b)
+![skd7_waffarm](https://github.com/user-attachments/assets/d4f60d11-6a76-4429-b1ef-c43db866732e)
 
 ### Creating & Updating Documentation or Translations
 In the official [GitHub wiki](https://github.com/skudonet/skdlb/wiki) there is available a list of pages and it's translations. Please clone the wiki, apply your changes and request a pull in order to be applied.
